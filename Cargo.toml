@@ -1,0 +1,22 @@
+[package]
+name = "flat"
+version = "0.1.0"
+authors = ["Egor Larionov <egor.larionov@gmail.com>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+homepage = "https://github.com/elrnv/flat"
+repository = "https://github.com/elrnv/flat"
+documentation = "https://docs.rs/flat"
+keywords = ["geometry", "processing", "algorithms", "io"]
+
+[dependencies]
+typenum = "1.10"
+reinterpret = "0.2"
+rayon = "1.2"
+packed_simd = { version = "0.3", optional = true }
+
+[dev-dependencies]
+criterion = "0.3"
+
+[features]
+unstable = ["criterion/real_blackbox", "packed_simd"]
