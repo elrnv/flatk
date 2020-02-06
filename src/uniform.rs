@@ -6,7 +6,7 @@ use std::convert::{AsMut, AsRef};
 /// # Example
 ///
 /// ```rust
-/// use utils::soap::*;
+/// use flat::*;
 /// let s = Chunked2::from_flat(vec![1,2,3,4,5,6]);
 /// let mut iter = s.iter();
 /// assert_eq!(Some(&[1,2]), iter.next());
@@ -26,7 +26,7 @@ impl<T, N: Default + Array<T>> UniChunked<Vec<T>, U<N>> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![[1,2,3],[4,5,6],[7,8,9]];
     /// let c = Chunked3::from_array_vec(v);
     /// assert_eq!(c.data(), &vec![1,2,3,4,5,6,7,8,9]);
@@ -45,7 +45,7 @@ impl<'a, T, N: Default + Array<T>> UniChunked<&'a [T], U<N>> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![[1,2,3],[4,5,6],[7,8,9]];
     /// let c = Chunked3::from_array_vec(v.clone());
     /// assert_eq!(c.data(), &[1,2,3,4,5,6,7,8,9]);
@@ -64,7 +64,7 @@ impl<'a, T, N: Default + Array<T>> UniChunked<&'a mut [T], U<N>> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut v = vec![[1,2,3],[4,5,6],[7,8,9]];
     /// let c = Chunked3::from_array_slice_mut(v.as_mut_slice());
     /// assert_eq!(c.data(), &mut [1,2,3,4,5,6,7,8,9]);
@@ -104,7 +104,7 @@ impl<S: Set, N: Array<<S as Set>::Elem>> UniChunked<S, U<N>> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut v = vec![[1,2,3],[4,5,6],[7,8,9]];
     ///
     /// // Convert to and from a `Vec` of arrays.
@@ -223,7 +223,7 @@ impl<S, N> UniChunked<S, N> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3,4,5,6];
     /// let s = Chunked3::from_flat(v.clone());
     /// assert_eq!(&v, s.data());
@@ -237,7 +237,7 @@ impl<S, N> UniChunked<S, N> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut v = vec![1,2,3,4,5,6];
     /// let mut s = Chunked3::from_flat(v.clone());
     /// v[2] = 100;
@@ -257,7 +257,7 @@ impl<S: Default, N: Default> UniChunked<S, U<N>> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = Chunked3::<Vec<usize>>::new();
     /// assert_eq!(s, Chunked3::from_flat(Vec::new()));
     /// s.push([1,2,3]);
@@ -280,7 +280,7 @@ impl<S: Set, N: Unsigned + Default> UniChunked<S, U<N>> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let s = Chunked3::from_flat(vec![1,2,3,4,5,6]);
     /// let mut iter = s.iter();
     /// assert_eq!(Some(&[1,2,3]), iter.next());
@@ -310,7 +310,7 @@ impl<S: Default> ChunkedN<S> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = ChunkedN::<Vec<_>>::with_stride(3);
     /// s.push(&[1,2,3][..]);
     /// let mut iter = s.iter();
@@ -332,7 +332,7 @@ impl<S: Set> ChunkedN<S> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let s = ChunkedN::from_flat_with_stride(vec![1,2,3,4,5,6], 3);
     /// let mut iter = s.iter();
     /// assert_eq!(Some(&[1,2,3][..]), iter.next());
@@ -451,7 +451,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = Chunked2::from_flat(vec![0,1,2,3]);
     /// s.extend_from_slice(&[[4,5], [6,7]]);
     /// assert_eq!(s.data(), &vec![0,1,2,3,4,5,6,7]);
@@ -474,7 +474,7 @@ impl<S: Set + UniChunkable<N>, N: Unsigned> Set for UniChunked<S, U<N>> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let s = UniChunked::<_, U2>::from_flat(vec![0,1,2,3,4,5]);
     /// assert_eq!(s.len(), 3);
     /// let s = UniChunked::<_, U3>::from_flat(vec![0,1,2,3,4,5]);
@@ -497,7 +497,7 @@ impl<S: Set> Set for ChunkedN<S> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let s = ChunkedN::from_flat_with_stride(vec![0,1,2,3,4,5], 2);
     /// assert_eq!(s.len(), 3);
     /// let s = ChunkedN::from_flat_with_stride(vec![0,1,2,3,4,5], 3);
@@ -519,7 +519,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = UniChunked::<_, U3>::from_flat(vec![1,2,3]);
     /// s.push([4,5,6]);
     /// let mut iter = s.iter();
@@ -542,7 +542,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = ChunkedN::from_flat_with_stride(vec![1,2,3], 3);
     /// s.push(&[4,5,6]);
     /// let mut iter = s.iter();
@@ -582,7 +582,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = UniChunked::<_, U3>::from_flat(vec![1,2,3,4,5,6]);
     /// let mut iter = s.into_iter();
     /// assert_eq!(Some([1,2,3]), iter.next());
@@ -606,7 +606,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = ChunkedN::from_flat_with_stride(vec![1,2,3,4,5,6], 3);
     /// let mut iter = s.view().into_iter();
     /// assert_eq!(Some(&[1,2,3][..]), iter.next());
@@ -629,7 +629,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![[1,2,3],[4,5,6]];
     /// let s: Chunked3::<Vec<usize>> = v.into_iter().collect();
     /// let mut iter = s.iter();
@@ -669,7 +669,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     ///
     /// let v = vec![[1,2,3],[4,5,6]];
     /// let mut s = Chunked3::from_array_vec(v);
@@ -704,7 +704,7 @@ where
 //    /// # Example
 //    ///
 //    /// ```rust
-//    /// use utils::soap::*;
+//    /// use flat::*;
 //    ///
 //    /// let v = vec![[1,2,3],[4,5,6]];
 //    /// let mut s = Chunked3::from_array_vec(v);
@@ -829,7 +829,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3,4,5,6];
     /// let s_view = UniChunked::<_, U3>::from_flat(v.as_slice());
     /// let s_owned = UniChunked::<_, U3>::from_flat(v.clone());
@@ -1063,7 +1063,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let s = Chunked3::from_flat(vec![1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]);
     /// assert_eq!([7,8,9], s[2]);
     /// ```
@@ -1087,7 +1087,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let s = Chunked3::from_flat(vec![1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]);
     /// assert_eq!([7,8,9], s.view()[2]);
     /// ```
@@ -1111,7 +1111,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = Chunked3::from_flat(vec![1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]);
     /// assert_eq!([7,8,9], s.view_mut()[2]);
     /// ```
@@ -1133,7 +1133,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut v = vec![1,2,3,4,5,6,0,0,0,10,11,12];
     /// let mut s = Chunked3::from_flat(v);
     /// s[2] = [7,8,9];
@@ -1157,7 +1157,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut v = vec![1,2,3,4,5,6,0,0,0,10,11,12];
     /// let mut s = Chunked3::from_flat(v.as_mut_slice());
     /// s[2] = [7,8,9];
@@ -1183,7 +1183,7 @@ where
     /// The following is a simple test for iterating over a uniformly organized `Vec`.
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = UniChunked::<_, U2>::from_flat(vec![1,2,3,4]);
     /// let mut iter = s.iter();
     /// assert_eq!(Some(&[1,2]), iter.next());
@@ -1194,7 +1194,7 @@ where
     /// A more complex example consists of data organized as a nested `UniChunked`.
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let s0 = UniChunked::<_, U2>::from_flat(vec![1,2, 3,4, 5,6, 7,8, 9,10, 11,12]);
     /// let s1 = UniChunked::<_, U3>::from_flat(s0);
     /// let mut iter1 = s1.iter();
@@ -1226,7 +1226,7 @@ where
     /// The following example shows a simple modification of a uniformly organized `Vec`.
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = UniChunked::<_, U2>::from_flat(vec![0,1,2,3]);
     /// for i in s.iter_mut() {
     ///     i[0] += 1;
@@ -1241,7 +1241,7 @@ where
     /// Nested `UniChunked`s can also be modified as follows:
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s0 = UniChunked::<_, U2>::from_flat(vec![1,2, 3,4, 5,6, 7,8, 9,10, 11,12]);
     /// let mut s1 = UniChunked::<_, U3>::from_flat(s0);
     /// for mut i in s1.iter_mut() {
@@ -1346,7 +1346,7 @@ impl<S> ChunkedN<S> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = ChunkedN::from_flat_with_stride(vec![1,2,3,4,5,6], 3);
     /// s.view_mut().isolate(1).copy_from_slice(&[0; 3]);
     /// let mut iter = s.iter();
@@ -1383,7 +1383,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let s = UniChunked::<_, U2>::from_flat(vec![0,1,2,3]);
     /// let v1 = s.view(); // s is now inaccessible.
     /// let v2 = v1.clone();
@@ -1414,7 +1414,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = Chunked2::from_flat(vec![0,1,2,3]);
     /// let mut v = s.view_mut();
     /// {
@@ -1462,7 +1462,7 @@ impl<S: SplitAt + Set, N: Copy + Unsigned> SplitAt for UniChunked<S, U<N>> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let s = Chunked2::from_flat(vec![0,1,2,3]);
     /// let (l, r) = s.split_at(1);
     /// assert_eq!(l, Chunked2::from_flat(vec![0,1]));
@@ -1490,7 +1490,7 @@ impl<S: SplitAt + Set> SplitAt for ChunkedN<S> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let s = ChunkedN::from_flat_with_stride(vec![0,1,2,3], 2);
     /// let (l, r) = s.split_at(1);
     /// assert_eq!(l, ChunkedN::from_flat_with_stride(vec![0,1], 2));
@@ -1693,7 +1693,7 @@ impl<'a, S: StorageView<'a>, N> StorageView<'a> for UniChunked<S, N> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3,4,5,6,7,8,9,10,11,12];
     /// let s0 = Chunked2::from_flat(v.clone());
     /// let s1 = ChunkedN::from_flat_with_stride(s0.clone(), 3);
@@ -1712,7 +1712,7 @@ impl<S: Storage, N> Storage for UniChunked<S, N> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3,4,5,6,7,8,9,10,11,12];
     /// let s0 = Chunked2::from_flat(v.clone());
     /// let s1 = ChunkedN::from_flat_with_stride(s0.clone(), 3);
@@ -1730,7 +1730,7 @@ impl<S: StorageMut, N> StorageMut for UniChunked<S, N> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut v = vec![1,2,3,4,5,6,7,8,9,10,11,12];
     /// let mut s0 = Chunked2::from_flat(v.clone());
     /// let mut s1 = ChunkedN::from_flat_with_stride(s0.clone(), 3);

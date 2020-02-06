@@ -369,7 +369,7 @@ impl<T> RemovePrefix for &mut [T] {
     /// # Example
     ///
     /// ```rust
-    /// use::utils::soap::*;
+    /// use flat::*;
     /// let mut v = vec![1,2,3,4,5];
     /// let mut s = v.as_mut_slice();
     /// s.remove_prefix(2);

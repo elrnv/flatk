@@ -267,7 +267,7 @@ impl<T: Clone> ExtendFromSlice for Vec<T> {
 /// # Example
 ///
 /// ```
-/// use utils::soap::*;
+/// use flat::*;
 /// let sentences = vec!["First", "sentence", "about", "nothing", ".", "Second", "sentence", "."];
 /// let chunked = Chunked::from_sizes(vec![5,3], sentences);
 /// let owned_sentences: Chunked<Vec<String>> = chunked.storage_into();

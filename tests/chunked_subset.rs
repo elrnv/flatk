@@ -1,5 +1,5 @@
 /// This suite of tests checks that subsets and chunked sets can be composed.
-use utils::soap::*;
+use flat::*;
 
 #[test]
 fn chunked_index() {
@@ -133,7 +133,6 @@ fn subset_unichunked_const() {
 
 #[test]
 fn subset_unichunked_mut() {
-    use utils::soap::*;
     let v: Vec<usize> = (1..=15).collect();
     let mut uni = Chunked3::from_flat(v.clone());
     let mut subset = Subset::from_indices(vec![0, 2, 4], uni.view_mut());

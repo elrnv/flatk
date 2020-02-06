@@ -1,5 +1,5 @@
 /// This suite of tests checks splitting behaviour. This crate contains a number of traits responsible for splitting up
-use utils::soap::*;
+use flat::*;
 
 #[test]
 fn unichunked_to_arrays() {

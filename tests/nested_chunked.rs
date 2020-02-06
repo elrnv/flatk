@@ -1,5 +1,5 @@
 /// This suite of tests checks that chunked collections compose work as expected.
-use utils::soap::*;
+use flat::*;
 
 #[test]
 fn chunked_unichunked_iter() {

@@ -42,7 +42,7 @@ impl<S, O> Chunked<S, O> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3,4,5,6];
     /// let s = Chunked::from_offsets(vec![0,3,4,6], v.clone());
     /// assert_eq!(&v, s.data());
@@ -55,7 +55,7 @@ impl<S, O> Chunked<S, O> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut v = vec![1,2,3,4,5,6];
     /// let mut s = Chunked::from_offsets(vec![0,3,4,6], v.clone());
     /// v[2] = 100;
@@ -80,7 +80,7 @@ impl<S: Set> Chunked<S> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let s = Chunked::from_sizes(vec![3,1,2], vec![1,2,3,4,5,6]);
     /// let mut iter = s.iter();
     /// assert_eq!(vec![1,2,3], iter.next().unwrap().to_vec());
@@ -125,7 +125,7 @@ impl<S: Set, O: AsRef<[usize]>> Chunked<S, Offsets<O>> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let s = Chunked::from_offsets(vec![0,3,4,6], vec![1,2,3,4,5,6]);
     /// let mut iter = s.iter();
     /// assert_eq!(vec![1,2,3], iter.next().unwrap().to_vec());
@@ -160,7 +160,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let sparse = Sparse::from_dim(vec![0,2,1,2,0], 4, vec![1,2,3,4,5]);
     /// let mut chunked = Chunked::from_sizes(vec![3,2], sparse);
     /// chunked.sort_chunks_by_index();
@@ -208,7 +208,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let sparse = Sparse::from_dim(vec![0,2,1,1,2,0,2], 4, vec![1,2,3,4,5,6,7]);
     /// let mut chunked = Chunked::from_sizes(vec![4,3], sparse);
     /// chunked.sort_chunks_by_index();
@@ -298,7 +298,7 @@ impl<S: Set, O> Chunked<S, O> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let data = vec![1,2,3,4,5,6];
     /// let offsets = vec![0,3,4,6];
     /// let s = Chunked::from_offsets(offsets.clone(), data.clone());
@@ -331,7 +331,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let s = Chunked::from_offsets(vec![2,5,6,8], vec![1,2,3,4,5,6]);
     /// assert_eq!(0, s.offset(0));
     /// assert_eq!(3, s.offset(1));
@@ -350,7 +350,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let s = Chunked::from_offsets(vec![2,5,6,8], vec![1,2,3,4,5,6]);
     /// assert_eq!(2, s.offset_value(0));
     /// assert_eq!(5, s.offset_value(1));
@@ -389,7 +389,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3,4,5];
     /// let mut c = Chunked::from_sizes(vec![3,2], v);
     /// let mut c_iter = c.iter();
@@ -433,7 +433,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3,4,5];
     /// let mut c = Chunked::from_sizes(vec![3,2], v);
     /// let mut c_iter = c.iter();
@@ -473,7 +473,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let s = Chunked::<Vec<_>>::from_nested_vec(vec![vec![1,2,3],vec![4],vec![5,6]]);
     /// let mut iter = s.iter();
     /// assert_eq!(vec![1,2,3], iter.next().unwrap().to_vec());
@@ -490,7 +490,7 @@ where
     ///// # Example
     /////
     ///// ```
-    ///// use utils::soap::*;
+    ///// use flat::*;
     ///// let words = Chunked::<Vec<_>>::from_string_vec(vec!["Hello", "World"]);
     ///// let mut iter = s.iter();
     ///// assert_eq!("Hello", iter.next().unwrap().iter().cloned().collect::<String>());
@@ -515,7 +515,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let s = Chunked::from_offsets(vec![0,3,4,6], vec![1,2,3,4,5,6]);
     /// assert_eq!(3, s.len());
     /// ```
@@ -535,7 +535,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = Chunked::from_sizes(vec![1,3,2], vec![1,2,3,4,5,6]);
     /// assert_eq!(3, s.len());
     ///
@@ -571,7 +571,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = Chunked::from_sizes(vec![1,3,2], vec![1,2,3,4,5,6]);
     /// assert_eq!(3, s.len());
     ///
@@ -627,7 +627,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = Chunked::<Vec<usize>>::from_offsets(vec![0,1,4], vec![0,1,2,3]);
     /// s.push(vec![4,5]);
     /// let v1 = s.view();
@@ -639,7 +639,7 @@ where
     /// ```
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = Chunked::from_offsets(vec![0,3,5], vec![1,2,3,4,5]);
     /// assert_eq!(2, s.len());
     /// s.push(&[1,2]);
@@ -662,7 +662,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = Chunked::from_offsets(vec![0,3,5], vec![1,2,3,4,5]);
     /// assert_eq!(2, s.len());
     /// s.push_slice(&[1,2]);
@@ -684,7 +684,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = Chunked::from_offsets(vec![0,3,5], vec![1,2,3,4,5]);
     /// assert_eq!(2, s.len());
     /// s.push_iter(std::iter::repeat(100).take(4));
@@ -710,7 +710,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = Chunked::from_offsets(vec![0,3,5], vec![1,2,3,4,5]);
     /// assert_eq!(2, s.len());
     /// s.extend_last(std::iter::repeat(100).take(2));
@@ -769,7 +769,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = [&[1,2,3][..], &[4][..], &[5,6][..]];
     /// let s: Chunked::<Vec<_>> = v.iter().cloned().collect();
     /// let mut iter = s.iter();
@@ -803,7 +803,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// use std::iter::FromIterator;
     /// let s = Chunked::<Vec<_>>::from_iter(vec![vec![1,2,3],vec![4],vec![5,6]].into_iter());
     /// let mut iter = s.iter();
@@ -840,7 +840,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![0, 1, 4, 6];
     /// let data = (1..=6).collect::<Vec<_>>();
     /// let s = Chunked::from_offsets(v.as_slice(), data.view());
@@ -868,7 +868,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let data = (1..=6).collect::<Vec<_>>();
     /// let offsets = vec![1, 2, 5, 7]; // Offsets don't have to start at 0
     /// let s = Chunked::from_offsets(offsets.as_slice(), data.view());
@@ -941,7 +941,7 @@ impl_isolate_index_for_static_range!(impl<S, O> for Chunked<S, O>);
 //    /// # Examples
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use flat::*;
 //    /// let mut v = vec![1,2,3,4,0,0,7,8,9,10,11];
 //    /// let mut s = Chunked::from_offsets(vec![0,3,4,6,9,11], v.view_mut());
 //    ///
@@ -967,7 +967,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3,4,5,6,7,8,9,10,11];
     /// let s = Chunked::from_offsets(vec![0,3,4,6,9,11], v.clone());
     /// assert_eq!(2, (&s[2]).len());
@@ -993,7 +993,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3,4,5,6,7,8,9,10,11];
     /// let s = Chunked::from_offsets(vec![0,3,4,6,9,11], v.as_slice());
     /// assert_eq!(&[5,6], &s[2]);
@@ -1018,7 +1018,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut v = vec![1,2,3,4,5,6,7,8,9,10,11];
     /// let s = Chunked::from_offsets(vec![0,3,4,6,9,11], v.as_mut_slice());
     /// assert_eq!(&[5,6], &s[2]);
@@ -1041,7 +1041,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut v = vec![1,2,3,4,0,0,7,8,9,10,11];
     /// let mut s = Chunked::from_offsets(vec![0,3,4,6,9,11], v.clone());
     /// s[2].copy_from_slice(&[5,6]);
@@ -1065,7 +1065,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut v = vec![1,2,3,4,0,0,7,8,9,10,11];
     /// let mut s = Chunked::from_offsets(vec![0,3,4,6,9,11], v.as_mut_slice());
     /// s[2].copy_from_slice(&[5,6]);
@@ -1134,7 +1134,7 @@ where
     /// of integers stored in a flat `Vec`.
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let s = Chunked::from_offsets(vec![0,3,4,6], vec![1,2,3,4,5,6]);
     /// let mut iter = s.iter();
     /// let mut e0_iter = iter.next().unwrap().iter();
@@ -1150,7 +1150,7 @@ where
     /// Nested `Chunked`s can also be used to create more complex data organization:
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let s0 = Chunked::from_offsets(vec![0,3,4,6,9,11], vec![1,2,3,4,5,6,7,8,9,10,11]);
     /// let s1 = Chunked::from_offsets(vec![0,1,4,5], s0);
     /// let mut iter1 = s1.iter();
@@ -1188,7 +1188,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = Chunked::from_offsets(vec![0,3,4,6], vec![1,2,3,4,5,6]);
     /// for i in s.view_mut().iter_mut() {
     ///     for j in i.iter_mut() {
@@ -1205,7 +1205,7 @@ where
     /// Nested `Chunked`s can also be used to create more complex data organization:
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s0 = Chunked::from_offsets(vec![0,3,4,6,9,11], vec![0,1,2,3,4,5,6,7,8,9,10]);
     /// let mut s1 = Chunked::from_offsets(vec![0,1,4,5], s0);
     /// for mut v0 in s1.view_mut().iter_mut() {
@@ -1366,7 +1366,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let s = Chunked::<Vec<usize>>::from_offsets(vec![0,1,4,6], vec![0,1,2,3,4,5]);
     /// let v1 = s.view();
     /// let v2 = v1.clone();
@@ -1399,7 +1399,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = Chunked::<Vec<usize>>::from_offsets(vec![0,1,4,6], vec![0,1,2,3,4,5]);
     /// let mut v1 = s.view_mut();
     /// v1.iter_mut().next().unwrap()[0] = 100;
@@ -1425,7 +1425,7 @@ impl<S: IntoFlat, O> IntoFlat for Chunked<S, O> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3,4,5,6,7,8,9,10,11];
     /// let s0 = Chunked::from_offsets(vec![0,3,4,6,9,11], v.clone());
     /// let s1 = Chunked::from_offsets(vec![0,1,4,5], s0.clone());
@@ -1444,7 +1444,7 @@ impl<'a, S: StorageView<'a>, O> StorageView<'a> for Chunked<S, O> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3,4,5,6,7,8,9,10,11];
     /// let s0 = Chunked::from_offsets(vec![0,3,4,6,9,11], v.clone());
     /// let s1 = Chunked::from_offsets(vec![0,1,4,5], s0.clone());
@@ -1463,7 +1463,7 @@ impl<S: Storage, O> Storage for Chunked<S, O> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3,4,5,6,7,8,9,10,11];
     /// let s0 = Chunked::from_offsets(vec![0,3,4,6,9,11], v.clone());
     /// let s1 = Chunked::from_offsets(vec![0,1,4,5], s0.clone());
@@ -1481,7 +1481,7 @@ impl<S: StorageMut, O> StorageMut for Chunked<S, O> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut v = vec![1,2,3,4,5,6,7,8,9,10,11];
     /// let mut s0 = Chunked::from_offsets(vec![0,3,4,6,9,11], v.clone());
     /// let mut s1 = Chunked::from_offsets(vec![0,1,4,5], s0.clone());
@@ -1529,7 +1529,7 @@ impl<S: RemovePrefix, O: RemovePrefix + AsRef<[usize]>> RemovePrefix for Chunked
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = Chunked::<Vec<usize>>::from_offsets(vec![0,1,4,6], vec![0,1,2,3,4,5]);
     /// s.remove_prefix(2);
     /// let mut iter = s.iter();

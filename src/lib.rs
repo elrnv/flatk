@@ -4,13 +4,13 @@
 //! ```
 //! use flat::Chunked3;
 //! 
-//! let pos_data = vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0. 1.0, 0,0];
+//! let pos_data = vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0];
 //! 
 //! let pos = Chunked3::from_flat(pos_data);
 //! 
 //! assert_eq!(pos[0], [0.0; 3]);
 //! assert_eq!(pos[1], [1.0; 3]);
-//! assert_eq!(pos[2], [0.0; 3]);
+//! assert_eq!(pos[2], [0.0, 1.0, 0.0]);
 //! ```
 
 /*
@@ -61,32 +61,26 @@ macro_rules! impl_isolate_index_for_static_range {
 }
 
 mod array;
-mod array_math;
 mod boxed;
 pub mod chunked;
-mod matrix;
 mod range;
 mod select;
 mod slice;
 mod sparse;
 mod subset;
-mod tensor;
 mod tuple;
 mod uniform;
 mod vec;
 mod view;
 
 pub use array::*;
-pub use array_math::*;
 pub use boxed::*;
 pub use chunked::*;
-pub use matrix::*;
 pub use range::*;
 pub use select::*;
 pub use slice::*;
 pub use sparse::*;
 pub use subset::*;
-pub use tensor::*;
 pub use tuple::*;
 pub use uniform::*;
 pub use vec::*;
@@ -235,19 +229,6 @@ impl<T> Flat for Vec<T> {}
 impl<T> Flat for [T] {}
 impl<'a, T> Flat for &'a [T] {}
 impl<'a, T> Flat for &'a mut [T] {}
-
-/// A marker trait indicating non-tensor types. These are all supported collecitons.
-pub trait NonTensor {}
-impl<S, I> NonTensor for Select<S, I> {}
-impl<S, I> NonTensor for Subset<S, I> {}
-impl<S, N> NonTensor for UniChunked<S, N> {}
-impl<S, O> NonTensor for Chunked<S, O> {}
-impl<S, T, I> NonTensor for Sparse<S, T, I> {}
-impl<T> NonTensor for std::ops::Range<T> {}
-impl<T> NonTensor for Vec<T> {}
-impl<T> NonTensor for [T] {}
-impl<'a, T> NonTensor for &'a [T] {}
-impl<'a, T> NonTensor for &'a mut [T] {}
 
 /// A marker trait to indicate a collection type that can be chunked. More precisely this is a type that can be composed with types in this crate.
 //pub trait Chunkable<'a>:
@@ -1049,7 +1030,7 @@ where
  */
 
 ///```compile_fail
-/// use utils::soap::*;
+/// use flat::*;
 /// // This shouldn't compile
 /// let v: Vec<usize> = (1..=10).collect();
 /// let chunked = Chunked::from_offsets(vec![0, 3, 5, 8, 10], v);

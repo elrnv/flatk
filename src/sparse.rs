@@ -28,7 +28,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3,4,5,6];
     /// let sparse = Sparse::from_dim(vec![0,2,0,2,0,3], 4, v.as_slice());
     ///
@@ -77,7 +77,7 @@ impl<S, T, I> Sparse<S, T, I> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3,4,5,6];
     /// let sparse = Sparse::from_dim(vec![0,2,2,2,0,3], 4, v.as_slice());
     /// let mut compressed = Sparse::from_dim(Vec::new(), 4, Vec::new());
@@ -219,7 +219,7 @@ impl<S: Set, T, I> Set for Sparse<S, T, I> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3,4,5];
     /// let sparse = Sparse::from_dim(vec![0,2,2,1,1], 3, v.as_slice());
     /// assert_eq!(5, sparse.len());
@@ -599,7 +599,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = Sparse::from_dim(vec![0,1,2], 3, Chunked::from_sizes(vec![1,3,2], vec![1,2,3,4,5,6]));
     /// assert_eq!(3, s.len());
     ///
@@ -663,7 +663,7 @@ impl<'a, S: StorageView<'a>, T, I> StorageView<'a> for Sparse<S, T, I> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3,4,5,6,7,8,9,10,11,12];
     /// let s0 = Chunked3::from_flat(v.clone());
     /// let s1 = Sparse::from_dim(vec![0, 2, 2, 0], 4, s0.clone());
@@ -681,7 +681,7 @@ impl<S: Storage, T, I> Storage for Sparse<S, T, I> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3,4,5,6,7,8,9,10,11,12];
     /// let s0 = Chunked3::from_flat(v.clone());
     /// let s1 = Sparse::from_dim(vec![0, 2, 2, 0], 4, s0.clone());
@@ -698,7 +698,7 @@ impl<S: StorageMut, T, I> StorageMut for Sparse<S, T, I> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut v = vec![1,2,3,4,5,6,7,8,9,10,11,12];
     /// let mut s0 = Chunked3::from_flat(v.clone());
     /// let mut s1 = Sparse::from_dim(vec![0, 2, 2, 0], 4, s0.clone());

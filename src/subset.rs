@@ -12,7 +12,7 @@ use std::convert::AsRef;
 /// The following example shows how to create a `Subset` from a standard `Vec`.
 ///
 /// ```rust
-/// use utils::soap::*;
+/// use flat::*;
 /// let v = vec![1,2,3,4,5];
 /// let subset = Subset::from_indices(vec![0,2,4], v.as_slice());
 /// let mut subset_iter = subset.iter();
@@ -25,7 +25,7 @@ use std::convert::AsRef;
 /// The next example shows how to create a `Subset` from a [`UniChunked`] collection.
 ///
 /// ```rust
-/// use utils::soap::*;
+/// use flat::*;
 /// let mut v = Chunked3::from_flat(vec![1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]);
 /// let mut subset = Subset::from_indices(vec![0,2,4], v.view_mut());
 /// {
@@ -72,7 +72,7 @@ impl<S: Set + RemovePrefix> Subset<S, Vec<usize>> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3];
     /// let subset = Subset::from_indices(vec![0,2], v.as_slice());
     /// assert_eq!(1, subset[0]);
@@ -109,7 +109,7 @@ impl<S: Set + RemovePrefix, I: AsRef<[usize]>> Subset<S, I> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![0,1,2,3];
     /// let indices = vec![1,3];
     ///
@@ -144,7 +144,7 @@ impl<S, I> Subset<S, I> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let subset = Subset::<_, Vec<_>>::all(vec![1,2,3]);
     /// let subset_view = subset.view();
     /// let mut subset_iter = subset_view.iter();
@@ -172,7 +172,7 @@ impl<S: Set, I: AsRef<[usize]>> Subset<S, I> {
     /// located at index `1` in the subset.
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let superset =  vec![1,2,3,4,5,6];
     /// let subset = Subset::from_unique_ordered_indices(vec![1,2,5], superset);
     /// assert_eq!(Some(1), subset.find_by_index(2));
@@ -185,7 +185,7 @@ impl<S: Set, I: AsRef<[usize]>> Subset<S, I> {
     /// subset in the pervious example.
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let superset =  vec![1,2,3,4,5,6];
     /// let subset = Subset::from_unique_ordered_indices(vec![1,2,5], superset);
     /// let (_, r) = subset.view().split_at(1);
@@ -298,7 +298,7 @@ impl<S: Set, I: AsRef<[usize]>> Set for Subset<S, I> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3,4,5];
     /// let subset = Subset::from_indices(vec![0,2,4], v.as_slice());
     /// assert_eq!(3, subset.len());
@@ -338,7 +338,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut v = vec![1,2,3,4,5];
     /// let mut subset = Subset::from_indices(vec![0,2,4], v.as_mut_slice());
     /// let mut view = subset.view_mut();
@@ -367,7 +367,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3,4,5];
     /// let indices = vec![0,2,4];
     /// let subset = Subset::from_unique_ordered_indices(indices.as_slice(), v.as_slice());
@@ -494,7 +494,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3,4,5];
     /// let indices = vec![0,2,4];
     /// let subset = Subset::from_unique_ordered_indices(indices.as_slice(), v.as_slice());
@@ -605,7 +605,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let c = Chunked2::from_flat((1..=12).collect::<Vec<_>>());
     /// let subset = Subset::from_indices(vec![0,2,4], c.view());
     /// assert_eq!([1,2], subset[0]);
@@ -631,7 +631,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut v = vec![1,2,3,4,5];
     /// let mut subset = Subset::from_indices(vec![0,2,4], v.as_mut_slice());
     /// assert_eq!(subset[1], 3);
@@ -659,7 +659,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3,4,5];
     /// let subset = Subset::from_indices(vec![0,2,4], v.as_slice());
     /// assert_eq!(3, subset[1]);
@@ -683,7 +683,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut v = vec![1,2,3,4,5];
     /// let mut subset = Subset::from_indices(vec![0,2,4], v.as_mut_slice());
     /// assert_eq!(3, subset[1]);
@@ -706,7 +706,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut v = vec![1,2,3,4,5];
     /// let mut subset = Subset::from_indices(vec![0,2,4], v.as_mut_slice());
     /// assert_eq!(subset[1], 3);
@@ -738,7 +738,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut s = Subset::from_unique_ordered_indices(vec![1,3,5], vec![1,2,3,4,5,6]);
     /// let mut iter = s.view().into_iter();
     /// assert_eq!(Some(&2), iter.next());
@@ -810,7 +810,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut v = vec![1,2,3,4,5];
     /// let mut subset = Subset::from_indices(vec![0,2,4], v.as_mut_slice());
     /// let mut iter = subset.iter();
@@ -837,7 +837,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut v = vec![1,2,3,4,5];
     /// let mut subset = Subset::from_indices(vec![0,2,4], v.as_mut_slice());
     /// for i in subset.iter_mut() {
@@ -905,12 +905,6 @@ impl<S: Truncate, I: Truncate> Truncate for Subset<S, I> {
  * Conversions
  */
 
-impl<S: NonTensor, I> From<S> for Subset<S, I> {
-    fn from(set: S) -> Subset<S, I> {
-        Subset::all(set)
-    }
-}
-
 // TODO: Add conversions for other subsets.
 
 /// Pass through the conversion for structure type `Subset`.
@@ -935,7 +929,7 @@ impl<'a, S: StorageView<'a>, I> StorageView<'a> for Subset<S, I> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3,4,5,6,7,8,9,10,11,12];
     /// let s0 = Chunked3::from_flat(v.clone());
     /// let s1 = Subset::from_indices(vec![0, 2, 3], s0.clone());
@@ -953,7 +947,7 @@ impl<S: Storage, I> Storage for Subset<S, I> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let v = vec![1,2,3,4,5,6,7,8,9,10,11,12];
     /// let s0 = Chunked3::from_flat(v.clone());
     /// let s1 = Subset::from_indices(vec![0, 2, 3], s0.clone());
@@ -970,7 +964,7 @@ impl<S: StorageMut, I> StorageMut for Subset<S, I> {
     /// # Example
     ///
     /// ```rust
-    /// use utils::soap::*;
+    /// use flat::*;
     /// let mut v = vec![1,2,3,4,5,6,7,8,9,10,11,12];
     /// let mut s0 = Chunked3::from_flat(v.clone());
     /// let mut s1 = Subset::from_indices(vec![0, 2, 3], s0.clone());

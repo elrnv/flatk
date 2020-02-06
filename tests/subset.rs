@@ -1,5 +1,5 @@
 /// This suite of tests checks behaviour for standard subsets.
-use utils::soap::*;
+use flat::*;
 
 #[test]
 fn subset_index() {

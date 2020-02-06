@@ -22,7 +22,6 @@ impl<N: Default> Default for U<N> {
 
 macro_rules! impl_array_for_typenum {
     ($nty:ident, $n:expr) => {
-        impl<T> NonTensor for [T; $n] {}
         pub type $nty = U<consts::$nty>;
         impl<T> Set for [T; $n] {
             type Elem = T;
@@ -181,37 +180,6 @@ macro_rules! impl_array_for_typenum {
                 (*other).clone_from(self);
             }
         }
-
-        impl<T: Scalar, S, D> EvalExtend<Tensor<[T; $n]>> for UniChunked<S, $nty>
-            where Self: Push<D>,
-                  Tensor<[T; $n]>: IntoData<Data = D>,
-        {
-            #[inline]
-            fn eval_extend(&mut self, tensor: Tensor<[T; $n]>) {
-                self.push(tensor.into_data());
-            }
-        }
-
-        impl<T, I> std::ops::Mul<Tensor<[T; $n]>> for UniChunkedIterExpr<I, $nty>
-        where Self: ExprSize,
-        {
-            type Output = CwiseUnExpr<CwiseBinExpr<UniChunkedIterExpr<I, $nty>, Repeat<Tensor<[T; $n]>>, CwiseMultiplication>, Summation>;
-            #[inline]
-            fn mul(self, rhs: Tensor<[T; $n]>) -> Self::Output {
-                CwiseUnExpr::new(CwiseBinExpr::new(self, Repeat::new(rhs)))
-            }
-        }
-        //impl<T: Scalar> CwiseMulOp<UniChunkedIterExpr<I, N> for Tensor<[T; $n]> {
-        //    type Output = Tensor<[T; $n]>;
-        //    #[inline]
-        //    #[unroll_for_loops]
-        //    fn cwise_mul(mut self, rhs: Self) -> Self::Output {
-        //        for i in 0..$n {
-        //            self[i] *= rhs[i];
-        //        }
-        //        self
-        //    }
-        //}
 
         impl<'a, T: 'a> AtomIterator<'a> for [T; $n] {
             type Item = &'a T;
