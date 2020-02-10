@@ -12,7 +12,7 @@ use std::convert::{AsMut, AsRef};
 /// The following example shows how to `Select` from a range.
 ///
 /// ```
-/// use flat::*;
+/// use flatk::*;
 /// let selection = Select::new(vec![0,2,4,0,1], 5..10);
 /// let mut iter = selection.iter();
 /// assert_eq!(Some((0, 5)), iter.next());
@@ -26,7 +26,7 @@ use std::convert::{AsMut, AsRef};
 /// The next example shows how to `Select` from a [`UniChunked`] view.
 ///
 /// ```
-/// use flat::*;
+/// use flatk::*;
 /// let mut v = Chunked3::from_flat((1..=15).collect::<Vec<_>>());
 /// let mut selection = Select::new(vec![1,0,4,4,1], v.view_mut());
 /// *selection.view_mut().isolate(0).1 = [0; 3];
@@ -74,7 +74,7 @@ impl<S: Set, I: AsRef<[usize]>> Select<S, I> {
     /// # Example
     ///
     /// ```
-    /// use flat::*;
+    /// use flatk::*;
     /// let v = vec!['a', 'b', 'c'];
     /// let selection = Select::new(vec![1,2,1], v.as_slice());
     /// assert_eq!('b', selection[0]);
@@ -112,7 +112,7 @@ where
     /// from a standard `Vec` into a standard owned `Vec` of characters.
     ///
     /// ```
-    /// use flat::*;
+    /// use flatk::*;
     /// let v = vec!['a', 'b', 'c'];
     /// let selection = Select::new(vec![1,2,1], v.as_slice());
     /// assert_eq!(vec!['b', 'c', 'b'], selection.collapse());
@@ -122,7 +122,7 @@ where
     /// be collapsed as well.
     ///
     /// ```
-    /// use flat::*;
+    /// use flatk::*;
     /// // Start with a vector of words stored as Strings.
     /// let v = vec!["World", "Coffee", "Cat", " ", "Hello", "Refrigerator", "!"];
     ///
@@ -171,7 +171,7 @@ impl<S: Set, I: AsRef<[usize]>> Set for Select<S, I> {
     /// # Example
     ///
     /// ```
-    /// use flat::*;
+    /// use flatk::*;
     /// let v = vec![1,2,3,4,5];
     /// let selection = Select::new(vec![4,0,1,4], v.as_slice());
     /// assert_eq!(4, selection.len());
@@ -207,7 +207,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use flat::*;
+    /// use flatk::*;
     /// let mut v = vec!['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
     /// let mut selection = Select::new(vec![1,2,4,1], v.as_mut_slice());
     ///
@@ -254,7 +254,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use flat::*;
+    /// use flatk::*;
     /// let v = vec![1,2,3,4,5];
     /// let indices = vec![3,2,0,4,2];
     /// let selection = Select::new(indices.as_slice(), v.as_slice());
@@ -309,7 +309,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use flat::*;
+    /// use flatk::*;
     /// let v = vec![1,2,3,4,5];
     /// let indices = vec![3,3,4,0];
     /// let selection = Select::new(indices.as_slice(), v.as_slice());
@@ -430,7 +430,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use flat::*;
+    /// use flatk::*;
     /// let selection = Select::new(vec![0,2,0,4], Chunked2::from_flat(1..=12));
     /// assert_eq!((0, 1..3), selection.at(0));
     /// assert_eq!((2, 5..7), selection.at(1));
@@ -456,7 +456,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use flat::*;
+    /// use flatk::*;
     /// let mut v = vec![1,2,3,4,5];
     /// let mut selection = Select::new(vec![0,2,0,4], v.as_mut_slice());
     /// assert_eq!(selection[0], 1);
@@ -488,7 +488,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use flat::*;
+    /// use flatk::*;
     /// let v = vec![1,2,3,4,5];
     /// let selection = Select::new(vec![0,2,0,4], v.as_slice());
     /// assert_eq!(3, selection[1]);
@@ -513,7 +513,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use flat::*;
+    /// use flatk::*;
     /// let mut v = vec![1,2,3,4,5];
     /// let mut subset = Subset::from_indices(vec![3,2,0,4], v.as_mut_slice());
     /// assert_eq!(3, subset[1]);
@@ -536,7 +536,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use flat::*;
+    /// use flatk::*;
     /// let mut v = vec![1,2,3,4,5];
     /// let mut selection = Select::new(vec![4,0,2,4], v.as_mut_slice());
     /// assert_eq!(selection[0], 5);
@@ -636,7 +636,7 @@ impl<'a, S: StorageView<'a>, I> StorageView<'a> for Select<S, I> {
     /// # Example
     ///
     /// ```rust
-    /// use flat::*;
+    /// use flatk::*;
     /// let v = vec![1,2,3,4,5,6,7,8,9,10,11,12];
     /// let s0 = Chunked3::from_flat(v.clone());
     /// let s1 = Select::new(vec![1, 1, 0, 2], s0.clone());
@@ -654,7 +654,7 @@ impl<S: Storage, I> Storage for Select<S, I> {
     /// # Example
     ///
     /// ```rust
-    /// use flat::*;
+    /// use flatk::*;
     /// let v = vec![1,2,3,4,5,6,7,8,9,10,11,12];
     /// let s0 = Chunked3::from_flat(v.clone());
     /// let s1 = Select::new(vec![1, 1, 0, 2], s0.clone());
@@ -671,7 +671,7 @@ impl<S: StorageMut, I> StorageMut for Select<S, I> {
     /// # Example
     ///
     /// ```rust
-    /// use flat::*;
+    /// use flatk::*;
     /// let mut v = vec![1,2,3,4,5,6,7,8,9,10,11,12];
     /// let mut s0 = Chunked3::from_flat(v.clone());
     /// let mut s1 = Select::new(vec![1, 1, 0, 2], s0.clone());

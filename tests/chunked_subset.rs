@@ -1,5 +1,5 @@
 /// This suite of tests checks that subsets and chunked sets can be composed.
-use flat::*;
+use flatk::*;
 
 #[test]
 fn chunked_index() {

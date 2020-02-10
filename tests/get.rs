@@ -1,5 +1,5 @@
 /// This suite of tests checks various ways to index collections using the `Get` trait.
-use flat::*;
+use flatk::*;
 
 /// Get a subview from this `UniChunked` collection according to the given
 /// range. If the range is a single index, then a single chunk is returned

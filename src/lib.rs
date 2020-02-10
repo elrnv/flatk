@@ -2,7 +2,7 @@
 //!
 //! # Examples
 //! ```
-//! use flat::Chunked3;
+//! use flatk::Chunked3;
 //! 
 //! let pos_data = vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0];
 //! 
@@ -1030,7 +1030,7 @@ where
  */
 
 ///```compile_fail
-/// use flat::*;
+/// use flatk::*;
 /// // This shouldn't compile
 /// let v: Vec<usize> = (1..=10).collect();
 /// let chunked = Chunked::from_offsets(vec![0, 3, 5, 8, 10], v);

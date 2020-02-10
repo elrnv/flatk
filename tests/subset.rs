@@ -1,5 +1,5 @@
 /// This suite of tests checks behaviour for standard subsets.
-use flat::*;
+use flatk::*;
 
 #[test]
 fn subset_index() {
