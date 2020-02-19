@@ -37,7 +37,6 @@ macro_rules! impl_array_for_typenum {
                 &self[..]
             }
         }
-
         impl<'a, T: 'a> View<'a> for [T; $n] {
             type Type = &'a [T];
             #[inline]
@@ -238,3 +237,104 @@ impl_array_for_typenum!(U13, 13);
 impl_array_for_typenum!(U14, 14);
 impl_array_for_typenum!(U15, 15);
 impl_array_for_typenum!(U16, 16);
+
+macro_rules! impl_as_slice_for_2d_array {
+    ($r:expr, $c:expr) => {
+        impl<T> AsSlice<T> for [[T; $c]; $r] {
+            #[inline]
+            fn as_slice(&self) -> &[T] {
+                unsafe { reinterpret::reinterpret_slice(&self[..]) }
+            }
+        }
+    }
+}
+
+impl_as_slice_for_2d_array!(1,1);
+impl_as_slice_for_2d_array!(1,2);
+impl_as_slice_for_2d_array!(1,3);
+impl_as_slice_for_2d_array!(1,4);
+impl_as_slice_for_2d_array!(1,5);
+impl_as_slice_for_2d_array!(1,6);
+impl_as_slice_for_2d_array!(1,7);
+impl_as_slice_for_2d_array!(1,8);
+impl_as_slice_for_2d_array!(1,9);
+
+impl_as_slice_for_2d_array!(2,1);
+impl_as_slice_for_2d_array!(2,2);
+impl_as_slice_for_2d_array!(2,3);
+impl_as_slice_for_2d_array!(2,4);
+impl_as_slice_for_2d_array!(2,5);
+impl_as_slice_for_2d_array!(2,6);
+impl_as_slice_for_2d_array!(2,7);
+impl_as_slice_for_2d_array!(2,8);
+impl_as_slice_for_2d_array!(2,9);
+
+impl_as_slice_for_2d_array!(3,1);
+impl_as_slice_for_2d_array!(3,2);
+impl_as_slice_for_2d_array!(3,3);
+impl_as_slice_for_2d_array!(3,4);
+impl_as_slice_for_2d_array!(3,5);
+impl_as_slice_for_2d_array!(3,6);
+impl_as_slice_for_2d_array!(3,7);
+impl_as_slice_for_2d_array!(3,8);
+impl_as_slice_for_2d_array!(3,9);
+
+impl_as_slice_for_2d_array!(4,1);
+impl_as_slice_for_2d_array!(4,2);
+impl_as_slice_for_2d_array!(4,3);
+impl_as_slice_for_2d_array!(4,4);
+impl_as_slice_for_2d_array!(4,5);
+impl_as_slice_for_2d_array!(4,6);
+impl_as_slice_for_2d_array!(4,7);
+impl_as_slice_for_2d_array!(4,8);
+impl_as_slice_for_2d_array!(4,9);
+
+impl_as_slice_for_2d_array!(5,1);
+impl_as_slice_for_2d_array!(5,2);
+impl_as_slice_for_2d_array!(5,3);
+impl_as_slice_for_2d_array!(5,4);
+impl_as_slice_for_2d_array!(5,5);
+impl_as_slice_for_2d_array!(5,6);
+impl_as_slice_for_2d_array!(5,7);
+impl_as_slice_for_2d_array!(5,8);
+impl_as_slice_for_2d_array!(5,9);
+
+impl_as_slice_for_2d_array!(6,1);
+impl_as_slice_for_2d_array!(6,2);
+impl_as_slice_for_2d_array!(6,3);
+impl_as_slice_for_2d_array!(6,4);
+impl_as_slice_for_2d_array!(6,5);
+impl_as_slice_for_2d_array!(6,6);
+impl_as_slice_for_2d_array!(6,7);
+impl_as_slice_for_2d_array!(6,8);
+impl_as_slice_for_2d_array!(6,9);
+
+impl_as_slice_for_2d_array!(7,1);
+impl_as_slice_for_2d_array!(7,2);
+impl_as_slice_for_2d_array!(7,3);
+impl_as_slice_for_2d_array!(7,4);
+impl_as_slice_for_2d_array!(7,5);
+impl_as_slice_for_2d_array!(7,6);
+impl_as_slice_for_2d_array!(7,7);
+impl_as_slice_for_2d_array!(7,8);
+impl_as_slice_for_2d_array!(7,9);
+
+impl_as_slice_for_2d_array!(8,1);
+impl_as_slice_for_2d_array!(8,2);
+impl_as_slice_for_2d_array!(8,3);
+impl_as_slice_for_2d_array!(8,4);
+impl_as_slice_for_2d_array!(8,5);
+impl_as_slice_for_2d_array!(8,6);
+impl_as_slice_for_2d_array!(8,7);
+impl_as_slice_for_2d_array!(8,8);
+impl_as_slice_for_2d_array!(8,9);
+
+impl_as_slice_for_2d_array!(9,1);
+impl_as_slice_for_2d_array!(9,2);
+impl_as_slice_for_2d_array!(9,3);
+impl_as_slice_for_2d_array!(9,4);
+impl_as_slice_for_2d_array!(9,5);
+impl_as_slice_for_2d_array!(9,6);
+impl_as_slice_for_2d_array!(9,7);
+impl_as_slice_for_2d_array!(9,8);
+impl_as_slice_for_2d_array!(9,9);
