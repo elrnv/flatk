@@ -190,6 +190,15 @@ pub trait AsSlice<T> {
     fn as_slice(&self) -> &[T];
 }
 
+impl<T> AsSlice<T> for T {
+    #[inline]
+    fn as_slice(&self) -> &[T] {
+        unsafe {
+            std::slice::from_raw_parts(self as *const _, 1)
+        }
+    }
+}
+
 pub trait Array<T> {
     type Array: Set<Elem = T>;
     fn iter_mut(array: &mut Self::Array) -> std::slice::IterMut<T>;
