@@ -16,8 +16,8 @@ use std::convert::{AsMut, AsRef};
 /// ```
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct UniChunked<S, N> {
-    pub(crate) data: S,
-    pub(crate) chunk_size: N,
+    pub data: S,
+    pub chunk_size: N,
 }
 
 impl<T, N: Default + Array<T>> UniChunked<Vec<T>, U<N>> {

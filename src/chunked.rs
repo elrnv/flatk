@@ -11,8 +11,8 @@ use std::convert::AsRef;
 pub struct Chunked<S, O = Offsets> {
     /// This can be either offsets of a uniform chunk size, if
     /// chunk size is specified at compile time.
-    pub(crate) chunks: O,
-    pub(crate) data: S,
+    pub chunks: O,
+    pub data: S,
 }
 
 /*
@@ -103,7 +103,7 @@ impl<S: Set> Chunked<S> {
         }));
 
         Chunked {
-            chunks: Offsets(offsets),
+            chunks: offsets.into(),
             data,
         }
     }
@@ -1332,7 +1332,7 @@ impl<S: SplitOff + Set> SplitOff for Chunked<S> {
         let off = self.chunks[mid] - self.chunks[0];
         let offsets_l = self.chunks[..=mid].to_vec();
         let offsets_r = self.chunks[mid..].to_vec();
-        self.chunks = Offsets(offsets_l);
+        self.chunks = offsets_l.into();
         let data_r = self.data.split_off(off);
         Chunked::from_offsets(offsets_r, data_r)
     }

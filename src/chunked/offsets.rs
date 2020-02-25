@@ -7,7 +7,7 @@ use std::ops::Range;
 /// another collection, namely that the collection is monotonically increasing
 /// and non-empty.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Offsets<O = Vec<usize>>(pub(crate) O);
+pub struct Offsets<O = Vec<usize>>(O);
 
 impl<O: Set> Set for Offsets<O> {
     type Elem = O::Elem;
@@ -27,14 +27,13 @@ impl<'a> Offsets<&'a [usize]> {
     pub(crate) fn pop_offset(&mut self) -> Option<usize> {
         debug_assert!(
             !self.is_empty(),
-            "Chunked is corrupted and cannot be iterated."
+            "Offsets are corrupted and cannot be iterated."
         );
         self.0.split_first().and_then(|(head, tail)| {
-            if tail.is_empty() {
-                return None;
-            }
-            self.0 = tail;
-            Some(unsafe { *tail.get_unchecked(0) } - *head)
+            tail.get(0).map(|&first| {
+                self.0 = tail;
+                first - *head
+            })
         })
     }
 }
@@ -110,31 +109,29 @@ impl<O: AsMut<[usize]>> Offsets<O> {
     /// elements from the previous chunk to the specified chunk.
     ///
     /// # Panics
-    /// This function panics if `at` is out of bounds and may cause Undefined Behavior in
-    /// `Chunked` collections if zero.
+    ///
+    /// This function panics if `at` is out of bounds or zero.
     pub(crate) fn move_back(&mut self, at: usize, by: usize) {
         let offsets = self.as_mut();
-        debug_assert!(at > 0 && at < offsets.len());
+        assert!(at > 0);
         offsets[at] -= by;
     }
     /// Moves an offset forward by a specified amount, effectively transferring
     /// elements from the previous chunk to the specified chunk.
     ///
     /// # Panics
+    ///
     /// This function panics if `at` is out of bounds.
     pub(crate) fn move_forward(&mut self, at: usize, by: usize) {
         let offsets = self.as_mut();
-        debug_assert!(at < offsets.len());
         offsets[at] += by;
     }
 
     /// Extend the last offset, which effectively increases the last chunk size.
-    /// This function is similar to `self.move_forward(self.len() - 1)` but it does not perform
-    /// bounds checking.
+    /// This function is the same as `self.move_forward(self.len() - 1, by)`.
     pub(crate) fn extend_last(&mut self, by: usize) {
         let offsets = self.as_mut();
-        let last = offsets.len() - 1;
-        unsafe { *offsets.get_unchecked_mut(last) += by };
+        offsets[offsets.len() - 1] += by;
     }
 }
 
@@ -191,12 +188,13 @@ impl<'a> SplitOffsetsAt for Offsets<&'a [usize]> {
     /// `mid` is shared between the two output slices. In addition, return the
     /// offset of the middle element: this is the value `offsets[mid] - offsets[0]`.
     ///
-    /// # WARNING
-    /// Calling this function with an empty `offsets` slice or with `mid >=
-    /// offsets.len()` will cause Undefined Behaviour.
+    /// # Panics
+    ///
+    /// Calling this function with an empty slice or with `mid` greater than or equal to its length
+    /// will cause a panic.
     fn split_offsets_at(self, mid: usize) -> (Offsets<&'a [usize]>, Offsets<&'a [usize]>, usize) {
-        debug_assert!(!self.is_empty());
-        debug_assert!(mid < self.len());
+        assert!(!self.is_empty());
+        assert!(mid < self.0.len());
         let l = &self.0[..=mid];
         let r = &self.0[mid..];
         // Skip bounds checking here since this function is not exposed to the user.

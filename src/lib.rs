@@ -210,15 +210,6 @@ pub trait Array<T> {
  * Marker and utility traits to help with Coherence rules of Rust.
  */
 
-/// A marker trait for local types which use generic implementations of various std::ops traits.
-/// Special types which use optimized implementations will not implement this marker. This is a
-/// workaround for specialization.
-pub trait LocalGeneric {}
-impl<S, I> LocalGeneric for Subset<S, I> {}
-impl<S, N> LocalGeneric for UniChunked<S, N> {}
-impl<S, O> LocalGeneric for Chunked<S, O> {}
-impl<S, T, I> LocalGeneric for Sparse<S, T, I> {}
-
 /// A marker trait to indicate an owned collection type. This is to distinguish
 /// them from borrowed slices, which essential to resolve implementation collisions.
 pub trait ValueType {}
@@ -235,43 +226,6 @@ impl<S: Viewed, I: Viewed> Viewed for Select<S, I> {}
 impl<S: Viewed, I: Viewed> Viewed for Subset<S, I> {}
 impl<S: Viewed, I: Viewed> Viewed for Chunked<S, I> {}
 impl<S: Viewed, N> Viewed for UniChunked<S, N> {}
-
-/// A marker trait identifying types that have dynamically determined sizes. These are basically all non-array types.
-pub trait DynamicCollection {}
-impl<S, I> DynamicCollection for Select<S, I> {}
-impl<S, I> DynamicCollection for Subset<S, I> {}
-impl<S, N> DynamicCollection for UniChunked<S, N> {}
-impl<S, O> DynamicCollection for Chunked<S, O> {}
-impl<S, T, I> DynamicCollection for Sparse<S, T, I> {}
-impl<T> DynamicCollection for std::ops::Range<T> {}
-impl<T> DynamicCollection for Vec<T> {}
-impl<T> DynamicCollection for [T] {}
-impl<'a, T> DynamicCollection for &'a [T] {}
-impl<'a, T> DynamicCollection for &'a mut [T] {}
-
-/// Many implementations do something special for sparse sets. All other sets are marked as dense
-/// to avoid collisions.
-pub trait Dense {}
-impl<S, I> Dense for Select<S, I> {}
-impl<S, I> Dense for Subset<S, I> {}
-impl<S, N> Dense for UniChunked<S, N> {}
-impl<S, O> Dense for Chunked<S, O> {}
-impl<T> Dense for std::ops::Range<T> {}
-impl<T> Dense for Vec<T> {}
-impl<T> Dense for [T] {}
-impl<'a, T> Dense for &'a [T] {}
-impl<'a, T> Dense for &'a mut [T] {}
-
-/// A marker trait for basic flat types without any implied hierarchical structure. This describes
-/// collections from the standard library.
-pub trait Flat {}
-impl<T> Flat for std::ops::RangeTo<T> {}
-impl<T> Flat for std::ops::Range<T> {}
-impl<T> Flat for Box<[T]> {}
-impl<T> Flat for Vec<T> {}
-impl<T> Flat for [T] {}
-impl<'a, T> Flat for &'a [T] {}
-impl<'a, T> Flat for &'a mut [T] {}
 
 /// A marker trait to indicate a collection type that can be chunked. More precisely this is a type that can be composed with types in this crate.
 //pub trait Chunkable<'a>:
@@ -1067,6 +1021,21 @@ where
         S::atom_mut_iter(self)
     }
 }
+
+//macro_rules! impl_dummy_for_scalar {
+//    ($($type:ty),*) => {
+//        $(
+//            impl Dummy for $type {
+//                #[inline]
+//                unsafe fn dummy() -> Self {
+//                    Self::default()
+//                }
+//            }
+//        )*
+//    }
+//}
+//
+//impl_dummy_for_scalar!(f64, f32, usize, u64, u32, u16, u8, i64, i32, i16, i8);
 
 /*
  * Tests
