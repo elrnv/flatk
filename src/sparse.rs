@@ -4,7 +4,7 @@ use std::convert::{AsMut, AsRef};
 /// A `Sparse` data set `S` where the sparsity pattern is given by `I` as select
 /// indices into a larger range.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Sparse<S, T, I = Vec<usize>> {
+pub struct Sparse<S, T = std::ops::RangeTo<usize>, I = Vec<usize>> {
     pub selection: Select<T, I>,
     pub source: S,
 }
