@@ -55,12 +55,12 @@ pub struct Subset<S, I = Box<[usize]>> {
     /// An optional set of indices. When this is `None`, the subset is
     /// considered to be entire. Empty subsets are represented by a zero length
     /// array of indices: either `Some(&[])` or `Some(Vec::new())`.
-    pub(crate) indices: Option<I>,
+    pub indices: Option<I>,
     /// Because `Subset`s modify the underlying data, it is not useful to query what the data is at
     /// any given time. For a more transparent data structure that preserves the original data set,
     /// use `Select`. To expose any characteristics of the contained `data` type, use a trait. See
     /// `ChunkSize` for an example.
-    pub(crate) data: S,
+    pub data: S,
 }
 
 /// A borrowed subset.
@@ -906,6 +906,12 @@ impl<S: Truncate, I: Truncate> Truncate for Subset<S, I> {
  */
 
 // TODO: Add conversions for other subsets.
+
+impl<T> From<Vec<T>> for Subset<Vec<T>> {
+    fn from(v: Vec<T>) -> Subset<Vec<T>> {
+        Subset::all(v)
+    }
+}
 
 /// Pass through the conversion for structure type `Subset`.
 impl<S: StorageInto<T>, I, T> StorageInto<T> for Subset<S, I> {

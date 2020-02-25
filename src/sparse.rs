@@ -5,8 +5,8 @@ use std::convert::{AsMut, AsRef};
 /// indices into a larger range.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Sparse<S, T, I = Vec<usize>> {
-    pub(crate) selection: Select<T, I>,
-    pub(crate) source: S,
+    pub selection: Select<T, I>,
+    pub source: S,
 }
 
 /// A borrowed view of a sparse collection.

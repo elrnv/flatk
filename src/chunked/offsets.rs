@@ -24,7 +24,7 @@ impl<'a> Offsets<&'a [usize]> {
     /// advancing the data pointer. This is a helper function for implementing
     /// iterators over `Chunked` types.
     /// This function panics if offsets is empty.
-    pub(crate) fn pop_offset(&mut self) -> Option<usize> {
+    pub fn pop_offset(&mut self) -> Option<usize> {
         debug_assert!(
             !self.is_empty(),
             "Offsets are corrupted and cannot be iterated."
