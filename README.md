@@ -1,4 +1,4 @@
-# `flat`
+# `flatk`
 
 **F**lat **l**ayout **a**bstraction **t**ool**k**it.
 
