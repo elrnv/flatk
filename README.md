@@ -2,58 +2,69 @@
 
 **F**lat **l**ayout **a**bstraction **t**ool**k**it.
 
-This library defines low level primitives for organizing flat data arrays into meaningful structures
-without copying the data.
+This library defines low level primitives for organizing flat ordered data collections (like `Vec`s
+and `slice`s) into meaningful structures without cloning the data.
 
-For example if we have an array of floats representing 3D positions, we may wish to interpret them
-as triplets:
+This library provides a few core composable types intended for building more complex data structures
+out of existing data:
 
-```
-use flatk::Chunked3;
+- `UniChunked`:  Subdivides a collection in to a number of uniformly sized (at compile time or
+  run-time) groups.
+  For example if we have a `Vec` of floats representing 3D positions, we may wish to interpret them
+  as triplets:
 
-let pos_data = vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0];
+  ```rust
+  use flatk::Chunked3;
 
-let pos = Chunked3::from_flat(pos_data);
+  let pos_data = vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0];
 
-assert_eq!(pos[0], [0.0; 3]);
-assert_eq!(pos[1], [1.0; 3]);
-assert_eq!(pos[2], [0.0, 1.0, 0.0]);
-```
+  let pos = Chunked3::from_flat(pos_data);
 
-Similarly we may have a non-uniform grouping of array elements, which may for represent a directed
-graph:
+  assert_eq!(pos[0], [0.0; 3]);
+  assert_eq!(pos[1], [1.0; 3]);
+  assert_eq!(pos[2], [0.0, 1.0, 0.0]);
+  ```
 
-```
-use flatk::Chunked;
+- `Chunked`: Subdivides a collection into a number of unstructured (non-uniform) groups.
+  For example we may have a non-uniform grouping of nodes stored in a `Vec`, which can represent a
+  directed graph:
+  
+  ```rust
+  use flatk::Chunked;
+  
+  let neighbours = vec![1, 2, 0, 1, 0, 1, 2];
+  
+  let neigh = Chunked::from_sizes(vec![1,2,1,3], neighbours);
+  
+  assert_eq!(&neigh[0][..], &[1][..]);
+  assert_eq!(&neigh[1][..], &[2, 0][..]);
+  assert_eq!(&neigh[2][..], &[1][..]);
+  assert_eq!(&neigh[3][..], &[0, 1, 2][..]);
+  ```
 
-let neighbours = vec![1, 2, 0, 1, 0, 1, 2];
+  Here `neigh` defines the following graph:
+  
+  ```verbatim
+  0<--->1<--->2
+  ^     ^     ^
+   \    |    /
+    \   |   /
+     \  |  /
+      \ | /
+       \|/
+        3
+  ```
 
-let neigh = Chunked::from_sizes(vec![1,2,1,3], neighbours);
+- `Sparse`: TBA
 
-assert_eq!(&neigh[0][..], &[1][..]);
-assert_eq!(&neigh[1][..], &[2, 0][..]);
-assert_eq!(&neigh[2][..], &[1][..]);
-assert_eq!(&neigh[3][..], &[0, 1, 2][..]);
-```
+- `Subset`: TBA
 
-Here `neigh` defines the following graph:
 
-```
-0<--->1<--->2
-^     ^     ^
- \    |    /
-  \   |   /
-   \  |  /
-    \ | /
-     \|/
-      3
-```
+# License
 
-A sparse array can be specified as follows:
+This repository is licensed under either of
 
-```
-use flatk::Sparse;
+ * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or https://www.apache.org/licenses/LICENSE-2.0)
+ * MIT License ([LICENSE-MIT](LICENSE-MIT) or https://opensource.org/licenses/MIT)
 
-let 
-
-```
+at your option.
