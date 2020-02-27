@@ -33,7 +33,7 @@ where
     /// let sparse = Sparse::from_dim(vec![0,2,0,2,0,3], 4, v.as_slice());
     ///
     /// // The iterator traverses only non-vacant elements.
-    /// let mut iter = sparse.iter(); // Returns (position, source, target) pairs
+    /// let mut iter = sparse.iter(); // Returns (position, source, target) triplets
     /// assert_eq!(Some((0, &1, 0)), iter.next());
     /// assert_eq!(Some((2, &2, 2)), iter.next());
     /// assert_eq!(Some((0, &3, 0)), iter.next());
