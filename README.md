@@ -2,6 +2,10 @@
 
 **F**lat **l**ayout **a**bstraction **t**ool**k**it.
 
+[![On crates.io](https://img.shields.io/crates/v/flatk.svg)](https://crates.io/crates/flatk)
+[![On docs.rs](https://docs.rs/flatk/badge.svg)](https://docs.rs/flatk/)
+[![Build status](https://travis-ci.org/elrnv/flatk.svg?branch=master)](https://travis-ci.org/elrnv/flatk)
+
 This library defines low level primitives for organizing flat ordered data collections (like `Vec`s
 and `slice`s) into meaningful structures without cloning the data.
 
