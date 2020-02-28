@@ -64,8 +64,8 @@
 //!   
 //!   let pieces = vec!["Pawn", "Knight", "Bishop", "Rook", "Queen", "King"];
 //!   
-//!   let white_pieces = Select::new(vec![3, 1, 2, 5, 4, 2, 1, 3, 0, 0, 0, 0, 0, 0, 0, 0], &pieces);
-//!   let black_pieces = Select::new(vec![0, 0, 0, 0, 0, 0, 0, 0, 3, 1, 2, 5, 4, 2, 1, 3], &pieces);
+//!   let white_pieces = Select::new(vec![3, 1, 2, 5, 4, 2, 1, 3, 0, 0, 0, 0, 0, 0, 0, 0], pieces.as_slice());
+//!   let black_pieces = Select::new(vec![0, 0, 0, 0, 0, 0, 0, 0, 3, 1, 2, 5, 4, 2, 1, 3], pieces.as_slice());
 //!
 //!   assert_eq!(white_pieces[0], "Rook");
 //!   assert_eq!(white_pieces[4], "Queen");
