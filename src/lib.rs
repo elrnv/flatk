@@ -1,51 +1,126 @@
 //! **F**lat **l**ayout **a**bstraction **t**ool**k**it.
 //!
-//! This library defines low level primitives for organizing flat data arrays into meaningful
-//! structures without copying the data.
-//! 
-//! For example if we have an array of floats representing 3D positions, we may wish to interpret them
-//! as triplets:
-//! 
-//! ```
-//! use flatk::Chunked3;
-//! 
-//! let pos_data = vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0];
-//! 
-//! let pos = Chunked3::from_flat(pos_data);
-//! 
-//! assert_eq!(pos[0], [0.0; 3]);
-//! assert_eq!(pos[1], [1.0; 3]);
-//! assert_eq!(pos[2], [0.0, 1.0, 0.0]);
-//! ```
-//! 
-//! Similarly we may have a non-uniform grouping of array elements, which may for represent a directed
-//! graph:
-//! 
-//! ```
-//! use flatk::Chunked;
-//! 
-//! let neighbours = vec![1, 2, 0, 1, 0, 1, 2];
-//! 
-//! let neigh = Chunked::from_sizes(vec![1,2,1,3], neighbours);
-//! 
-//! assert_eq!(&neigh[0][..], &[1][..]);
-//! assert_eq!(&neigh[1][..], &[2, 0][..]);
-//! assert_eq!(&neigh[2][..], &[1][..]);
-//! assert_eq!(&neigh[3][..], &[0, 1, 2][..]);
-//! ```
-//! 
-//! Here `neigh` defines the following graph:
-//! 
-//! ```verbatim
-//! 0<--->1<--->2
-//! ^     ^     ^
-//!  \    |    /
-//!   \   |   /
-//!    \  |  /
-//!     \ | /
-//!      \|/
-//!       3
-//! ```
+//! This library defines low level primitives for organizing flat ordered data collections (like `Vec`s
+//! and `slice`s) into meaningful structures without cloning the data.
+//!
+//! More specifically, `flatk` provides a few core composable types intended for building more complex
+//! data structures out of existing data:
+//!
+//! - `UniChunked`:  Subdivides a collection into a number of uniformly sized (at compile time or
+//!   run-time) contiguous groups.
+//!   For example if we have a `Vec` of floats representing 3D positions, we may wish to interpret them
+//!   as triplets:
+//!
+//!   ```rust
+//!   use flatk::Chunked3;
+//!
+//!   let pos_data = vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0];
+//!
+//!   let pos = Chunked3::from_flat(pos_data);
+//!
+//!   assert_eq!(pos[0], [0.0; 3]);
+//!   assert_eq!(pos[1], [1.0; 3]);
+//!   assert_eq!(pos[2], [0.0, 1.0, 0.0]);
+//!   ```
+//!
+//! - `Chunked`: Subdivides a collection into a number of unstructured (non-uniform) groups.
+//!   For example we may have a non-uniform grouping of nodes stored in a `Vec`, which can represent a
+//!   directed graph:
+//!   
+//!   ```rust
+//!   use flatk::Chunked;
+//!   
+//!   let neighbours = vec![1, 2, 0, 1, 0, 1, 2];
+//!   
+//!   let neigh = Chunked::from_sizes(vec![1,2,1,3], neighbours);
+//!
+//!   assert_eq!(&neigh[0][..], &[1][..]);
+//!   assert_eq!(&neigh[1][..], &[2, 0][..]);
+//!   assert_eq!(&neigh[2][..], &[1][..]);
+//!   assert_eq!(&neigh[3][..], &[0, 1, 2][..]);
+//!   ```
+//!
+//!   Here `neigh` defines the following graph:
+//!
+//!   ```verbatim
+//!   0<--->1<--->2
+//!   ^     ^     ^
+//!    \    |    /
+//!     \   |   /
+//!      \  |  /
+//!       \ | /
+//!        \|/
+//!         3
+//!   ```
+//!
+//! - `Select`: An ordered selection (with replacement) of elements from a
+//!   given random access collection. This is usually realized with a `Vec<usize>` representing indices
+//!   into the original data collection.
+//!
+//!   For example one may wish to select game pieces in a board game:
+//!
+//!   ```rust
+//!   use flatk::Select;
+//!   
+//!   let pieces = vec!["Pawn", "Knight", "Bishop", "Rook", "Queen", "King"];
+//!   
+//!   let white_pieces = Select::new(vec![3, 1, 2, 5, 4, 2, 1, 3, 0, 0, 0, 0, 0, 0, 0, 0], &pieces);
+//!   let black_pieces = Select::new(vec![0, 0, 0, 0, 0, 0, 0, 0, 3, 1, 2, 5, 4, 2, 1, 3], &pieces);
+//!
+//!   assert_eq!(white_pieces[0], "Rook");
+//!   assert_eq!(white_pieces[4], "Queen");
+//!   assert_eq!(black_pieces[0], "Pawn");
+//!   assert_eq!(black_pieces[11], "King");
+//!   ```
+//!
+//! - `Subset`: Similar to `Select` but `Subset` enforces an unordered selection without replacement.
+//!
+//!   For example we can choose a hand from a deck of cards:
+//!
+//!   ```rust
+//!   use flatk::{Subset, Get, View};
+//!
+//!   let rank = vec!["Ace", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King"];
+//!   let suit = vec!["Clubs", "Diamonds", "Hearts", "Spades"];
+//!
+//!   // Natural handling of structure of arrays (SoA) style data.
+//!   let deck: (Vec<_>, Vec<_>) = (
+//!       rank.into_iter().cycle().take(52).collect(),
+//!       suit.into_iter().cycle().take(52).collect()
+//!   );
+//!
+//!   let hand = Subset::from_indices(vec![4, 19, 23, 1, 0, 5], deck);
+//!   let hand_view = hand.view();
+//!   assert_eq!(hand_view.at(0), (&"Ace", &"Clubs"));
+//!   assert_eq!(hand_view.at(1), (&"2", &"Diamonds"));
+//!   assert_eq!(hand_view.at(2), (&"5", &"Clubs"));
+//!   assert_eq!(hand_view.at(3), (&"6", &"Diamonds"));
+//!   assert_eq!(hand_view.at(4), (&"7", &"Spades"));
+//!   assert_eq!(hand_view.at(5), (&"Jack", &"Spades"));
+//!   ```
+//!
+//! - `Sparse`: A sparse data assignment to another collection. Effectively this type attaches another
+//!   data set to a `Select`ion.
+//!
+//!   For example we can represent a sparse vector by assigning values to a selection of indices:
+//!   
+//!   ```rust
+//!   use flatk::{Sparse, Get, View};
+//!   
+//!   let values = vec![1.0, 2.0, 3.0, 4.0];
+//!   let sparse_vector = Sparse::from_dim(vec![0,5,10,100], 1000, values);
+//!   let sparse_vector_view = sparse_vector.view();
+//!   
+//!   assert_eq!(sparse_vector_view.at(0), (0, &1.0));
+//!   assert_eq!(sparse_vector_view.at(1), (5, &2.0));
+//!   assert_eq!(sparse_vector_view.at(2), (10, &3.0));
+//!   assert_eq!(sparse_vector_view.at(3), (100, &4.0));
+//!   assert_eq!(sparse_vector_view.selection.target, ..1000);
+//!   ```
+//!
+//!   In this scenario, the target set is just the range `0..1000`, however in general this can be any
+//!   data set, which makes `Sparse` an implementation of a one-to-one mapping or a directed graph
+//!   with disjoint source and target node sets.
 
 /*
  * Define macros to be used for implementing various traits in submodules
@@ -193,9 +268,7 @@ pub trait AsSlice<T> {
 impl<T> AsSlice<T> for T {
     #[inline]
     fn as_slice(&self) -> &[T] {
-        unsafe {
-            std::slice::from_raw_parts(self as *const _, 1)
-        }
+        unsafe { std::slice::from_raw_parts(self as *const _, 1) }
     }
 }
 

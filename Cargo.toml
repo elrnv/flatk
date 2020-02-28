@@ -6,9 +6,9 @@ edition = "2018"
 
 description = "Flat layout abstraction toolkit."
 license = "MIT OR Apache-2.0"
-homepage = "https://github.com/elrnv/flat"
-repository = "https://github.com/elrnv/flat"
-documentation = "https://docs.rs/flat"
+homepage = "https://github.com/elrnv/flatk"
+repository = "https://github.com/elrnv/flatk"
+documentation = "https://docs.rs/flatk"
 keywords = ["geometry", "processing", "algorithms", "io"]
 
 [dependencies]
