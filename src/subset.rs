@@ -907,11 +907,11 @@ impl<S: Truncate, I: Truncate> Truncate for Subset<S, I> {
 
 // TODO: Add conversions for other subsets.
 
-impl<T> From<Vec<T>> for Subset<Vec<T>> {
-    fn from(v: Vec<T>) -> Subset<Vec<T>> {
-        Subset::all(v)
-    }
-}
+//impl<T> From<T> for Subset<T> {
+//    fn from(v: T) -> Subset<T> {
+//        Subset::all(v)
+//    }
+//}
 
 /// Pass through the conversion for structure type `Subset`.
 impl<S: StorageInto<T>, I, T> StorageInto<T> for Subset<S, I> {
