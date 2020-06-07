@@ -363,7 +363,7 @@ pub trait ReadSet<'a>:
     + SplitAt
     + SplitOff
     + SplitFirst
-    + IntoFlat
+    + IntoStorage
     + Dummy
     + RemovePrefix
     + IntoChunkIterator
@@ -385,7 +385,7 @@ impl<'a, T> ReadSet<'a> for T where
         + SplitAt
         + SplitOff
         + SplitFirst
-        + IntoFlat
+        + IntoStorage
         + Dummy
         + RemovePrefix
         + IntoChunkIterator
@@ -409,7 +409,7 @@ pub trait OwnedSet<'a>:
     + IntoOwned
     + IntoOwnedData
     + SplitOff
-    + IntoFlat
+    + IntoStorage
     + Dummy
     + RemovePrefix
     + IntoChunkIterator
@@ -428,7 +428,7 @@ impl<'a, T> OwnedSet<'a> for T where
         + IntoOwned
         + IntoOwnedData
         + SplitOff
-        + IntoFlat
+        + IntoStorage
         + Dummy
         + RemovePrefix
         + IntoChunkIterator
@@ -470,12 +470,11 @@ pub trait Clear {
  * Conversion
  */
 
-//TODO: Rename to IntoStorage
 /// Convert a collection into its underlying representation, effectively
 /// stripping any organizational info.
-pub trait IntoFlat {
-    type FlatType;
-    fn into_flat(self) -> Self::FlatType;
+pub trait IntoStorage {
+    type StorageType;
+    fn into_storage(self) -> Self::StorageType;
 }
 
 /// Transform the access pattern of the underlying storage type. This is useful

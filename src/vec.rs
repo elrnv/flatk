@@ -131,11 +131,11 @@ where
     }
 }
 
-impl<T> IntoFlat for Vec<T> {
-    type FlatType = Vec<T>;
+impl<T> IntoStorage for Vec<T> {
+    type StorageType = Vec<T>;
     /// Since a `Vec` has no information about the structure of its underlying
     /// data, this is effectively a no-op.
-    fn into_flat(self) -> Self::FlatType {
+    fn into_storage(self) -> Self::StorageType {
         self
     }
 }

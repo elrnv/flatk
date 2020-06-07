@@ -246,16 +246,16 @@ impl<'a, T> SplitFirst for &'a mut [T] {
     }
 }
 
-impl<'a, T> IntoFlat for &'a [T] {
-    type FlatType = &'a [T];
-    fn into_flat(self) -> Self::FlatType {
+impl<'a, T> IntoStorage for &'a [T] {
+    type StorageType = &'a [T];
+    fn into_storage(self) -> Self::StorageType {
         self
     }
 }
 
-impl<'a, T> IntoFlat for &'a mut [T] {
-    type FlatType = &'a mut [T];
-    fn into_flat(self) -> Self::FlatType {
+impl<'a, T> IntoStorage for &'a mut [T] {
+    type StorageType = &'a mut [T];
+    fn into_storage(self) -> Self::StorageType {
         self
     }
 }

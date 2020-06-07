@@ -11,7 +11,7 @@ fn chunked_unichunked_push() {
     }
 
     assert_eq!(
-        chunked.into_flat(),
+        chunked.into_storage(),
         vec![0, 1, 2, 3, 1, 2, 3, 4, 2, 3, 4, 5, 3, 4, 5, 6]
     );
 }

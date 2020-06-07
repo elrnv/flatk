@@ -1045,7 +1045,7 @@ where
     /// let mut v = vec![1,2,3,4,0,0,7,8,9,10,11];
     /// let mut s = Chunked::from_offsets(vec![0,3,4,6,9,11], v.clone());
     /// s[2].copy_from_slice(&[5,6]);
-    /// assert_eq!(vec![1,2,3,4,5,6,7,8,9,10,11], s.into_flat());
+    /// assert_eq!(vec![1,2,3,4,5,6,7,8,9,10,11], s.into_storage());
     /// ```
     fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
         &mut self.data[self.chunks[idx]..self.chunks[idx + 1]]
@@ -1417,8 +1417,8 @@ where
     }
 }
 
-impl<S: IntoFlat, O> IntoFlat for Chunked<S, O> {
-    type FlatType = S::FlatType;
+impl<S: IntoStorage, O> IntoStorage for Chunked<S, O> {
+    type StorageType = S::StorageType;
     /// Strip all organizational information from this set, returning the
     /// underlying storage type.
     ///
@@ -1429,11 +1429,11 @@ impl<S: IntoFlat, O> IntoFlat for Chunked<S, O> {
     /// let v = vec![1,2,3,4,5,6,7,8,9,10,11];
     /// let s0 = Chunked::from_offsets(vec![0,3,4,6,9,11], v.clone());
     /// let s1 = Chunked::from_offsets(vec![0,1,4,5], s0.clone());
-    /// assert_eq!(s1.into_flat(), v);
-    /// assert_eq!(s0.into_flat(), v);
+    /// assert_eq!(s1.into_storage(), v);
+    /// assert_eq!(s0.into_storage(), v);
     /// ```
-    fn into_flat(self) -> Self::FlatType {
-        self.data.into_flat()
+    fn into_storage(self) -> Self::StorageType {
+        self.data.into_storage()
     }
 }
 
@@ -1722,7 +1722,7 @@ mod tests {
         assert_eq!(c.at(2), 4..6);
         assert_eq!(c.at(3), 6..6);
         assert_eq!(c.at(4), 6..7);
-        assert_eq!(c.into_flat(), 0..7);
+        assert_eq!(c.into_storage(), 0..7);
     }
 
     #[test]

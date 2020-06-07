@@ -28,11 +28,11 @@ impl<S: Clear, T: Clear> Clear for (S, T) {
     }
 }
 
-impl<S: IntoFlat, T: IntoFlat> IntoFlat for (S, T) {
-    type FlatType = (S::FlatType, T::FlatType);
+impl<S: IntoStorage, T: IntoStorage> IntoStorage for (S, T) {
+    type StorageType = (S::StorageType, T::StorageType);
 
-    fn into_flat(self) -> Self::FlatType {
-        (self.0.into_flat(), self.1.into_flat())
+    fn into_storage(self) -> Self::StorageType {
+        (self.0.into_storage(), self.1.into_storage())
     }
 }
 

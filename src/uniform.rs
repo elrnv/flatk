@@ -1669,11 +1669,11 @@ impl<S: Truncate> Truncate for ChunkedN<S> {
     }
 }
 
-impl<S: IntoFlat, N> IntoFlat for UniChunked<S, N> {
-    type FlatType = <S as IntoFlat>::FlatType;
+impl<S: IntoStorage, N> IntoStorage for UniChunked<S, N> {
+    type StorageType = <S as IntoStorage>::StorageType;
     /// Strip away the uniform organization of the underlying data, and return the underlying data.
-    fn into_flat(self) -> Self::FlatType {
-        self.data.into_flat()
+    fn into_storage(self) -> Self::StorageType {
+        self.data.into_storage()
     }
 }
 impl<T, S: CloneWithStorage<T>, N: Clone> CloneWithStorage<T> for UniChunked<S, N> {

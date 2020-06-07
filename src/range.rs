@@ -147,9 +147,9 @@ where
     }
 }
 
-impl<T> IntoFlat for Range<T> {
-    type FlatType = Range<T>;
-    fn into_flat(self) -> Self::FlatType {
+impl<T> IntoStorage for Range<T> {
+    type StorageType = Range<T>;
+    fn into_storage(self) -> Self::StorageType {
         self
     }
 }

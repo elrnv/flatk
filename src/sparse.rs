@@ -634,11 +634,11 @@ impl<S: StorageInto<U>, T, I, U> StorageInto<U> for Sparse<S, T, I> {
     }
 }
 
-impl<S: IntoFlat, T, I> IntoFlat for Sparse<S, T, I> {
-    type FlatType = S::FlatType;
+impl<S: IntoStorage, T, I> IntoStorage for Sparse<S, T, I> {
+    type StorageType = S::StorageType;
     /// Convert the sparse set into its raw storage representation.
-    fn into_flat(self) -> Self::FlatType {
-        self.source.into_flat()
+    fn into_storage(self) -> Self::StorageType {
+        self.source.into_storage()
     }
 }
 
