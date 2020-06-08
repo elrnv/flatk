@@ -88,6 +88,19 @@ where
     }
 }
 
+impl<'a, S, T, N> GetIndex<'a, (S, T)> for StaticRange<N>
+where
+    S: Get<'a, StaticRange<N>>,
+    T: Get<'a, StaticRange<N>>,
+    N: Unsigned + Copy,
+{
+    type Output = (S::Output, T::Output);
+    fn get(self, (ref s, ref t): &(S, T)) -> Option<Self::Output> {
+        s.get(self)
+            .and_then(|s_item| t.get(self).map(|t_item| (s_item, t_item)))
+    }
+}
+
 impl<'a, S, T> IsolateIndex<(S, T)> for usize
 where
     S: Isolate<usize>,
@@ -242,4 +255,53 @@ where
 
 impl<N, S: UniChunkable<N>, T: UniChunkable<N>> UniChunkable<N> for (S, T) {
     type Chunk = (S::Chunk, T::Chunk);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unichunked_tuple() {
+        let a = vec![1, 2, 3, 4];
+        let b = vec![6, 7, 8, 9];
+        let chunked_a_b = Chunked2::from_flat((a, b));
+        assert_eq!(chunked_a_b.view().at(0), (&[1, 2], &[6, 7]));
+        let mut iter = chunked_a_b.iter();
+        assert_eq!(iter.next().unwrap(), (&[1, 2], &[6, 7]));
+        assert_eq!(iter.next().unwrap(), (&[3, 4], &[8, 9]));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn chunked_tuple() {
+        let sizes = vec![1, 2, 2];
+        let a = vec![1, 2, 3, 4, 5];
+        let b = vec![6, 7, 8, 9, 10];
+        let chunked_a_b = Chunked::from_sizes(sizes, (a, b));
+        let mut iter = chunked_a_b.iter();
+        assert_eq!(iter.next().unwrap(), (&[1][..], &[6][..]));
+        assert_eq!(iter.next().unwrap(), (&[2, 3][..], &[7, 8][..]));
+        assert_eq!(iter.next().unwrap(), (&[4, 5][..], &[9, 10][..]));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn sparse_chunked_tuple() {
+        let idx = vec![0, 3, 4];
+        let sizes = vec![1, 2, 2];
+        let a = vec![1, 2, 3, 4, 5];
+        let b = vec![6, 7, 8, 9, 10];
+        let a_b = Sparse::from_dim(idx, 5, Chunked::from_sizes(sizes, (a, b)));
+
+        // Verify contents
+        let mut iter = a_b.iter();
+        assert_eq!(iter.next().unwrap(), (0, (&[1][..], &[6][..]), 0));
+        assert_eq!(iter.next().unwrap(), (3, (&[2, 3][..], &[7, 8][..]), 3));
+        assert_eq!(iter.next().unwrap(), (4, (&[4, 5][..], &[9, 10][..]), 4));
+        assert_eq!(iter.next(), None);
+
+        // Unwrap
+        //let (a, b) = a_b.
+    }
 }

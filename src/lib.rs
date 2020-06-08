@@ -195,9 +195,12 @@ pub use uniform::*;
 pub use vec::*;
 pub use view::*;
 
+#[cfg(feature = "derive")]
+pub use flatk_derive::Entity;
+
 pub use typenum::consts;
 use typenum::type_operators::PartialDiv;
-use typenum::Unsigned;
+pub use typenum::Unsigned;
 
 /*
  * Set is the most basic trait that annotates finite collections that contain data.
@@ -283,8 +286,17 @@ pub trait Array<T> {
  * Marker and utility traits to help with Coherence rules of Rust.
  */
 
+/// A marker trait to identify types whose range indices give a dynamically sized type even if the
+/// range index is given as a StaticRange.
+pub trait DynamicRangeIndexType {}
+impl<S, T, I> DynamicRangeIndexType for Sparse<S, T, I> {}
+impl<S, I> DynamicRangeIndexType for Select<S, I> {}
+impl<S, I> DynamicRangeIndexType for Subset<S, I> {}
+impl<S, I> DynamicRangeIndexType for Chunked<S, I> {}
+impl<S, N> DynamicRangeIndexType for UniChunked<S, N> {}
+
 /// A marker trait to indicate an owned collection type. This is to distinguish
-/// them from borrowed slices, which essential to resolve implementation collisions.
+/// them from borrowed types, which is essential to resolve implementation collisions.
 pub trait ValueType {}
 impl<S, T, I> ValueType for Sparse<S, T, I> {}
 impl<S, I> ValueType for Select<S, I> {}
@@ -477,13 +489,20 @@ pub trait IntoStorage {
     fn into_storage(self) -> Self::StorageType;
 }
 
-/// Transform the access pattern of the underlying storage type. This is useful
-/// when the storage is not just a simple `Vec` or slice but a combination of independent
-/// collections.
+/// Convert the storage type into another using the `Into` trait.
 pub trait StorageInto<Target> {
     type Output;
     fn storage_into(self) -> Self::Output;
 }
+
+///// Map the storage type into another given a conversion function.
+/////
+///// This is useful for changing storage is not just a simple `Vec` or slice but a combination of
+///// independent collections.
+//pub trait MapStorage {
+//    type Output:
+//    fn map_storage<O, F: FnOnce(I) -> O>(self, f: F) -> O;
+//}
 
 pub trait CloneWithStorage<S> {
     type CloneType;
@@ -707,7 +726,7 @@ where
 
 impl<'a, S, N> GetIndex<'a, S> for StaticRange<N>
 where
-    S: Set + ValueType,
+    S: Set + DynamicRangeIndexType,
     N: Unsigned,
     std::ops::Range<usize>: GetIndex<'a, S>,
 {
@@ -741,9 +760,9 @@ where
     }
 }
 
-impl<'a, S: ValueType> GetIndex<'a, S> for std::ops::RangeFull
+impl<'a, S> GetIndex<'a, S> for std::ops::RangeFull
 where
-    S: Set,
+    S: Set + ValueType,
     std::ops::Range<usize>: GetIndex<'a, S>,
 {
     type Output = <std::ops::Range<usize> as GetIndex<'a, S>>::Output;
@@ -782,7 +801,7 @@ where
 
 //impl<S, N: Unsigned> IsolateIndex<S> for StaticRange<N>
 //where
-//    S: Set + ValueType,
+//    S: Set + DynamicRangeIndexType,
 //    std::ops::Range<usize>: IsolateIndex<S>,
 //{
 //    type Output = <std::ops::Range<usize> as IsolateIndex<S>>::Output;
@@ -883,6 +902,10 @@ where
     Self: Sized,
 {
     type Prefix;
+
+    /// Split `N` items from the beginning of the collection.
+    ///
+    /// Return `None` if there are not enough items.
     fn split_prefix(self) -> Option<(Self::Prefix, Self)>;
 }
 
@@ -979,6 +1002,7 @@ pub trait UniChunkable<N> {
 }
 
 /// Iterate over chunks whose size is determined at compile time.
+///
 /// Note that each chunk may not be a simple array, although a statically sized
 /// chunk of a slice is an array.
 pub trait IntoStaticChunkIterator<N>
@@ -1094,20 +1118,48 @@ where
     }
 }
 
-//macro_rules! impl_dummy_for_scalar {
-//    ($($type:ty),*) => {
-//        $(
-//            impl Dummy for $type {
-//                #[inline]
-//                unsafe fn dummy() -> Self {
-//                    Self::default()
-//                }
-//            }
-//        )*
-//    }
-//}
-//
-//impl_dummy_for_scalar!(f64, f32, usize, u64, u32, u16, u8, i64, i32, i16, i8);
+/// A wraper for a zip iterator that unwraps its contents into a custom struct.
+pub struct StructIter<I, T> {
+    iter: I,
+    phantom: std::marker::PhantomData<T>,
+}
+
+impl<I, T> StructIter<I, T> {
+    pub fn new(iter: I) -> Self {
+        StructIter {
+            iter,
+            phantom: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<I: Iterator, T: From<I::Item>> Iterator for StructIter<I, T> {
+    type Item = T;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next().map(From::from)
+    }
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        self.iter.nth(n).map(From::from)
+    }
+}
+
+impl<I, T> DoubleEndedIterator for StructIter<I, T>
+where
+    I: DoubleEndedIterator + ExactSizeIterator,
+    T: From<I::Item>,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<T> {
+        self.iter.next_back().map(From::from)
+    }
+}
 
 /*
  * Tests
@@ -1153,5 +1205,81 @@ mod tests {
         assert_eq!(Some(&[9, 10]), iter0.next());
         assert_eq!(Some(&[11, 12]), iter0.next());
         assert_eq!(None, iter0.next());
+    }
+
+    #[cfg(feature = "derive")]
+    mod derive_tests {
+        /*
+         * Test the use of the `Entity` derive macro
+         */
+
+        // Needed to make the derive macro work in the test context.
+        use super::*;
+        use crate as flatk;
+        use flatk::Entity;
+
+        #[derive(Copy, Clone, Debug, PartialEq, Entity)]
+        struct MyEntity<X, V> {
+            // Unused parameter, that is simply copied through to views and items.
+            id: usize,
+            x: X,
+            v: V,
+        }
+
+        #[test]
+        fn entity_derive_test() {
+            let mut e = MyEntity {
+                id: 0,
+                x: vec![1.0; 12],
+                v: vec![7.0; 12],
+            };
+
+            // Get the size of the entity set
+            assert_eq!(e.len(), 12);
+
+            // Construct a View and Get a single element from MyEntity.
+            assert_eq!(
+                e.view().at(0),
+                MyEntity {
+                    id: 0,
+                    x: &1.0,
+                    v: &7.0
+                }
+            );
+
+            // Construct a ViewMut and modify a single entry
+            let entry_mut = e.view_mut().isolate(0);
+            *entry_mut.x = 13.0;
+            *entry_mut.v = 14.0;
+            assert_eq!(
+                e.view().at(0),
+                MyEntity {
+                    id: 0,
+                    x: &13.0,
+                    v: &14.0
+                }
+            );
+
+            let chunked3 = Chunked3::from_flat(e.clone());
+            assert_eq!(
+                chunked3.view().at(0),
+                MyEntity {
+                    id: 0,
+                    x: &[13.0, 1.0, 1.0],
+                    v: &[14.0, 7.0, 7.0]
+                }
+            );
+
+            let chunked = Chunked::from_sizes(vec![1, 3], Chunked3::from_flat(e));
+
+            assert_eq!(
+                chunked.view().at(0).at(0),
+                MyEntity {
+                    id: 0,
+                    x: &[13.0, 1.0, 1.0],
+                    v: &[14.0, 7.0, 7.0]
+                }
+            );
+        }
     }
 }

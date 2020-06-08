@@ -649,13 +649,13 @@ where
     }
 }
 
-impl<S: IntoParChunkIterator> rayon::iter::IntoParallelIterator for ChunkedN<S> {
+impl<S: IntoParChunkIterator, N: Dimension> rayon::iter::IntoParallelIterator for UniChunked<S, N> {
     type Item = <S as IntoParChunkIterator>::Item;
     type Iter = <S as IntoParChunkIterator>::IterType;
 
-    /// Convert a `ChunkedN` collection into a parallel iterator over grouped elements.
+    /// Convert a `UniChunked` collection into a parallel iterator over grouped elements.
     fn into_par_iter(self) -> Self::Iter {
-        self.data.into_par_chunk_iter(self.chunk_size)
+        self.data.into_par_chunk_iter(self.chunk_size.value())
     }
 }
 
@@ -1137,7 +1137,7 @@ where
     /// let mut v = vec![1,2,3,4,5,6,0,0,0,10,11,12];
     /// let mut s = Chunked3::from_flat(v);
     /// s[2] = [7,8,9];
-    /// assert_eq!(vec![1,2,3,4,5,6,7,8,9,10,11,12], s.into_flat().to_vec());
+    /// assert_eq!(vec![1,2,3,4,5,6,7,8,9,10,11,12], s.into_storage().to_vec());
     /// ```
     fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
         ReinterpretAsGrouped::<N>::reinterpret_as_grouped(&mut self.data).index_mut(idx)
@@ -1586,6 +1586,7 @@ where
         + UniChunkable<<N as std::ops::Mul<M>>::Output>,
     N: std::ops::Mul<M>,
 {
+    #[inline]
     fn push_chunk(&mut self, chunk: Self::Chunk) {
         self.data.push_chunk(chunk.data);
     }
@@ -1598,6 +1599,8 @@ where
 {
     type Item = <Self as SplitPrefix<N>>::Prefix;
     type IterType = UniChunkedIter<Self, N>;
+
+    #[inline]
     fn into_static_chunk_iter(self) -> Self::IterType {
         self.into_generic_static_chunk_iter()
     }
@@ -1616,6 +1619,7 @@ where
 {
     type Item = S::Prefix;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let data_slice = std::mem::replace(&mut self.data, unsafe { Dummy::dummy() });
         data_slice.split_prefix().map(|(prefix, rest)| {
@@ -1636,6 +1640,7 @@ where
 {
     type Item = S;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         if self.data.is_empty() {
             return None;

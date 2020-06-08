@@ -20,4 +20,3 @@ fn unichunked_unichunked() {
     assert_eq!(Some(&[11, 12]), uni0_iter.next());
     assert_eq!(None, uni0_iter.next());
 }
-

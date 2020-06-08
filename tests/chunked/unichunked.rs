@@ -15,4 +15,3 @@ fn chunked_unichunked_push() {
         vec![0, 1, 2, 3, 1, 2, 3, 4, 2, 3, 4, 5, 3, 4, 5, 6]
     );
 }
-

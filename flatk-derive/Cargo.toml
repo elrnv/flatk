@@ -1,0 +1,22 @@
+[package]
+name = "flatk-derive"
+version = "0.1.0"
+authors = ["Egor Larionov <egor.larionov@gmail.com>"]
+license = "MIT OR Apache-2.0"
+description = "Derive macros for deriving [flatk](https:://crates.io/crates/flatk) traits"
+readme = "README.md"
+edition = "2018"
+
+homepage = "https://github.com/elrnv/flatk-derive"
+repository = "https://github.com/elrnv/flatk-derive"
+documentation = "https://docs.rs/flatk-derive"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "1.0", features = ["full", "extra-traits"] }
+quote = "1.0"
+proc-macro2 = "1.0"
+proc-macro-crate = "0.1.4"
+lazy_static = "1"

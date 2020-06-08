@@ -144,16 +144,16 @@ where
 {
     type Prefix = &'a N::Array;
 
+    #[inline]
     fn split_prefix(self) -> Option<(Self::Prefix, Self)> {
         if self.len() < N::to_usize() {
-            return None;
+            None
+        } else {
+            Some(unsafe {
+                let (l, r) = self.split_at(N::to_usize());
+                (&*(l.as_ptr() as *const N::Array), r)
+            })
         }
-
-        let (prefix, rest) = unsafe {
-            let prefix = self.as_ptr() as *const N::Array;
-            (&*prefix, self.get_unchecked(N::to_usize()..))
-        };
-        Some((prefix, rest))
     }
 }
 
@@ -164,16 +164,16 @@ where
 {
     type Prefix = &'a mut N::Array;
 
+    #[inline]
     fn split_prefix(self) -> Option<(Self::Prefix, Self)> {
         if self.len() < N::to_usize() {
-            return None;
+            None
+        } else {
+            Some(unsafe {
+                let (l, r) = self.split_at_mut(N::to_usize());
+                (&mut *(l.as_mut_ptr() as *mut N::Array), r)
+            })
         }
-
-        let (prefix, rest) = unsafe {
-            let prefix = self.as_mut_ptr() as *mut N::Array;
-            (&mut *prefix, self.get_unchecked_mut(N::to_usize()..))
-        };
-        Some((prefix, rest))
     }
 }
 
@@ -227,6 +227,17 @@ impl<'a, T: Send + Sync> IntoParChunkIterator for &'a [T] {
         use rayon::slice::ParallelSlice;
         assert_eq!(self.len() % chunk_size, 0);
         self.par_chunks(chunk_size)
+    }
+}
+
+impl<'a, T: Send + Sync> IntoParChunkIterator for &'a mut [T] {
+    type Item = &'a mut [T];
+    type IterType = rayon::slice::ChunksMut<'a, T>;
+
+    fn into_par_chunk_iter(self, chunk_size: usize) -> Self::IterType {
+        use rayon::slice::ParallelSliceMut;
+        assert_eq!(self.len() % chunk_size, 0);
+        self.par_chunks_mut(chunk_size)
     }
 }
 

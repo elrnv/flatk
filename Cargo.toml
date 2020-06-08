@@ -16,9 +16,28 @@ typenum = "1.10"
 reinterpret = "0.2"
 rayon = "1.2"
 packed_simd = { version = "0.3", optional = true }
+flatk-derive = { path = "flatk-derive", optional = true }
 
 [dev-dependencies]
+rand = "0.7"
 criterion = "0.3"
 
 [features]
+default = ["derive"]
 unstable = ["criterion/real_blackbox", "packed_simd"]
+derive = ["flatk-derive"]
+
+[[bench]]
+name = "storage"
+harness = false
+
+[[bench]]
+name = "chunks_iter"
+harness = false
+
+[[bench]]
+name = "zip"
+harness = false
+
+[profile.release]
+debug = true

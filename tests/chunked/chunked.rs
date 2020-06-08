@@ -23,5 +23,4 @@ fn iter_mut() {
     assert_eq!(Some(&[6, 100, 8][..]), iter0.next());
     assert_eq!(Some(&[9, 10][..]), iter0.next());
     assert_eq!(None, iter0.next());
-
 }
