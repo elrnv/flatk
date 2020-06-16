@@ -7,7 +7,7 @@ use std::ops::Range;
 /// another collection, namely that the collection is monotonically increasing
 /// and non-empty.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Offsets<O = Vec<usize>>(O);
+pub struct Offsets<O = Vec<usize>>(pub(crate) O);
 
 impl<O: Set> Set for Offsets<O> {
     type Elem = O::Elem;
@@ -35,21 +35,41 @@ impl<O: AsRef<[usize]> + Set> GetOffset for Offsets<O> {
     }
 }
 
-impl<'a> Iterator for Offsets<&'a [usize]> {
+impl<O: AsRef<[usize]> + Set> BinarySearch<usize> for Offsets<O> {
+    /// Binary search the offsets for a given offset `off`.
+    ///
+    /// `off` is expected to be with respect to the beginning of the range represented by the
+    /// current offests. In other words, we are searching for offsets, not raw offset values
+    /// stored in `Offsets`.
+    ///
+    /// The semantics of this function are identical to Rust's `std::slice::binary_search`.
+    #[inline]
+    fn binary_search(&self, off: &usize) -> Result<usize, usize> {
+        self.as_ref().binary_search(&(*off + self.first_offset_value()))
+    }
+}
+
+/// An iterator over offset values.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct OffsetValues<'a> {
+    offset_values: &'a [usize],
+}
+
+impl<'a> Iterator for OffsetValues<'a> {
     type Item = usize;
 
     /// Get the next available offset.
     #[inline]
     fn next(&mut self) -> Option<usize> {
-        self.0.split_first().map(|(first, rest)| {
-            self.0 = rest;
+        self.offset_values.split_first().map(|(first, rest)| {
+            self.offset_values = rest;
             *first
         })
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = self.0.len();
+        let n = self.offset_values.len();
         (n, Some(n))
     }
 
@@ -60,7 +80,7 @@ impl<'a> Iterator for Offsets<&'a [usize]> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        self.0.get(n).map(|&x| x)
+        self.offset_values.get(n).map(|&x| x)
     }
 
     #[inline]
@@ -69,25 +89,25 @@ impl<'a> Iterator for Offsets<&'a [usize]> {
     }
 }
 
-impl DoubleEndedIterator for Offsets<&[usize]> {
+impl DoubleEndedIterator for OffsetValues<'_> {
     #[inline]
     fn next_back(&mut self) -> Option<usize> {
-        self.0.split_last().map(|(last, rest)| {
-            self.0 = rest;
+        self.offset_values.split_last().map(|(last, rest)| {
+            self.offset_values = rest;
             *last
         })
     }
 
     #[inline]
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-        self.0.get(ExactSizeIterator::len(self) - 1 - n).map(|&x| x)
+        self.offset_values.get(ExactSizeIterator::len(self) - 1 - n).map(|&x| x)
     }
 }
 
-impl ExactSizeIterator for Offsets<&[usize]> {}
-impl std::iter::FusedIterator for Offsets<&[usize]> {}
+impl ExactSizeIterator for OffsetValues<'_> {}
+impl std::iter::FusedIterator for OffsetValues<'_> {}
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Sizes<'a> {
     offsets: &'a [usize],
 }
@@ -176,8 +196,10 @@ impl<O: AsRef<[usize]>> Offsets<O> {
     }
     /// Returns an iterator over offsets.
     #[inline]
-    pub fn iter(&self) -> Offsets<&[usize]> {
-        self.view()
+    pub fn iter(&self) -> OffsetValues {
+        OffsetValues {
+            offset_values: self.0.as_ref(),
+        }
     }
 }
 
@@ -334,24 +356,36 @@ impl<O: std::iter::FromIterator<usize> + AsRef<[usize]>> std::iter::FromIterator
 }
 
 impl<'a> SplitOffsetsAt for Offsets<&'a [usize]> {
-    /// Splits a slice of offsets at the given index into two slices such that each
-    /// slice is a valid slice of offsets. This means that the element at index
-    /// `mid` is shared between the two output slices. In addition, return the
-    /// offset of the middle element: this is the value `offsets[mid] - offsets[0]`.
+    /// Same as `split_offsets_at`, but in addition, return the offset of the middle element
+    /// (intersection): this is the value `offsets[mid] - offsets[0]`.
     ///
     /// # Panics
     ///
     /// Calling this function with an empty slice or with `mid` greater than or equal to its length
     /// will cause a panic.
     #[inline]
-    fn split_offsets_at(self, mid: usize) -> (Offsets<&'a [usize]>, Offsets<&'a [usize]>, usize) {
+    fn split_offsets_with_intersection_at(self, mid: usize) -> (Offsets<&'a [usize]>, Offsets<&'a [usize]>, usize) {
+        let (l, r) = self.split_offsets_at(mid);
+        // This is safe since self.0 is not empty, both l and r have at least one element.
+        let off = unsafe { *r.0.get_unchecked(0) - *l.0.get_unchecked(0) };
+        (l, r, off)
+    }
+
+    /// Splits a slice of offsets at the given index into two slices such that each
+    /// slice is a valid slice of offsets. This means that the element at index
+    /// `mid` is shared between the two output slices.
+    ///
+    /// # Panics
+    ///
+    /// Calling this function with an empty slice or with `mid` greater than or equal to its length
+    /// will cause a panic.
+    #[inline]
+    fn split_offsets_at(self, mid: usize) -> (Offsets<&'a [usize]>, Offsets<&'a [usize]>) {
         assert!(!Set::is_empty(&self));
         assert!(mid < self.0.len());
         let l = &self.0[..=mid];
         let r = &self.0[mid..];
-        // This is safe since self.0 is not empty, both l and r have at least one element.
-        let off = unsafe { *r.get_unchecked(0) - *l.get_unchecked(0) };
-        (Offsets(l), Offsets(r), off)
+        (Offsets(l), Offsets(r))
     }
 }
 
@@ -414,10 +448,17 @@ impl<O: Truncate> Truncate for Offsets<O> {
     }
 }
 
-impl<O: RemovePrefix> RemovePrefix for Offsets<O> {
+impl<O: RemovePrefix + Set> RemovePrefix for Offsets<O> {
+    /// Remove the first `n` offsets.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if all offsets are removed, which violates the `Offsets` invariant
+    /// that there must always be at least one offset.
     #[inline]
     fn remove_prefix(&mut self, n: usize) {
         self.0.remove_prefix(n);
+        assert!(!self.0.is_empty());
     }
 }
 
@@ -444,19 +485,19 @@ mod tests {
     fn split_offset_at_test() {
         // Split in the middle
         let offsets = Offsets(vec![0, 1, 2, 3, 4, 5]);
-        let (l, r, off) = offsets.view().split_offsets_at(3);
+        let (l, r, off) = offsets.view().split_offsets_with_intersection_at(3);
         assert_eq!(l.0, &[0, 1, 2, 3]);
         assert_eq!(r.0, &[3, 4, 5]);
         assert_eq!(off, 3);
 
         // Split at the beginning
-        let (l, r, off) = offsets.view().split_offsets_at(0);
+        let (l, r, off) = offsets.view().split_offsets_with_intersection_at(0);
         assert_eq!(l.0, &[0]);
         assert_eq!(r.0, &[0, 1, 2, 3, 4, 5]);
         assert_eq!(off, 0);
 
         // Split at the end
-        let (l, r, off) = offsets.view().split_offsets_at(5);
+        let (l, r, off) = offsets.view().split_offsets_with_intersection_at(5);
         assert_eq!(l.0, &[0, 1, 2, 3, 4, 5]);
         assert_eq!(r.0, &[5]);
         assert_eq!(off, 5);

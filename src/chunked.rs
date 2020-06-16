@@ -29,7 +29,8 @@ pub trait SplitOffsetsAt
 where
     Self: Sized,
 {
-    fn split_offsets_at(self, mid: usize) -> (Self, Self, usize);
+    fn split_offsets_with_intersection_at(self, mid: usize) -> (Self, Self, usize);
+    fn split_offsets_at(self, mid: usize) -> (Self, Self);
 }
 
 pub trait IndexRange {
@@ -130,12 +131,11 @@ pub trait GetOffset: Set {
     }
 
     /// Get the first offset.
-    ///
-    /// Since offsets are never empty by construction, this will always work.
+    /// 
+    /// This should always return 0.
     #[inline]
     fn first_offset(&self) -> usize {
-        // SAFETY: Offsets are never empty
-        unsafe { self.offset_unchecked(0) }
+        0
     }
 
     /// Get the raw value corresponding to the last offset.
@@ -151,6 +151,13 @@ pub trait GetOffset: Set {
         // SAFETY: Offsets are never empty
         unsafe { self.offset_value_unchecked(0) }
     }
+}
+
+pub trait BinarySearch<T> {
+    /// Binary search for a given element.
+    ///
+    /// The semantics of this function are identical to Rust's `std::slice::binary_search`.
+    fn binary_search(&self, x: &T) -> Result<usize, usize>;
 }
 
 /*
@@ -1432,7 +1439,7 @@ where
     O: SplitOffsetsAt,
 {
     fn split_at(self, mid: usize) -> (Self, Self) {
-        let (offsets_l, offsets_r, off) = self.chunks.split_offsets_at(mid);
+        let (offsets_l, offsets_r, off) = self.chunks.split_offsets_with_intersection_at(mid);
         let (data_l, data_r) = self.data.split_at(off);
         (
             Chunked {
@@ -1768,7 +1775,7 @@ where
         if self.is_empty() {
             return None;
         }
-        let (_, rest_chunks, off) = self.chunks.split_offsets_at(1);
+        let (_, rest_chunks, off) = self.chunks.split_offsets_with_intersection_at(1);
         let (first, rest) = self.data.split_at(off);
         Some((
             first,

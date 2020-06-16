@@ -368,9 +368,9 @@ impl<T> Dummy for &mut [T] {
 }
 
 impl<T> RemovePrefix for &[T] {
+    #[inline]
     fn remove_prefix(&mut self, n: usize) {
-        let (_, r) = self.split_at(n);
-        *self = r;
+        *self = &self[n..];
     }
 }
 
@@ -388,9 +388,7 @@ impl<T> RemovePrefix for &mut [T] {
     /// ```
     fn remove_prefix(&mut self, n: usize) {
         let data = std::mem::replace(self, &mut []);
-
-        let (_, r) = data.split_at_mut(n);
-        *self = r;
+        *self = &mut data[n..];
     }
 }
 

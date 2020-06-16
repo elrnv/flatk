@@ -127,11 +127,11 @@ impl<O: std::iter::FromIterator<usize> + AsRef<[usize]>> std::iter::FromIterator
 }
 
 impl<'a> SplitOffsetsAt for SortedChunks<&'a [usize]> {
-    fn split_offsets_at(
+    fn split_offsets_with_intersection_at(
         self,
         mid: usize,
     ) -> (SortedChunks<&'a [usize]>, SortedChunks<&'a [usize]>, usize) {
-        let (offsets_l, offsets_r, off) = self.offsets.split_offsets_at(mid);
+        let (offsets_l, offsets_r, off) = self.offsets.split_offsets_with_intersection_at(mid);
         (
             SortedChunks {
                 sorted: self.sorted,
@@ -142,6 +142,22 @@ impl<'a> SplitOffsetsAt for SortedChunks<&'a [usize]> {
                 offsets: offsets_r,
             },
             off,
+        )
+    }
+    fn split_offsets_at(
+        self,
+        mid: usize,
+    ) -> (SortedChunks<&'a [usize]>, SortedChunks<&'a [usize]>) {
+        let (offsets_l, offsets_r) = self.offsets.split_offsets_at(mid);
+        (
+            SortedChunks {
+                sorted: self.sorted,
+                offsets: offsets_l,
+            },
+            SortedChunks {
+                sorted: self.sorted,
+                offsets: offsets_r,
+            },
         )
     }
 }
@@ -180,7 +196,7 @@ impl<O: Truncate> Truncate for SortedChunks<O> {
     }
 }
 
-impl<O: RemovePrefix> RemovePrefix for SortedChunks<O> {
+impl<O: RemovePrefix + Set> RemovePrefix for SortedChunks<O> {
     fn remove_prefix(&mut self, n: usize) {
         self.offsets.remove_prefix(n);
     }
