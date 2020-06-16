@@ -1,5 +1,5 @@
 #[cfg(feature = "derive")]
-use flatk::{Entity, Chunked, Chunked3, Get, View, ViewMut};
+use flatk::{Chunked, Chunked3, Entity, Get, View, ViewMut};
 
 #[cfg(feature = "derive")]
 #[derive(Copy, Clone, Debug, PartialEq, Entity)]
@@ -58,8 +58,10 @@ fn main() {
             .zip(state.cur.view_mut().iter_mut())
         {
             for (prev, cur) in prev.iter_mut().zip(cur.iter_mut()) {
-                for (prev_x, (cur_x, cur_v)) in
-                    prev.pos.iter_mut().zip(cur.pos.iter_mut().zip(cur.vel.iter()))
+                for (prev_x, (cur_x, cur_v)) in prev
+                    .pos
+                    .iter_mut()
+                    .zip(cur.pos.iter_mut().zip(cur.vel.iter()))
                 {
                     *cur_x += cur_v * dt;
                     *prev_x = *cur_x;

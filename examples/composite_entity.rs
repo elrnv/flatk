@@ -4,7 +4,7 @@
 //! This improves on the `entity` example by sharing the structure between `cur` and `prev` fields.
 
 #[cfg(feature = "derive")]
-use flatk::{Entity, Chunked, Chunked3, Get, View, ViewMut};
+use flatk::{Chunked, Chunked3, Entity, Get, View, ViewMut};
 
 #[cfg(feature = "derive")]
 #[derive(Copy, Clone, Debug, PartialEq, Entity)]
@@ -64,10 +64,13 @@ fn main() {
     // Iterate for 20 frames
     for _ in 0..20 {
         let dt = 0.1;
-        for mut element in state.view_mut().iter_mut()
-        {
+        for mut element in state.view_mut().iter_mut() {
             for Object { prev, cur, .. } in element.iter_mut() {
-                for (prev_x, (cur_x, cur_v)) in prev.pos.iter_mut().zip(cur.pos.iter_mut().zip(cur.vel.iter())) {
+                for (prev_x, (cur_x, cur_v)) in prev
+                    .pos
+                    .iter_mut()
+                    .zip(cur.pos.iter_mut().zip(cur.vel.iter()))
+                {
                     *cur_x += cur_v * dt;
                     *prev_x = *cur_x;
                 }
@@ -77,7 +80,6 @@ fn main() {
 
     dbg!(state);
 }
-
 
 #[cfg(not(feature = "derive"))]
 fn main() {
