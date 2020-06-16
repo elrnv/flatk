@@ -109,15 +109,6 @@ impl<I: std::slice::SliceIndex<[usize]>, O: AsRef<[usize]> + AsMut<[usize]>> std
     }
 }
 
-impl<O: IntoIterator> IntoIterator for SortedChunks<O> {
-    type Item = O::Item;
-    type IntoIter = O::IntoIter;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.offsets.into_iter()
-    }
-}
-
 impl Clear for SortedChunks {
     fn clear(&mut self) {
         self.offsets.clear();

@@ -1,10 +1,14 @@
+mod clumped_offsets;
 mod offsets;
 mod sorted_chunks;
+mod uniform;
 
 use super::*;
+pub use clumped_offsets::*;
 pub use offsets::*;
 pub use sorted_chunks::*;
 use std::convert::AsRef;
+pub use uniform::*;
 
 /// A partitioning of the collection `S` into distinct chunks.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -14,6 +18,8 @@ pub struct Chunked<S, O = Offsets> {
     pub chunks: O,
     pub data: S,
 }
+
+pub type ChunkedView<'a, S> = Chunked<S, Offsets<&'a [usize]>>;
 
 /*
  * The following traits provide abstraction over different types of offset collections.
@@ -30,11 +36,137 @@ pub trait IndexRange {
     fn index_range(&self, range: std::ops::Range<usize>) -> Option<std::ops::Range<usize>>;
 }
 
+pub trait IntoSizes {
+    type Iter: Iterator<Item = usize>;
+    fn into_sizes(self) -> Self::Iter;
+}
+
+pub trait GetOffset: Set {
+    /// A version of `offset_value` without bounds checking.
+    unsafe fn offset_value_unchecked(&self, index: usize) -> usize;
+
+    /// Get the length of the chunk at the given index.
+    ///
+    /// Returns the distance between offsets at `index` and `index + 1`.
+    ///
+    /// # Panics
+    ///
+    /// This funciton will panic if `chunk_index+1` is greater than or equal to `self.len()`.
+    #[inline]
+    fn chunk_len(&self, chunk_index: usize) -> usize {
+        assert!(chunk_index + 1 < self.len(), "Offset index out of bounds");
+        // SAFETY: The length is checked above.
+        unsafe {
+            self.offset_value_unchecked(chunk_index + 1) - self.offset_value_unchecked(chunk_index)
+        }
+    }
+
+    /// Return the raw value corresponding to the offset at the given index.
+    ///
+    /// Using `first_*` and `last_*` variants for getting first and last offsets are preferred
+    /// since they don't require bounds checking.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if `index` is greater than or equal to `self.len()`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use flatk::*;
+    /// let s = Offsets::new(vec![2,5,6,8]);
+    /// assert_eq!(2, s.offset_value(0));
+    /// assert_eq!(5, s.offset_value(1));
+    /// assert_eq!(6, s.offset_value(2));
+    /// assert_eq!(8, s.offset_value(3));
+    /// ```
+    #[inline]
+    fn offset_value(&self, index: usize) -> usize {
+        assert!(index < self.len(), "Offset index out of bounds");
+        // SAFETY: just checked the bound.
+        unsafe { self.offset_value_unchecked(index) }
+    }
+
+    /// Returns the offset at the given index with respect to (minus) the first offset.
+    /// This function returns the total length of `data` if `index` is equal to
+    /// `self.len()`.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if `index` is greater than or equal to `self.len()`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use flatk::*;
+    /// let s = Offsets::new(vec![2,5,6,8]);
+    /// assert_eq!(0, s.offset(0));
+    /// assert_eq!(3, s.offset(1));
+    /// assert_eq!(4, s.offset(2));
+    /// assert_eq!(6, s.offset(3));
+    /// ```
+    #[inline]
+    fn offset(&self, index: usize) -> usize {
+        self.offset_value(index) - self.first_offset_value()
+    }
+
+    /// A version of `offset` without bounds checking.
+    ///
+    /// # Safety
+    ///
+    /// It is assumed that `index` is strictly less than `self.len()`.
+    #[inline]
+    unsafe fn offset_unchecked(&self, index: usize) -> usize {
+        self.offset_value_unchecked(index) - self.first_offset_value()
+    }
+
+    /// Get the last offset.
+    ///
+    /// Since offsets are never empty by construction, this will always work.
+    #[inline]
+    fn last_offset(&self) -> usize {
+        // SAFETY: Offsets are never empty
+        unsafe { self.offset_unchecked(self.len() - 1) }
+    }
+
+    /// Get the first offset.
+    ///
+    /// Since offsets are never empty by construction, this will always work.
+    #[inline]
+    fn first_offset(&self) -> usize {
+        // SAFETY: Offsets are never empty
+        unsafe { self.offset_unchecked(0) }
+    }
+
+    /// Get the raw value corresponding to the last offset.
+    #[inline]
+    fn last_offset_value(&self) -> usize {
+        // SAFETY: Offsets are never empty
+        unsafe { self.offset_value_unchecked(self.len() - 1) }
+    }
+
+    /// Get the raw value corresponding to the first offset.
+    #[inline]
+    fn first_offset_value(&self) -> usize {
+        // SAFETY: Offsets are never empty
+        unsafe { self.offset_value_unchecked(0) }
+    }
+}
+
 /*
  * End of offset traits
  */
 
-pub type ChunkedView<'a, S> = Chunked<S, Offsets<&'a [usize]>>;
+/// `Clumped` is a variation of `Chunked` that compactly represents equidistant offsets as
+/// "clumps", hence the name.
+///
+/// In order for this type to compose with other container decorators, the clumped offsets must be
+/// declumped where necessary to enable efficient iteration. For this reason composition may have
+/// some overhead.
+pub type Clumped<S> = Chunked<S, ClumpedOffsets>;
+
+/// A view of a `Clumped` collection.
+pub type ClumpedView<'a, S> = Chunked<S, ClumpedOffsets<&'a [usize]>>;
 
 impl<S, O> Chunked<S, O> {
     /// Get a immutable reference to the underlying data.
@@ -70,7 +202,7 @@ impl<S, O> Chunked<S, O> {
 impl<S: Set> Chunked<S> {
     /// Construct a `Chunked` collection of elements from a set of `sizes` that
     /// determine the number of elements in each chunk. The sum of the sizes
-    /// must not be greater than the given collection `data`.
+    /// must be equal to the length of the given `data`.
     ///
     /// # Panics
     ///
@@ -88,11 +220,12 @@ impl<S: Set> Chunked<S> {
     /// assert_eq!(vec![5,6], iter.next().unwrap().to_vec());
     /// assert_eq!(None, iter.next());
     /// ```
-    pub fn from_sizes<L>(sizes: L, data: S) -> Self
-    where
-        L: AsRef<[usize]>,
-    {
-        let sizes = sizes.as_ref();
+    pub fn from_sizes(sizes: impl AsRef<[usize]>, data: S) -> Self {
+        Self::from_sizes_impl(sizes.as_ref(), data)
+    }
+
+    #[inline]
+    fn from_sizes_impl(sizes: &[usize], data: S) -> Self {
         assert_eq!(sizes.iter().sum::<usize>(), data.len());
 
         let mut offsets = Vec::with_capacity(sizes.len() + 1);
@@ -104,6 +237,72 @@ impl<S: Set> Chunked<S> {
 
         Chunked {
             chunks: offsets.into(),
+            data,
+        }
+    }
+}
+
+impl<S: Set> Clumped<S> {
+    /// Construct a `Clumped` collection of elements from a set of `sizes` and `counts` that
+    /// determine the number of elements in each chunk. The length of `sizes` must be equal to the
+    /// the length of `counts`. Each element in `sizes` corresponds to chunk size, while the
+    /// corresponding element in `counts` tells how many times this chunk size is repeated.
+    ///
+    /// The dot product between `sizes` and `counts` must be equal to the length of the given
+    /// `data`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `sizes` and `counts` have different lengths or
+    /// if the dot product between `sizes` and `counts` is not equal to `data.len()`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use flatk::*;
+    /// let s = Clumped::from_sizes_and_counts(vec![3,2], vec![2,1], vec![1,2,3,4,5,6,7,8]);
+    /// let mut iter = s.iter();
+    /// assert_eq!(&[1, 2, 3][..], iter.next().unwrap());
+    /// assert_eq!(&[4, 5, 6][..], iter.next().unwrap());
+    /// assert_eq!(&[7, 8][..], iter.next().unwrap());
+    /// assert_eq!(None, iter.next());
+    /// ```
+    pub fn from_sizes_and_counts(
+        sizes: impl AsRef<[usize]>,
+        counts: impl AsRef<[usize]>,
+        data: S,
+    ) -> Self {
+        Self::from_sizes_and_counts_impl(sizes.as_ref(), counts.as_ref(), data)
+    }
+
+    #[inline]
+    fn from_sizes_and_counts_impl(sizes: &[usize], counts: &[usize], data: S) -> Self {
+        assert_eq!(sizes.len(), counts.len());
+        assert_eq!(
+            sizes
+                .iter()
+                .zip(counts.iter())
+                .map(|(s, c)| s * c)
+                .sum::<usize>(),
+            data.len()
+        );
+
+        let mut clump_offsets = Vec::with_capacity(sizes.len() + 1);
+        let mut offsets = Vec::with_capacity(sizes.len() + 1);
+        clump_offsets.push(0);
+        offsets.push(0);
+
+        let mut prev_off = 0;
+        let mut prev_clump_off = 0;
+        for (s, c) in sizes.iter().zip(counts.iter()) {
+            prev_clump_off += c;
+            prev_off += s * c;
+            offsets.push(prev_off);
+            clump_offsets.push(prev_clump_off);
+        }
+
+        Chunked {
+            chunks: ClumpedOffsets::new(clump_offsets, offsets),
             data,
         }
     }
@@ -227,23 +426,6 @@ where
         S::Owned: Set<Elem = E::Owned> + Default + Reserve + Push<E::Owned>,
     {
         self.pruned(combine, |_, _, _| true)
-        //// Initialize and allocate all output types.
-        //let mut data: <S as IntoOwned>::Owned = Default::default();
-        //data.reserve_with_storage(self.data.len(), self.storage().len());
-        //let mut indices = Vec::new();
-        //indices.reserve(self.data.selection.len());
-        //let mut sparse = Sparse::new(Select::new(indices, self.data.selection.target.clone()), data);
-
-        //let mut offsets = vec![0];
-        //offsets.reserve(self.chunks.len() - 1);
-
-        //for sparse_chunk in self.iter() {
-        //    sparse.extend_compressed(sparse_chunk, |a, b| combine(a, b));
-        //    offsets.push(sparse.len());
-        //}
-
-        //// Assemble the output type from constructed parts.
-        //Chunked::from_offsets(offsets, sparse)
     }
 }
 
@@ -277,8 +459,8 @@ where
             data,
         );
 
-        let mut offsets = vec![0];
-        offsets.reserve(self.chunks.len() - 1);
+        let mut offsets = Vec::with_capacity(self.chunks.len());
+        offsets.push(0);
 
         for (i, sparse_chunk) in self.iter().enumerate() {
             sparse.extend_pruned(sparse_chunk, &mut combine, |j, e| keep(i, j, e));
@@ -316,9 +498,15 @@ impl<S: Set, O> Chunked<S, O> {
     }
 }
 
+impl<S, O> Chunked<S, O> {
+    pub fn offsets(&self) -> &O {
+        &self.chunks
+    }
+}
+
 impl<S, O> Chunked<S, O>
 where
-    O: AsRef<[usize]>,
+    O: GetOffset,
 {
     /// Return the offset into `data` of the element at the given index.
     /// This function returns the total length of `data` if `index` is equal to
@@ -337,8 +525,9 @@ where
     /// assert_eq!(3, s.offset(1));
     /// assert_eq!(4, s.offset(2));
     /// ```
+    #[inline]
     pub fn offset(&self, index: usize) -> usize {
-        self.chunks.as_ref()[index] - self.chunks.as_ref()[0]
+        self.chunks.offset(index)
     }
 
     /// Return the raw offset value of the element at the given index.
@@ -356,28 +545,22 @@ where
     /// assert_eq!(5, s.offset_value(1));
     /// assert_eq!(6, s.offset_value(2));
     /// ```
+    #[inline]
     pub fn offset_value(&self, index: usize) -> usize {
-        self.chunks.as_ref()[index]
+        self.chunks.offset_value(index)
     }
-    pub fn offsets(&self) -> &O {
-        &self.chunks
-    }
-    //pub fn offsets_mut(&mut self) -> &mut O {
-    //    &mut self.chunks
-    //}
 
     /// Get the length of the chunk at the given index.
-    /// This is equivalent to `self.get(chunk_index).len()`.
+    /// This is equivalent to `self.view().at(chunk_index).len()`.
+    #[inline]
     pub fn chunk_len(&self, chunk_index: usize) -> usize {
-        let offsets = self.chunks.as_ref();
-        assert!(chunk_index + 1 < offsets.len());
-        unsafe { offsets.get_unchecked(chunk_index + 1) - offsets.get_unchecked(chunk_index) }
+        self.chunks.chunk_len(chunk_index)
     }
 }
 
 impl<S, O> Chunked<S, Offsets<O>>
 where
-    O: AsRef<[usize]> + AsMut<[usize]>,
+    O: Set + AsRef<[usize]> + AsMut<[usize]>,
 {
     /// Move a number of elements from a chunk at the given index to the
     /// following chunk. If the last chunk is selected, then the transferred
@@ -527,7 +710,7 @@ where
 impl<S, O> Chunked<S, O>
 where
     S: Truncate + Set,
-    O: AsRef<[usize]>,
+    O: GetOffset,
 {
     /// Remove any unused data past the last offset.
     /// Return the number of elements removed.
@@ -549,9 +732,8 @@ where
     /// assert_eq!(4, s.data().len());
     /// ```
     pub fn trim_data(&mut self) -> usize {
-        let offsets = self.chunks.as_ref();
-        debug_assert!(offsets.len() > 0);
-        let last_offset = unsafe { *offsets.get_unchecked(offsets.len() - 1) };
+        debug_assert!(self.chunks.len() > 0);
+        let last_offset = self.chunks.last_offset();
         let num_removed = self.data.len() - last_offset;
         self.data.truncate(last_offset);
         debug_assert_eq!(self.data.len(), last_offset);
@@ -562,7 +744,7 @@ where
 impl<S, O> Chunked<S, O>
 where
     S: Truncate + Set,
-    O: AsRef<[usize]> + Truncate,
+    O: AsRef<[usize]> + GetOffset + Truncate,
 {
     /// Remove any empty chunks at the end of the collection and any unindexed
     /// data past the last offset.
@@ -585,15 +767,16 @@ where
     /// assert_eq!(4, s.data().len());
     /// ```
     pub fn trim(&mut self) -> usize {
-        let offsets = self.chunks.as_ref();
-        let num_offsets = offsets.len();
+        let num_offsets = self.chunks.len();
         debug_assert!(num_offsets > 0);
-        let last_offset = unsafe { *offsets.get_unchecked(num_offsets - 1) };
+        let last_offset = self.chunks.last_offset();
         // Count the number of identical offsets from the end.
-        let num_empty = offsets
+        let num_empty = self
+            .chunks
+            .as_ref()
             .iter()
             .rev()
-            .skip(1) // skip the acutal last offset
+            .skip(1) // skip the actual last offset
             .take_while(|&&offset| offset == last_offset)
             .count();
 
@@ -605,14 +788,11 @@ where
 
 impl<S: Truncate, O> Truncate for Chunked<S, O>
 where
-    O: AsRef<[usize]>,
+    O: GetOffset,
 {
     fn truncate(&mut self, new_len: usize) {
-        let offsets = self.chunks.as_ref();
-        debug_assert!(offsets.len() > 0);
-        let end = unsafe { offsets.get_unchecked(offsets.len() - 1) };
-        let first = offsets[new_len];
-        self.data.truncate(end - first);
+        self.data
+            .truncate(self.chunks.last_offset_value() - self.chunks.offset_value(new_len));
     }
 }
 
@@ -1081,11 +1261,11 @@ where
     S: SplitAt + Set + Dummy,
 {
     type Item = S;
-    type IntoIter = VarIter<'a, S>;
+    type IntoIter = ChunkedIter<Sizes<'a>, S>;
 
     fn into_iter(self) -> Self::IntoIter {
-        VarIter {
-            offsets: self.chunks,
+        ChunkedIter {
+            sizes: self.chunks.into_sizes(),
             data: self.data,
         }
     }
@@ -1098,7 +1278,7 @@ where
     <S as View<'a>>::Type: SplitAt + Set + Dummy,
 {
     type Item = <S as View<'a>>::Type;
-    type Iter = VarIter<'a, <S as View<'a>>::Type>;
+    type Iter = ChunkedIter<Sizes<'a>, <S as View<'a>>::Type>;
 
     fn view_iter(&'a self) -> Self::Iter {
         self.iter()
@@ -1112,7 +1292,7 @@ where
     <S as ViewMut<'a>>::Type: SplitAt + Set + Dummy,
 {
     type Item = <S as ViewMut<'a>>::Type;
-    type Iter = VarIter<'a, <S as ViewMut<'a>>::Type>;
+    type Iter = ChunkedIter<Sizes<'a>, <S as ViewMut<'a>>::Type>;
 
     fn view_mut_iter(&'a mut self) -> Self::Iter {
         self.iter_mut()
@@ -1124,7 +1304,8 @@ impl_atom_iterators_recursive!(impl<S, O> for Chunked<S, O> { data });
 impl<'a, S, O> Chunked<S, O>
 where
     S: View<'a>,
-    O: View<'a, Type = Offsets<&'a [usize]>>,
+    O: View<'a>,
+    O::Type: IntoSizes,
 {
     /// Produce an iterator over elements (borrowed slices) of a `Chunked`.
     ///
@@ -1169,9 +1350,11 @@ where
     /// assert_eq!(Some(&[10,11][..]), iter0.next());
     /// assert_eq!(None, iter0.next());
     /// ```
-    pub fn iter(&'a self) -> VarIter<'a, <S as View<'a>>::Type> {
-        VarIter {
-            offsets: self.chunks.view(),
+    pub fn iter(
+        &'a self,
+    ) -> ChunkedIter<<<O as View<'a>>::Type as IntoSizes>::Iter, <S as View<'a>>::Type> {
+        ChunkedIter {
+            sizes: self.chunks.view().into_sizes(),
             data: self.data.view(),
         }
     }
@@ -1180,7 +1363,8 @@ where
 impl<'a, S, O> Chunked<S, O>
 where
     S: ViewMut<'a>,
-    O: View<'a, Type = Offsets<&'a [usize]>>,
+    O: View<'a>,
+    O::Type: IntoSizes,
 {
     /// Produce a mutable iterator over elements (borrowed slices) of a
     /// `Chunked`.
@@ -1232,9 +1416,11 @@ where
     /// assert_eq!(Some(&[10,11][..]), iter0.next());
     /// assert_eq!(None, iter0.next());
     /// ```
-    pub fn iter_mut(&'a mut self) -> VarIter<'a, <S as ViewMut<'a>>::Type> {
-        VarIter {
-            offsets: self.chunks.view(),
+    pub fn iter_mut(
+        &'a mut self,
+    ) -> ChunkedIter<<<O as View<'a>>::Type as IntoSizes>::Iter, <S as ViewMut<'a>>::Type> {
+        ChunkedIter {
+            sizes: self.chunks.view().into_sizes(),
             data: self.data.view_mut(),
         }
     }
@@ -1261,24 +1447,26 @@ where
     }
 }
 
-/// A special iterator capable of iterating over a `Chunked`.
-pub struct VarIter<'a, S> {
-    offsets: Offsets<&'a [usize]>,
+/// A special iterator capable of iterating over a `Chunked` type.
+pub struct ChunkedIter<I, S> {
+    sizes: I,
     data: S,
 }
 
-impl<'a, V> Iterator for VarIter<'a, V>
+impl<I, V> Iterator for ChunkedIter<I, V>
 where
     V: SplitAt + Set + Dummy,
+    I: Iterator<Item = usize>,
 {
     type Item = V;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // WARNING: After calling std::mem::replace with dummy, self.data is a
-        // transient invalid Chunked collection.
+        // WARNING: After calling std::mem::replace with dummy, self.data is in a
+        // temporarily invalid state.
         let data_slice = std::mem::replace(&mut self.data, unsafe { Dummy::dummy() });
-        self.offsets.pop_offset().map(move |n| {
+        self.sizes.next().map(move |n| {
             let (l, r) = data_slice.split_at(n);
+            // self.data is restored to the valid state here.
             self.data = r;
             l
         })
@@ -1348,7 +1536,7 @@ where
     fn into_iter(self) -> Self::IntoIter {
         let Chunked { chunks, data } = self;
         VarIntoIter {
-            offsets: chunks.into_iter().peekable(),
+            offsets: chunks.into_inner().into_iter().peekable(),
             data,
         }
     }
@@ -1742,5 +1930,27 @@ mod tests {
         let v_mut = (&mut s).into_view();
         v_mut.isolate(0)[0] = 100;
         assert_eq!(&[100][..], s.into_view().at(0));
+    }
+
+    #[test]
+    fn trim() {
+        // This is a similar example to the one in the doc test, but is more adversarial by using
+        // offsets not starting at 0.
+        let mut s = Chunked::from_offsets(vec![2, 3, 6, 8], vec![1, 2, 3, 4, 5, 6]);
+        assert_eq!(3, s.len());
+
+        // Transferring the last two elements past the indexed stack.
+        // This creates a zero sized chunk at the end.
+        s.transfer_forward(2, 2);
+        assert_eq!(6, s.data().len());
+        assert_eq!(3, s.len());
+
+        let mut trimmed = s.clone();
+        trimmed.trim_data(); // Remove unindexed elements.
+        assert_eq!(4, trimmed.data().len());
+
+        let mut trimmed = s;
+        trimmed.trim(); // Remove unindexed elements.
+        assert_eq!(4, trimmed.data().len());
     }
 }

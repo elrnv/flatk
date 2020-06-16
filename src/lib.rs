@@ -178,7 +178,6 @@ mod slice;
 mod sparse;
 mod subset;
 mod tuple;
-mod uniform;
 mod vec;
 mod view;
 
@@ -191,7 +190,6 @@ pub use slice::*;
 pub use sparse::*;
 pub use subset::*;
 pub use tuple::*;
-pub use uniform::*;
 pub use vec::*;
 pub use view::*;
 

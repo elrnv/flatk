@@ -287,6 +287,7 @@ impl<S: Set, N: Unsigned + Default> UniChunked<S, U<N>> {
     /// assert_eq!(Some(&[4,5,6]), iter.next());
     /// assert_eq!(None, iter.next());
     /// ```
+    #[inline]
     pub fn from_flat(data: S) -> Self {
         assert_eq!(data.len() % N::to_usize(), 0);
         UniChunked {
@@ -298,6 +299,7 @@ impl<S: Set, N: Unsigned + Default> UniChunked<S, U<N>> {
 
 impl<S, N> UniChunked<S, N> {
     /// Convert this `UniChunked` collection into its inner representation.
+    #[inline]
     pub fn into_inner(self) -> S {
         self.data
     }
@@ -317,6 +319,7 @@ impl<S: Default> ChunkedN<S> {
     /// assert_eq!(Some(&[1,2,3][..]), iter.next());
     /// assert_eq!(None, iter.next());
     /// ```
+    #[inline]
     pub fn with_stride(n: usize) -> Self {
         UniChunked {
             chunk_size: n,
@@ -339,6 +342,7 @@ impl<S: Set> ChunkedN<S> {
     /// assert_eq!(Some(&[4,5,6][..]), iter.next());
     /// assert_eq!(None, iter.next());
     /// ```
+    #[inline]
     pub fn from_flat_with_stride(data: S, n: usize) -> Self {
         assert_eq!(data.len() % n, 0);
         UniChunked {
