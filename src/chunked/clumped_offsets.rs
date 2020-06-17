@@ -98,9 +98,9 @@ impl<O: AsRef<[usize]> + Set> ClumpedOffsets<O> {
     pub fn sizes(&self) -> UnclumpedSizes {
         debug_assert!(!self.chunk_offsets.is_empty());
         UnclumpedSizes {
+            stride: 0,
             cur: self.chunk_offsets.first_offset_value(),
-            chunk_offsets: self.chunk_offsets.as_ref(),
-            offsets: self.offsets.as_ref(),
+            clumped_offsets: self.view(),
         }
     }
 
@@ -138,9 +138,9 @@ impl<O: AsRef<[usize]> + Set> ClumpedOffsets<O> {
 
 #[derive(Copy, Clone)]
 pub struct UnclumpedSizes<'a> {
+    stride: usize,
     cur: usize,
-    chunk_offsets: &'a [usize],
-    offsets: &'a [usize],
+    clumped_offsets: ClumpedOffsets<&'a [usize]>,
 }
 
 impl<'a> Iterator for UnclumpedSizes<'a> {
@@ -148,53 +148,65 @@ impl<'a> Iterator for UnclumpedSizes<'a> {
     #[inline]
     fn next(&mut self) -> Option<usize> {
         let UnclumpedSizes {
+            stride,
             cur,
-            chunk_offsets,
-            offsets,
+            clumped_offsets: co,
         } = self;
 
-        if offsets.len() < 2 {
+        let n = co.chunk_offsets.len();
+        if n < 1 {
             return None;
         }
 
-        // Sanity check that chunk_offsets are in sync.
-        debug_assert!(chunk_offsets.len() > 1);
-
-        // The following is safe because we checked the length of offsets above.
-        // Also the API enforces the size correspondence between
-        // chunk_offsets and offsets. We also do a debug check above.
-        let offset = unsafe { *offsets.get_unchecked(0) };
-        let chunk_offset = unsafe { *chunk_offsets.get_unchecked(0) };
-        let next_offset = unsafe { *offsets.get_unchecked(1) };
-        let next_chunk_offset = unsafe { *chunk_offsets.get_unchecked(1) };
-
-        let clump_dist = next_offset - offset;
-        let clump_size = next_chunk_offset - chunk_offset;
-        let stride = clump_dist / clump_size;
+        let chunk_offset = co.chunk_offsets.first_offset_value();
 
         // Incrementing the head offset effectively pops the unclumped offset.
-        *cur += 1;
-        if *cur == next_chunk_offset {
-            // Pop the last internal offset, which also changes the stride.
-            self.offsets = &offsets[1..];
-            self.chunk_offsets = &chunk_offsets[1..];
+        if *cur == chunk_offset {
+            let offset = co.offsets.first_offset_value();
+
+            // We reached the end.
+            if n < 2 {
+                return None;
+            }
+
+            // SAFETY: We know there are at least two elements in both offsets and chunk_offsets.
+            unsafe {
+                // Pop the last internal offset, which also changes the stride.
+                // The can be done with remove_prefix, but to avoid additional checks, we do it
+                // manually here.
+                co.offsets.0 = &co.offsets.0.get_unchecked(1..);
+                co.chunk_offsets.0 = &co.chunk_offsets.0.get_unchecked(1..);
+            }
+
+            let next_offset = co.offsets.first_offset_value();
+            let next_chunk_offset = co.chunk_offsets.first_offset_value();
+
+            // Recompute the stride.
+            let clump_dist = next_offset - offset;
+            let chunk_size = next_chunk_offset - chunk_offset;
+            *stride = clump_dist / chunk_size;
         }
 
+        *cur += 1;
+
         // The current stride is equal to the next effective unclumped size
-        Some(stride)
+        Some(*stride)
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = self.chunk_offsets.len();
+        let n = self.clumped_offsets.len() - 1;
         (n, Some(n))
     }
 
     #[inline]
     fn count(self) -> usize {
-        self.chunk_offsets.len()
+        self.size_hint().0
     }
 }
+
+impl ExactSizeIterator for UnclumpedSizes<'_> {}
+impl std::iter::FusedIterator for UnclumpedSizes<'_> {}
 
 impl<'a> IntoValues for ClumpedOffsets<&'a [usize]> {
     type Iter = UnclumpedOffsetValues<'a>;
@@ -218,9 +230,9 @@ impl<'a> IntoSizes for ClumpedOffsets<&'a [usize]> {
     fn into_sizes(self) -> UnclumpedSizes<'a> {
         debug_assert!(!self.chunk_offsets.is_empty());
         UnclumpedSizes {
+            stride: 0,
             cur: self.chunk_offsets.first_offset_value(),
-            chunk_offsets: self.chunk_offsets.into_inner(),
-            offsets: self.offsets.into_inner(),
+            clumped_offsets: self,
         }
     }
 }
@@ -253,22 +265,27 @@ impl<'a> Iterator for UnclumpedOffsetValues<'a> {
 
         // SAFETY: chunk_offsets length is checked above, and offsets has the same length.
         let offset = unsafe { *offsets.get_unchecked(0) };
-        let chunk_offset = unsafe { *chunk_offsets.get_unchecked(0) };
 
         if *cur_offset == offset {
-            // Pop the last internal offset.
+            // SAFETY: chunk_offsets length is checked above, and offsets has the same length.
+            let chunk_offset = unsafe { *chunk_offsets.get_unchecked(0) };
+
+            // SAFETY: There is at least one element in both offsets and chunk_offsets.
             unsafe {
+                // Pop the last internal offset.
                 self.offsets = &offsets.get_unchecked(1..);
                 self.chunk_offsets = &chunk_offsets.get_unchecked(1..);
             }
+
             if let Some(next_offset) = self.offsets.get(0) {
-                // The following is safe since clump_ofsfets is expected to have the same size as
+                // The following is safe since clump_offsets is expected to have the same size as
                 // offsets (debug_assert above checking this invariant).
                 let next_chunk_offset = unsafe { self.chunk_offsets.get_unchecked(0) };
-                // Recompute the new stride
+
+                // Recompute the new stride.
                 let clump_dist = next_offset - offset;
-                let clump_size = next_chunk_offset - chunk_offset;
-                *cur_stride = clump_dist / clump_size;
+                let chunk_size = next_chunk_offset - chunk_offset;
+                *cur_stride = clump_dist / chunk_size;
                 *cur_offset += *cur_stride;
             }
             Some(offset)
@@ -281,15 +298,25 @@ impl<'a> Iterator for UnclumpedOffsetValues<'a> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = self.offsets.len();
+        let n = self
+            .chunk_offsets
+            .last()
+            .map(|last| {
+                // SAFETY: there is a last, so there must be a first.
+                last - unsafe { *self.chunk_offsets.get_unchecked(0) } + 1
+            })
+            .unwrap_or(0);
         (n, Some(n))
     }
 
     #[inline]
     fn count(self) -> usize {
-        self.offsets.len()
+        self.size_hint().0
     }
 }
+
+impl ExactSizeIterator for UnclumpedOffsetValues<'_> {}
+impl std::iter::FusedIterator for UnclumpedOffsetValues<'_> {}
 
 impl<'a> SplitOffsetsAt for ClumpedOffsets<&'a [usize]> {
     /// Same as `split_offsets_at`, but in addition, return the offset of the middle element
@@ -636,7 +663,6 @@ mod tests {
 
         // Test at the beginning
         let (l, r, off) = clumped_offsets.view().split_offsets_with_intersection_at(0);
-        dbg!(&l);
         assert_eq!(Offsets::from(l).into_inner(), &[0]);
         assert_eq!(
             Offsets::from(r).into_inner(),
@@ -702,5 +728,38 @@ mod tests {
         assert_eq!(5, s.offset_value(1));
         assert_eq!(6, s.offset_value(2));
         assert_eq!(8, s.offset_value(3));
+    }
+
+    #[test]
+    fn offset_value_iter() {
+        use ExactSizeIterator;
+        let offsets = Offsets::new(vec![0, 3, 6, 9, 12, 16, 20, 24, 27, 30, 33, 36, 39]);
+        let clumped_offsets = ClumpedOffsets::from(offsets.clone());
+        let iter = clumped_offsets.values();
+        let iter_len = iter.len();
+        assert_eq!(iter_len, offsets.len());
+        assert_eq!(iter_len, iter.count());
+        let mut count = 0;
+        for _ in iter {
+            count += 1;
+        }
+        assert_eq!(iter_len, count);
+    }
+
+    #[test]
+    fn sizes_iter() {
+        use ExactSizeIterator;
+        let offsets = Offsets::new(vec![0, 3, 6, 9, 12, 16, 20, 24, 27, 30, 33, 36, 39]);
+        let clumped_offsets = ClumpedOffsets::from(offsets.clone());
+        let iter = clumped_offsets.sizes();
+        let iter_len = iter.len();
+        assert_eq!(iter_len, offsets.len() - 1);
+        assert_eq!(iter_len, iter.count());
+        let mut count = 0;
+        for v in iter {
+            dbg!(v);
+            count += 1;
+        }
+        assert_eq!(iter_len, count);
     }
 }

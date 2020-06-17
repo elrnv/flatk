@@ -45,10 +45,29 @@ fn chunks_exact(v: &mut Vec<f64>) {
 }
 
 #[inline]
-fn chunked(v: &mut Vec<f64>) {
+fn chunked3(v: &mut Vec<f64>) {
     use flatk::Chunked3;
     for a in Chunked3::from_flat(v.as_mut_slice()).into_iter() {
         *a = compute(a[0], a[1], a[2]);
+    }
+}
+
+#[inline]
+fn chunked_n(v: &mut Vec<f64>) {
+    use flatk::ChunkedN;
+    for a in ChunkedN::from_flat_with_stride(v.as_mut_slice(), 3).into_iter() {
+        a.copy_from_slice(&compute(a[0], a[1], a[2]));
+    }
+}
+
+#[inline]
+fn clumped(v: &mut Vec<f64>) {
+    use flatk::Clumped;
+    for a in
+        Clumped::from_clumped_offsets(&[0, v.len() / 3][..], &[0, v.len()][..], v.as_mut_slice())
+            .into_iter()
+    {
+        a.copy_from_slice(&compute(a[0], a[1], a[2]));
     }
 }
 
@@ -85,10 +104,23 @@ fn chunks_iter(c: &mut Criterion) {
             })
         });
 
-        group.bench_function(BenchmarkId::new("Chunked", buf_size), |b| {
+        group.bench_function(BenchmarkId::new("Chunked3", buf_size), |b| {
             let mut v = make_random_vec(buf_size);
             b.iter(|| {
-                chunked(&mut v);
+                chunked3(&mut v);
+            })
+        });
+
+        group.bench_function(BenchmarkId::new("ChunkedN", buf_size), |b| {
+            let mut v = make_random_vec(buf_size);
+            b.iter(|| {
+                chunked_n(&mut v);
+            })
+        });
+        group.bench_function(BenchmarkId::new("Clumped", buf_size), |b| {
+            let mut v = make_random_vec(buf_size);
+            b.iter(|| {
+                clumped(&mut v);
             })
         });
     }

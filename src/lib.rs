@@ -1286,9 +1286,10 @@ where
 /// let mut chunked = Chunked::from_offsets(vec![0, 1, 4], chunked);
 /// let mut mut_view = chunked.view_mut();
 ///
-/// let mut1 = mut_view.at_mut(1).at_mut(1);
-/// // We should fail to compile when trying to get a second mut ref.
-/// let mut2 = mut_view.at_mut(1).at_mut(1);
+/// // The .at should not work with a mutable view.
+/// let mut1 = mut_view.at(1).at(1);
+/// // We should at least fail to compile when trying to get a second mut ref.
+/// let mut2 = mut_view.at(1).at(1);
 ///```
 #[doc(hidden)]
 pub fn multiple_mut_refs_compile_test() {}

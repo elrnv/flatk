@@ -175,10 +175,10 @@ pub trait BinarySearch<T> {
 /// In order for this type to compose with other container decorators, the clumped offsets must be
 /// declumped where necessary to enable efficient iteration. For this reason composition may have
 /// some overhead.
-pub type Clumped<S> = Chunked<S, ClumpedOffsets>;
+pub type Clumped<S, O = Vec<usize>> = Chunked<S, ClumpedOffsets<O>>;
 
 /// A view of a `Clumped` collection.
-pub type ClumpedView<'a, S> = Chunked<S, ClumpedOffsets<&'a [usize]>>;
+pub type ClumpedView<'a, S> = Clumped<S, &'a [usize]>;
 
 impl<S, O> Chunked<S, O> {
     /// Get a immutable reference to the underlying data.
@@ -348,11 +348,79 @@ impl<S: Set, O: AsRef<[usize]>> Chunked<S, Offsets<O>> {
     pub fn from_offsets(offsets: O, data: S) -> Self {
         let offsets_ref = offsets.as_ref();
         assert_eq!(
-            *offsets_ref.last().unwrap(),
-            data.len() + *offsets_ref.first().unwrap()
+            *offsets_ref.last().expect("offsets must be non empty"),
+            data.len() + *offsets_ref.first().unwrap(),
+            "the length of data must equal the difference between first and last offsets"
         );
         Chunked {
-            chunks: Offsets::new(offsets),
+            chunks: Offsets(offsets),
+            data,
+        }
+    }
+}
+
+impl<S: Set, O: AsRef<[usize]>> Clumped<S, O> {
+    /// Construct a `Clumped` collection of elements given a collection of
+    /// "clumped" offsets into `S`. This is the most efficient constructor for creating `Clumped`
+    /// types, however it is also the most error prone.
+    ///
+    /// `chunk_offsets`, identify the offsets into a conceptually "chunked" version of `S`.
+    /// `offsets` is a corresponding the collection of offsets into `S` itself.
+    ///
+    /// In theory, these should specify the places where the chunk size (or stride) changes within
+    /// `S`, however this is not always necessary.
+    ///
+    /// # Panics
+    ///
+    /// The absolute value of offsets (this applies to both `offsets` as well as `chunk_offsets`)
+    /// is not significant, however their relative quantities are. More specifically, for
+    /// `offsets`, if `x` is the first offset, then the last element of offsets must always be
+    /// `data.len() + x`.  For `chunk_offsets` the same holds but `data` is substituted by the
+    /// conceptual collection of chunks stored in `data`.  This also implies that offsets cannot be
+    /// empty. This function panics if any one of these invariants isn't satisfied.
+    ///
+    /// This function will also panic if `offsets` and `chunk_offsets` have different lengths.
+    ///
+    /// Although the validity of `offsets` is easily checked, the same is not true for
+    /// `chunk_offsets`, since the implied stride must divide into the size of each clump, and
+    /// checking this at run time is expensive. As such a malformed `Clumped` may cause panics
+    /// somewhere down the line. For ensuring a valid construction, use the
+    /// [`from_sizes_and_counts`] constructor.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use flatk::*;
+    /// let v = vec![1,2, 3,4, 5,6, 7,8,9];
+    ///
+    /// // The following splits v intos 3 pairs and a triplet.
+    /// let s = Clumped::from_clumped_offsets(vec![0,3,4], vec![0,6,9], v);
+    /// let mut iter = s.iter();
+    /// assert_eq!(&[1,2][..], iter.next().unwrap());
+    /// assert_eq!(&[3,4][..], iter.next().unwrap());
+    /// assert_eq!(&[5,6][..], iter.next().unwrap());
+    /// assert_eq!(&[7,8,9][..], iter.next().unwrap());
+    /// assert_eq!(None, iter.next());
+    /// ```
+    #[inline]
+    pub fn from_clumped_offsets(chunk_offsets: O, offsets: O, data: S) -> Self {
+        let offsets_ref = offsets.as_ref();
+        assert_eq!(
+            *offsets_ref.last().expect("offsets must be non empty"),
+            data.len() + *offsets_ref.first().unwrap(),
+            "the length of data must equal the difference between first and last offsets"
+        );
+        let chunk_offsets_ref = chunk_offsets.as_ref();
+        assert_eq!(
+            chunk_offsets_ref.len(),
+            offsets_ref.len(),
+            "there must be the same number of offsets as there are chunk offsets"
+        );
+        Chunked {
+            chunks: ClumpedOffsets {
+                chunk_offsets: Offsets(chunk_offsets),
+                offsets: Offsets(offsets),
+            },
             data,
         }
     }
@@ -1301,12 +1369,13 @@ where
     }
 }
 
-impl<'a, S> IntoIterator for Chunked<S, Offsets<&'a [usize]>>
+impl<'a, S, O> IntoIterator for Chunked<S, O>
 where
+    O: IntoSizes,
     S: SplitAt + Set + Dummy,
 {
     type Item = S;
-    type IntoIter = ChunkedIter<Sizes<'a>, S>;
+    type IntoIter = ChunkedIter<O::Iter, S>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
