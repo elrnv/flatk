@@ -2,10 +2,10 @@
 name = "flatk-derive"
 version = "0.1.0"
 authors = ["Egor Larionov <egor.larionov@gmail.com>"]
-license = "MIT OR Apache-2.0"
-description = "Derive macros for deriving [flatk](https:://crates.io/crates/flatk) traits"
-readme = "README.md"
 edition = "2018"
+
+description = "Derive macros for deriving traits for [flatk](https:://crates.io/crates/flatk)"
+license = "MIT OR Apache-2.0"
 
 homepage = "https://github.com/elrnv/flatk-derive"
 repository = "https://github.com/elrnv/flatk-derive"

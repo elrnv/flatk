@@ -6,10 +6,12 @@ edition = "2018"
 
 description = "Flat layout abstraction toolkit."
 license = "MIT OR Apache-2.0"
+readme = "README.md"
+
 homepage = "https://github.com/elrnv/flatk"
 repository = "https://github.com/elrnv/flatk"
 documentation = "https://docs.rs/flatk"
-keywords = ["geometry", "processing", "algorithms", "io"]
+keywords = ["chunked", "sparse", "entity", "structure", "layout"]
 
 [dependencies]
 typenum = "1.12.0"
