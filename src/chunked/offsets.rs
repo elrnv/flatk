@@ -180,6 +180,17 @@ impl<'a> DoubleEndedIterator for Sizes<'a> {
 impl ExactSizeIterator for Sizes<'_> {}
 impl std::iter::FusedIterator for Sizes<'_> {}
 
+impl<'a> IntoValues for Offsets<&'a [usize]> {
+    type Iter = OffsetValues<'a>;
+    /// Returns an iterator over offset values represented by the stored `Offsets`.
+    #[inline]
+    fn into_values(self) -> OffsetValues<'a> {
+        OffsetValues {
+            offset_values: self.0,
+        }
+    }
+}
+
 impl<'a> IntoSizes for Offsets<&'a [usize]> {
     type Iter = Sizes<'a>;
     /// Returns an iterator over chunk sizes represented by the stored `Offsets`.
@@ -197,9 +208,19 @@ impl<O: AsRef<[usize]>> Offsets<O> {
             offsets: self.0.as_ref(),
         }
     }
-    /// Returns an iterator over offsets.
+
+    /// Returns an iterator over offset values.
+    #[deprecated(since = "0.2.1", note = "please use `values` instead")]
     #[inline]
     pub fn iter(&self) -> OffsetValues {
+        OffsetValues {
+            offset_values: self.0.as_ref(),
+        }
+    }
+
+    /// Returns an iterator over offset values.
+    #[inline]
+    pub fn values(&self) -> OffsetValues {
         OffsetValues {
             offset_values: self.0.as_ref(),
         }

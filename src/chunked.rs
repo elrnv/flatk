@@ -42,6 +42,11 @@ pub trait IntoSizes {
     fn into_sizes(self) -> Self::Iter;
 }
 
+pub trait IntoValues {
+    type Iter: Iterator<Item = usize>;
+    fn into_values(self) -> Self::Iter;
+}
+
 pub trait GetOffset: Set {
     /// A version of `offset_value` without bounds checking.
     unsafe fn offset_value_unchecked(&self, index: usize) -> usize;

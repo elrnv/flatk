@@ -108,8 +108,24 @@ impl<O: AsRef<[usize]> + Set> ClumpedOffsets<O> {
     ///
     /// This is equivalent to iterating over `Offsets` after conversion, but it doesn't require any
     /// additional allocations.
+    #[deprecated(since = "0.2.1", note = "please use `values` instead")]
     #[inline]
     pub fn iter(&self) -> UnclumpedOffsetValues {
+        debug_assert!(!self.offsets.as_ref().is_empty());
+        UnclumpedOffsetValues {
+            cur_stride: 0,
+            cur_offset: self.offsets.first_offset_value(),
+            chunk_offsets: self.chunk_offsets.as_ref(),
+            offsets: self.offsets.as_ref(),
+        }
+    }
+
+    /// An iterator over unclumped offsets.
+    ///
+    /// This is equivalent to iterating over `Offsets` after conversion, but it doesn't require any
+    /// additional allocations.
+    #[inline]
+    pub fn values(&self) -> UnclumpedOffsetValues {
         debug_assert!(!self.offsets.as_ref().is_empty());
         UnclumpedOffsetValues {
             cur_stride: 0,
@@ -177,6 +193,21 @@ impl<'a> Iterator for UnclumpedSizes<'a> {
     #[inline]
     fn count(self) -> usize {
         self.chunk_offsets.len()
+    }
+}
+
+impl<'a> IntoValues for ClumpedOffsets<&'a [usize]> {
+    type Iter = UnclumpedOffsetValues<'a>;
+    /// Returns an iterator over offset values represented by the stored `Offsets`.
+    #[inline]
+    fn into_values(self) -> UnclumpedOffsetValues<'a> {
+        debug_assert!(!self.chunk_offsets.is_empty());
+        UnclumpedOffsetValues {
+            cur_stride: 0,
+            cur_offset: self.offsets.first_offset_value(),
+            chunk_offsets: self.chunk_offsets.into_inner(),
+            offsets: self.offsets.into_inner(),
+        }
     }
 }
 
@@ -452,7 +483,7 @@ impl<O: AsRef<[usize]> + Set> From<Offsets<O>> for ClumpedOffsets {
     #[inline]
     fn from(offsets: Offsets<O>) -> Self {
         debug_assert!(!offsets.is_empty(), "Offsets are corrupted.");
-        offsets.iter().collect()
+        offsets.values().collect()
     }
 }
 
@@ -463,7 +494,7 @@ impl<O: AsRef<[usize]> + Set> From<ClumpedOffsets<O>> for Offsets {
     #[inline]
     fn from(clumped_offsets: ClumpedOffsets<O>) -> Self {
         debug_assert!(!clumped_offsets.is_empty(), "Offsets are corrupted.");
-        Offsets::new(clumped_offsets.iter().collect())
+        Offsets::new(clumped_offsets.values().collect())
     }
 }
 
@@ -630,7 +661,7 @@ mod tests {
     fn iterators() {
         let offsets = Offsets::new(vec![0, 3, 6, 9, 12, 16, 20, 24, 27, 30, 33, 36, 39]);
         let clumped_offsets = ClumpedOffsets::from(offsets.clone());
-        for (orig, unclumped) in offsets.iter().zip(clumped_offsets.iter()) {
+        for (orig, unclumped) in offsets.values().zip(clumped_offsets.values()) {
             assert_eq!(orig, unclumped);
         }
         for (orig, unclumped) in offsets.sizes().zip(clumped_offsets.sizes()) {
