@@ -7,7 +7,7 @@
 //! data structures out of existing data:
 //!
 //! - `UniChunked`:  Subdivides a collection into a number of uniformly sized (at compile time or
-//!   run-time) contiguous groups.
+//!   run-time) contiguous chunks.
 //!   For example if we have a `Vec` of floats representing 3D positions, we may wish to interpret them
 //!   as triplets:
 //!
@@ -23,7 +23,22 @@
 //!   assert_eq!(pos[2], [0.0, 1.0, 0.0]);
 //!   ```
 //!
-//! - `Chunked`: Subdivides a collection into a number of unstructured (non-uniform) groups.
+//!   For dynamically determined chunks sizes, the type alias `ChunkedN` can be used instead. The
+//!   previous example can then be reproduced as:
+//!
+//!   ```rust
+//!   use flatk::ChunkedN;
+//!
+//!   let pos_data = vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0];
+//!
+//!   let pos = ChunkedN::from_flat_with_stride(pos_data, 3);
+//!
+//!   assert_eq!(pos[0], [0.0; 3]);
+//!   assert_eq!(pos[1], [1.0; 3]);
+//!   assert_eq!(pos[2], [0.0, 1.0, 0.0]);
+//!   ```
+//!
+//! - `Chunked`: Subdivides a collection into a number of unstructured (non-uniformly sized) chunks.
 //!   For example we may have a non-uniform grouping of nodes stored in a `Vec`, which can represent a
 //!   directed graph:
 //!   
@@ -51,6 +66,53 @@
 //!       \ | /
 //!        \|/
 //!         3
+//!   ```
+//! - `Clumped`: A hybrid between `UniChunked` and `Chunked`, this type aggregates references to
+//!   uniformly spaced chunks where possible.
+//!   This makes it preferable for collections with mostly uniformly spaced chunks.
+//!
+//!   For example, polygons can be represented as indices into some global vertex array.
+//!   Polygonal meshes are often made from a combination of triangles and quadrilaterals, so we
+//!   can't represent the vertex indices as a `UniChunked` vector, and it would be too wastefull to
+//!   keep track of each chunk using a plain `Chunked` vector. `Clumped`, however, is perfect for
+//!   this use case since it only stores an additional pair of offsets (`usize` integers) for each
+//!   type of polygon. In code this may look like the following:
+//!   
+//!   ```rust
+//!   use flatk::{Clumped, Get, View};
+//!   
+//!   // Indices into some vertex array (depicted below): 6 triangles followed by 2 quadrilaterals.
+//!   let indices = vec![0,1,2, 2,1,3, 7,1,0, 3,5,10, 9,8,7, 4,6,5, 7,8,4,1, 1,4,5,3];
+//!   
+//!   let polys = Clumped::from_sizes_and_counts(vec![3,4], vec![6,2], indices);
+//!   let polys_view = polys.view();
+//!
+//!   assert_eq!(&polys_view.at(0)[..], &[0,1,2][..]);
+//!   assert_eq!(&polys_view.at(1)[..], &[2,1,3][..]);
+//!   assert_eq!(&polys_view.at(2)[..], &[7,1,0][..]);
+//!   assert_eq!(&polys_view.at(3)[..], &[3,5,10][..]);
+//!   assert_eq!(&polys_view.at(4)[..], &[9,8,7][..]);
+//!   assert_eq!(&polys_view.at(5)[..], &[4,6,5][..]);
+//!   assert_eq!(&polys_view.at(6)[..], &[7,8,4,1][..]);
+//!   assert_eq!(&polys_view.at(7)[..], &[1,4,5,3][..]);
+//!   ```
+//!
+//!   These polygons could represent a mesh like below, where each number corresponds to a vertex
+//!   index.
+//!
+//!   ```verbatim
+//!   0 ---- 2 ---- 3 --10
+//!   |\     |     / \  |
+//!   | \    |    /   \ |
+//!   |  \   |   /     \|
+//!   |   \  |  /       5
+//!   |    \ | /       /|
+//!   |     \|/       / |
+//!   7 ---- 1       /  |
+//!   |\      \     /   |
+//!   | \      \   /    |
+//!   |  \      \ /     |
+//!   9 - 8 ---- 4 ---- 6
 //!   ```
 //!
 //! - `Select`: An ordered selection (with replacement) of elements from a
@@ -121,6 +183,20 @@
 //!   In this scenario, the target set is just the range `0..1000`, however in general this can be any
 //!   data set, which makes `Sparse` an implementation of a one-to-one mapping or a directed graph
 //!   with disjoint source and target node sets.
+//!
+//!
+//! # Indexing
+//!
+//! Due to the nature of type composition and the indexing mechanism in Rust, it is not always
+//! possible to use the `Index` and `IndexMut` traits for indexing into the `flatk` collection
+//! types.  To facilitate indexing, `flatk` defines two traits for indexing: [`Get`] and
+//! [`Isolate`], which fill the roles of `Index` and `IndexMut` respectively.  These traits work
+//! mainly on viewed collections (what is returned by calling `.view()` and `.view_mut()`).
+//! `Isolate` can also work with collections that own their data, however it is not recommended
+//! since methods provided by `Isolate` are destructive (they consume `self`).
+//!
+//! [`Get`]: trait.Get.html
+//! [`Isolate`]: trait.Isolate.html
 
 /*
  * Define macros to be used for implementing various traits in submodules
@@ -1213,6 +1289,7 @@ where
 /// // We should fail to compile when trying to get a second mut ref.
 /// let mut2 = mut_view.at_mut(1).at_mut(1);
 ///```
+#[doc(hidden)]
 pub fn multiple_mut_refs_compile_test() {}
 
 #[cfg(test)]

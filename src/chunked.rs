@@ -131,7 +131,7 @@ pub trait GetOffset: Set {
     }
 
     /// Get the first offset.
-    /// 
+    ///
     /// This should always return 0.
     #[inline]
     fn first_offset(&self) -> usize {
@@ -1167,11 +1167,13 @@ where
     O: std::ops::Index<usize, Output = usize>,
 {
     type Output = <[T] as std::ops::Index<std::ops::Range<usize>>>::Output;
-    /// Get reference to a chunk at the given index. Note that this works for
-    /// `Chunked` collections that are themselves NOT `Chunked`, since a chunk
-    /// of a doubly `Chunked` collection is itself `Chunked`, which cannot be
-    /// represented by a single borrow. For more complex indexing use the `get`
-    /// method provided by the `Get` trait.
+
+    /// Get reference to a chunk at the given index.
+    ///
+    /// Note that this works for `Chunked` collections that are themselves NOT `Chunked`, since a
+    /// chunk of a doubly `Chunked` collection is itself `Chunked`, which cannot be represented by
+    /// a single borrow. For more complex indexing use the `get` method provided by the `Get`
+    /// trait.
     ///
     /// # Example
     ///
@@ -1190,15 +1192,16 @@ where
 
 impl<T, O> std::ops::Index<usize> for Chunked<&[T], O>
 where
-    O: AsRef<[usize]>,
+    O: std::ops::Index<usize, Output = usize>,
 {
-    type Output = [T];
+    type Output = <[T] as std::ops::Index<std::ops::Range<usize>>>::Output;
 
-    /// Immutably index the `Chunked` borrowed slice by `usize`. Note
-    /// that this works for chunked collections that are themselves not chunked,
-    /// since the item at the index of a doubly chunked collection is itself
-    /// chunked, which cannot be represented by a single borrow. For more
-    /// complex indexing use the `get` method provided by the `Get` trait.
+    /// Immutably index the `Chunked` borrowed slice by `usize`.
+    ///
+    /// Note that this works for chunked collections that are themselves not chunked, since the
+    /// item at the index of a doubly chunked collection is itself chunked, which cannot be
+    /// represented by a single borrow. For more complex indexing use the `get` method provided by
+    /// the `Get` trait.
     ///
     /// # Example
     ///
@@ -1210,7 +1213,7 @@ where
     /// ```
     #[inline]
     fn index(&self, idx: usize) -> &Self::Output {
-        &self.data[self.chunks.as_ref()[idx]..self.chunks.as_ref()[idx + 1]]
+        &self.data[self.chunks[idx]..self.chunks[idx + 1]]
     }
 }
 
@@ -1220,11 +1223,12 @@ where
 {
     type Output = <[T] as std::ops::Index<std::ops::Range<usize>>>::Output;
 
-    /// Immutably index the `Chunked` mutably borrowed slice by `usize`. Note
-    /// that this works for chunked collections that are themselves not chunked,
-    /// since the item at the index of a doubly chunked collection is itself
-    /// chunked, which cannot be represented by a single borrow. For more
-    /// complex indexing use the `get` method provided by the `Get` trait.
+    /// Immutably index the `Chunked` mutably borrowed slice by `usize`.
+    ///
+    /// Note that this works for chunked collections that are themselves not chunked, since the
+    /// item at the index of a doubly chunked collection is itself chunked, which cannot be
+    /// represented by a single borrow. For more complex indexing use the `get` method provided by
+    /// the `Get` trait.
     ///
     /// # Example
     ///
@@ -1244,11 +1248,12 @@ impl<T, O> std::ops::IndexMut<usize> for Chunked<Vec<T>, O>
 where
     O: std::ops::Index<usize, Output = usize>,
 {
-    /// Mutably index the `Chunked` `Vec` by `usize`. Note that this
-    /// works for chunked collections that are themselves not chunked, since the
-    /// item at the index of a doubly chunked collection is itself chunked,
-    /// which cannot be represented by a single borrow. For more complex
-    /// indexing use the `get` method provided by the `Get` trait.
+    /// Mutably index the `Chunked` `Vec` by `usize`.
+    ///
+    /// Note that this works for chunked collections that are themselves not chunked, since the
+    /// item at the index of a doubly chunked collection is itself chunked, which cannot be
+    /// represented by a single borrow. For more complex indexing use the `get` method provided by
+    /// the `Get` trait.
     ///
     /// # Example
     ///
@@ -1270,6 +1275,7 @@ where
     O: std::ops::Index<usize, Output = usize>,
 {
     /// Mutably index the `Chunked` mutably borrowed slice by `usize`.
+    ///
     /// Note that this works for chunked collections that are themselves not
     /// chunked, since the item at the index of a doubly chunked collection is
     /// itself chunked, which cannot be represented by a single borrow. For more

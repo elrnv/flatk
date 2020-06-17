@@ -147,7 +147,7 @@ impl<'a> Iterator for UnclumpedSizes<'a> {
         // The following is safe because we checked the length of offsets above.
         // Also the API enforces the size correspondence between
         // chunk_offsets and offsets. We also do a debug check above.
-        let offset = unsafe { *offsets.get_unchecked(0) } ;
+        let offset = unsafe { *offsets.get_unchecked(0) };
         let chunk_offset = unsafe { *chunk_offsets.get_unchecked(0) };
         let next_offset = unsafe { *offsets.get_unchecked(1) };
         let next_chunk_offset = unsafe { *chunk_offsets.get_unchecked(1) };
@@ -318,10 +318,7 @@ impl<'a> SplitOffsetsAt for ClumpedOffsets<&'a [usize]> {
     fn split_offsets_at(
         self,
         mid: usize,
-    ) -> (
-        ClumpedOffsets<&'a [usize]>,
-        ClumpedOffsets<&'a [usize]>,
-    ) {
+    ) -> (ClumpedOffsets<&'a [usize]>, ClumpedOffsets<&'a [usize]>) {
         assert!(!self.is_empty());
         assert!(mid < self.len());
         // Try to find the mid in our chunk offsets.
@@ -346,7 +343,8 @@ impl<'a> SplitOffsetsAt for ClumpedOffsets<&'a [usize]> {
 }
 
 impl<O> IndexRange for ClumpedOffsets<O>
-where Self: Set + GetOffset
+where
+    Self: Set + GetOffset,
 {
     /// Return the `[begin..end)` bound of the chunk at the given index.
     fn index_range(&self, range: Range<usize>) -> Option<Range<usize>> {
@@ -521,7 +519,8 @@ impl Clear for ClumpedOffsets {
 }
 
 impl<'a, O> GetIndex<'a, ClumpedOffsets<O>> for usize
-where ClumpedOffsets<O>: GetOffset
+where
+    ClumpedOffsets<O>: GetOffset,
 {
     type Output = usize;
     #[inline]
@@ -536,7 +535,8 @@ where ClumpedOffsets<O>: GetOffset
 }
 
 impl<O> IsolateIndex<ClumpedOffsets<O>> for usize
-where ClumpedOffsets<O>: GetOffset
+where
+    ClumpedOffsets<O>: GetOffset,
 {
     type Output = usize;
     #[inline]
@@ -614,7 +614,9 @@ mod tests {
         assert_eq!(off, 0);
 
         // Test at the end
-        let (l, r, off) = clumped_offsets.view().split_offsets_with_intersection_at(12);
+        let (l, r, off) = clumped_offsets
+            .view()
+            .split_offsets_with_intersection_at(12);
         assert_eq!(
             Offsets::from(l).into_inner(),
             &[0, 3, 6, 9, 12, 16, 20, 24, 27, 30, 33, 36, 39]

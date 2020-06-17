@@ -45,7 +45,8 @@ impl<O: AsRef<[usize]> + Set> BinarySearch<usize> for Offsets<O> {
     /// The semantics of this function are identical to Rust's `std::slice::binary_search`.
     #[inline]
     fn binary_search(&self, off: &usize) -> Result<usize, usize> {
-        self.as_ref().binary_search(&(*off + self.first_offset_value()))
+        self.as_ref()
+            .binary_search(&(*off + self.first_offset_value()))
     }
 }
 
@@ -100,7 +101,9 @@ impl DoubleEndedIterator for OffsetValues<'_> {
 
     #[inline]
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-        self.offset_values.get(ExactSizeIterator::len(self) - 1 - n).map(|&x| x)
+        self.offset_values
+            .get(ExactSizeIterator::len(self) - 1 - n)
+            .map(|&x| x)
     }
 }
 
@@ -364,7 +367,10 @@ impl<'a> SplitOffsetsAt for Offsets<&'a [usize]> {
     /// Calling this function with an empty slice or with `mid` greater than or equal to its length
     /// will cause a panic.
     #[inline]
-    fn split_offsets_with_intersection_at(self, mid: usize) -> (Offsets<&'a [usize]>, Offsets<&'a [usize]>, usize) {
+    fn split_offsets_with_intersection_at(
+        self,
+        mid: usize,
+    ) -> (Offsets<&'a [usize]>, Offsets<&'a [usize]>, usize) {
         let (l, r) = self.split_offsets_at(mid);
         // This is safe since self.0 is not empty, both l and r have at least one element.
         let off = unsafe { *r.0.get_unchecked(0) - *l.0.get_unchecked(0) };

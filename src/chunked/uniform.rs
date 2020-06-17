@@ -1082,17 +1082,22 @@ where
 
 impl_isolate_index_for_static_range!(impl<S> for ChunkedN<S>);
 
+/*
+ * Indexing for statically sized UniChunked types
+ */
+
 impl<T, N> std::ops::Index<usize> for UniChunked<Vec<T>, U<N>>
 where
     N: Unsigned + Array<T>,
 {
     type Output = N::Array;
 
-    /// Index the `UniChunked` `Vec` by `usize`. Note that this
-    /// works for chunked collections that are themselves not chunked, since the
-    /// item at the index of a doubly chunked collection is itself chunked,
-    /// which cannot be represented by a single borrow. For more complex
-    /// indexing use the `get` method provided by the `Get` trait.
+    /// Index the `UniChunked` `Vec` by `usize`.
+    ///
+    /// Note that this works for chunked collections that are themselves not chunked, since the
+    /// item at the index of a doubly chunked collection is itself chunked, which cannot be
+    /// represented by a single borrow. For more complex indexing use the `get` method provided by
+    /// the `Get` trait.
     ///
     /// # Example
     ///
@@ -1113,11 +1118,12 @@ where
 {
     type Output = N::Array;
 
-    /// Immutably index the `UniChunked` borrowed slice by `usize`. Note
-    /// that this works for chunked collections that are themselves not chunked,
-    /// since the item at the index of a doubly chunked collection is itself
-    /// chunked, which cannot be represented by a single borrow. For more
-    /// complex indexing use the `get` method provided by the `Get` trait.
+    /// Immutably index the `UniChunked` borrowed slice by `usize`.
+    ///
+    /// Note that this works for chunked collections that are themselves not chunked, since the
+    /// item at the index of a doubly chunked collection is itself chunked, which cannot be
+    /// represented by a single borrow. For more complex indexing use the `get` method provided by
+    /// the `Get` trait.
     ///
     /// # Example
     ///
@@ -1138,11 +1144,12 @@ where
 {
     type Output = N::Array;
 
-    /// Immutably index the `UniChunked` mutably borrowed slice by `usize`. Note
-    /// that this works for chunked collections that are themselves not chunked,
-    /// since the item at the index of a doubly chunked collection is itself
-    /// chunked, which cannot be represented by a single borrow. For more
-    /// complex indexing use the `get` method provided by the `Get` trait.
+    /// Immutably index the `UniChunked` mutably borrowed slice by `usize`.
+    ///
+    /// Note that this works for chunked collections that are themselves not chunked, since the
+    /// item at the index of a doubly chunked collection is itself chunked, which cannot be
+    /// represented by a single borrow. For more complex indexing use the `get` method provided by
+    /// the `Get` trait.
     ///
     /// # Example
     ///
@@ -1161,11 +1168,12 @@ impl<T, N> std::ops::IndexMut<usize> for UniChunked<Vec<T>, U<N>>
 where
     N: Unsigned + Array<T>,
 {
-    /// Mutably index the `UniChunked` `Vec` by `usize`. Note that this
-    /// works for chunked collections that are themselves not chunked, since the
-    /// item at the index of a doubly chunked collection is itself chunked,
-    /// which cannot be represented by a single borrow. For more complex
-    /// indexing use the `get` method provided by the `Get` trait.
+    /// Mutably index the `UniChunked` `Vec` by `usize`.
+    ///
+    /// Note that this works for chunked collections that are themselves not chunked, since the
+    /// item at the index of a doubly chunked collection is itself chunked, which cannot be
+    /// represented by a single borrow. For more complex indexing use the `get` method provided by
+    /// the `Get` trait.
     ///
     /// # Example
     ///
@@ -1187,6 +1195,7 @@ where
     N: Unsigned + Array<T>,
 {
     /// Mutably index the `UniChunked` mutably borrowed slice by `usize`.
+    ///
     /// Note that this works for chunked collections that are themselves not
     /// chunked, since the item at the index of a doubly chunked collection is
     /// itself chunked, which cannot be represented by a single borrow. For more
@@ -1204,6 +1213,130 @@ where
     #[inline]
     fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
         ReinterpretAsGrouped::<N>::reinterpret_as_grouped(&mut *self.data).index_mut(idx)
+    }
+}
+
+/*
+ * Indexing for ChunkedN types.
+ */
+
+impl<T> std::ops::Index<usize> for ChunkedN<Vec<T>> {
+    type Output = [T];
+
+    /// Index the `ChunkedN` `Vec` by `usize`.
+    ///
+    /// Note that this works for chunked collections that are themselves not chunked, since the
+    /// item at the index of a doubly chunked collection is itself chunked, which cannot be
+    /// represented by a single borrow. For more complex indexing use the `get` method provided by
+    /// the `Get` trait.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use flatk::*;
+    /// let s = ChunkedN::from_flat_with_stride(vec![1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], 3);
+    /// assert_eq!([7,8,9], s[2]);
+    /// ```
+    #[inline]
+    fn index(&self, idx: usize) -> &Self::Output {
+        let begin = self.chunk_size * idx;
+        self.data.index(begin..begin + self.chunk_size)
+    }
+}
+
+impl<T> std::ops::Index<usize> for ChunkedN<&[T]> {
+    type Output = [T];
+
+    /// Immutably index the `ChunkedN` borrowed slice by `usize`.
+    ///
+    /// Note that this works for chunked collections that are themselves not chunked, since the
+    /// item at the index of a doubly chunked collection is itself chunked, which cannot be
+    /// represented by a single borrow. For more complex indexing use the `get` method provided by
+    /// the `Get` trait.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use flatk::*;
+    /// let s = ChunkedN::from_flat_with_stride(vec![1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], 3);
+    /// assert_eq!([7,8,9], s.view()[2]);
+    /// ```
+    #[inline]
+    fn index(&self, idx: usize) -> &Self::Output {
+        let begin = self.chunk_size * idx;
+        self.data.index(begin..begin + self.chunk_size)
+    }
+}
+
+impl<T> std::ops::Index<usize> for ChunkedN<&mut [T]> {
+    type Output = [T];
+
+    /// Immutably index the `ChunkedN` mutably borrowed slice by `usize`.
+    ///
+    /// Note that this works for chunked collections that are themselves not chunked, since the
+    /// item at the index of a doubly chunked collection is itself chunked, which cannot be
+    /// represented by a single borrow. For more complex indexing use the `get` method provided by
+    /// the `Get` trait.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use flatk::*;
+    /// let mut s = ChunkedN::from_flat_with_stride(vec![1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], 3);
+    /// assert_eq!([7,8,9], s.view_mut()[2]);
+    /// ```
+    #[inline]
+    fn index(&self, idx: usize) -> &Self::Output {
+        let begin = self.chunk_size * idx;
+        self.data.index(begin..begin + self.chunk_size)
+    }
+}
+
+impl<T> std::ops::IndexMut<usize> for ChunkedN<Vec<T>> {
+    /// Mutably index the `ChunkedN` `Vec` by `usize`.
+    ///
+    /// Note that this works for chunked collections that are themselves not chunked, since the
+    /// item at the index of a doubly chunked collection is itself chunked, which cannot be
+    /// represented by a single borrow. For more complex indexing use the `get` method provided by
+    /// the `Get` trait.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use flatk::*;
+    /// let mut v = vec![1,2,3,4,5,6,0,0,0,10,11,12];
+    /// let mut s = ChunkedN::from_flat_with_stride(v, 3);
+    /// s[2].copy_from_slice(&[7,8,9]);
+    /// assert_eq!(vec![1,2,3,4,5,6,7,8,9,10,11,12], s.into_storage().to_vec());
+    /// ```
+    #[inline]
+    fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
+        let begin = self.chunk_size * idx;
+        self.data.index_mut(begin..begin + self.chunk_size)
+    }
+}
+
+impl<T> std::ops::IndexMut<usize> for ChunkedN<&mut [T]> {
+    /// Mutably index the `ChunkedN` mutably borrowed slice by `usize`.
+    ///
+    /// Note that this works for chunked collections that are themselves not
+    /// chunked, since the item at the index of a doubly chunked collection is
+    /// itself chunked, which cannot be represented by a single borrow. For more
+    /// complex indexing use the `get` method provided by the `Get` trait.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use flatk::*;
+    /// let mut v = vec![1,2,3,4,5,6,0,0,0,10,11,12];
+    /// let mut s = ChunkedN::from_flat_with_stride(v.as_mut_slice(), 3);
+    /// s[2].copy_from_slice(&[7,8,9]);
+    /// assert_eq!(vec![1,2,3,4,5,6,7,8,9,10,11,12], v);
+    /// ```
+    #[inline]
+    fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
+        let begin = self.chunk_size * idx;
+        self.data.index_mut(begin..begin + self.chunk_size)
     }
 }
 

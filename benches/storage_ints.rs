@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use flatk::{SplitOffsetsAt, BinarySearch, ClumpedOffsets, Chunked2, Chunked3};
+use flatk::{BinarySearch, Chunked2, Chunked3, ClumpedOffsets, SplitOffsetsAt};
 use rand::distributions::{Distribution, Uniform};
 /**
  * This module benchmarks the performance of different storage schemes for indices.
@@ -31,32 +31,25 @@ fn make_random_u8_vec(n: usize) -> Vec<u8> {
 
 fn clumped_offsets(
     offsets: ClumpedOffsets<&[usize]>,
-) -> Option<(
-    ClumpedOffsets<&[usize]>,
-    ClumpedOffsets<&[usize]>,
-    usize,
-)> {
+) -> Option<(ClumpedOffsets<&[usize]>, ClumpedOffsets<&[usize]>, usize)> {
     let mid = 10000;
     if let Ok(mid_idx) = offsets.chunk_offsets.binary_search(&mid) {
         let (los, ros, off) = offsets.offsets.split_offsets_with_intersection_at(mid_idx);
         let (lcos, rcos) = offsets.chunk_offsets.split_offsets_at(mid_idx);
-        Some(
-            (
-                ClumpedOffsets {
-                    chunk_offsets: lcos,
-                    offsets: los,
-                },
-                ClumpedOffsets {
-                    chunk_offsets: rcos,
-                    offsets: ros,
-                },
-                off,
-                )
-        )
+        Some((
+            ClumpedOffsets {
+                chunk_offsets: lcos,
+                offsets: los,
+            },
+            ClumpedOffsets {
+                chunk_offsets: rcos,
+                offsets: ros,
+            },
+            off,
+        ))
     } else {
         None
     }
-
 }
 
 fn three_vecs<'o, 'c, 's, S>(
