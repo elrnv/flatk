@@ -234,6 +234,7 @@ where
     }
 }
 
+#[cfg(feature = "rayon")]
 impl<'a, T: Send + Sync> IntoParChunkIterator for &'a [T] {
     type Item = &'a [T];
     type IterType = rayon::slice::Chunks<'a, T>;
@@ -246,6 +247,7 @@ impl<'a, T: Send + Sync> IntoParChunkIterator for &'a [T] {
     }
 }
 
+#[cfg(feature = "rayon")]
 impl<'a, T: Send + Sync> IntoParChunkIterator for &'a mut [T] {
     type Item = &'a mut [T];
     type IterType = rayon::slice::ChunksMut<'a, T>;

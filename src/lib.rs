@@ -1094,6 +1094,7 @@ where
 }
 
 /// Parallel version of `IntoChunkIterator`.
+#[cfg(feature = "rayon")]
 pub trait IntoParChunkIterator {
     type Item: Send;
     type IterType: rayon::iter::IndexedParallelIterator<Item = Self::Item>;

@@ -155,6 +155,7 @@ fn zipping(
     }
 }
 
+#[cfg(feature = "rayon")]
 fn zipping_with_rayon(
     v: &mut Vec<f64>,
     v1: &mut Vec<f64>,
@@ -259,6 +260,8 @@ fn zip(c: &mut Criterion) {
                 );
             })
         });
+
+        #[cfg(feature = "rayon")]
         group.bench_function(BenchmarkId::new("Zipping With Rayon", buf_size), |b| {
             let mut v = make_random_vec(buf_size);
             let mut v1 = make_random_vec(buf_size);

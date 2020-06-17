@@ -667,6 +667,7 @@ where
     }
 }
 
+#[cfg(feature = "rayon")]
 impl<S: IntoParChunkIterator, N: Dimension> rayon::iter::IntoParallelIterator for UniChunked<S, N> {
     type Item = <S as IntoParChunkIterator>::Item;
     type Iter = <S as IntoParChunkIterator>::IterType;
