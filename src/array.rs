@@ -15,6 +15,7 @@ impl<N: Unsigned> std::fmt::Debug for U<N> {
 }
 
 impl<N: Default> Default for U<N> {
+    #[inline]
     fn default() -> Self {
         U(N::default())
     }
@@ -183,6 +184,7 @@ macro_rules! impl_array_for_typenum {
         impl<'a, T: 'a> AtomIterator<'a> for [T; $n] {
             type Item = &'a T;
             type Iter = std::slice::Iter<'a, T>;
+            #[inline]
             fn atom_iter(&'a self) -> Self::Iter {
                 self.iter()
             }
@@ -191,6 +193,7 @@ macro_rules! impl_array_for_typenum {
         impl<'a, T: 'a> AtomMutIterator<'a> for [T; $n] {
             type Item = &'a mut T;
             type Iter = std::slice::IterMut<'a, T>;
+            #[inline]
             fn atom_mut_iter(&'a mut self) -> Self::Iter {
                 self.iter_mut()
             }

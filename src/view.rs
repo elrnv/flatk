@@ -23,6 +23,7 @@ pub trait ViewMut<'a> {
 impl<'a, S: ?Sized + 'a + View<'a>> View<'a> for &S {
     type Type = S::Type;
 
+    #[inline]
     fn view(&'a self) -> Self::Type {
         <S as View<'a>>::view(*self)
     }
@@ -32,6 +33,7 @@ impl<'a, S: ?Sized + 'a + View<'a>> View<'a> for &S {
 impl<'a, S: ?Sized + 'a + View<'a>> View<'a> for &mut S {
     type Type = S::Type;
 
+    #[inline]
     fn view(&'a self) -> Self::Type {
         <S as View<'a>>::view(*self)
     }
@@ -41,6 +43,7 @@ impl<'a, S: ?Sized + 'a + View<'a>> View<'a> for &mut S {
 impl<'a, S: ?Sized + 'a + ViewMut<'a>> ViewMut<'a> for &mut S {
     type Type = S::Type;
 
+    #[inline]
     fn view_mut(&'a mut self) -> Self::Type {
         <S as ViewMut<'a>>::view_mut(*self)
     }
@@ -53,6 +56,7 @@ pub trait IntoView {
 
 impl<'a, V: View<'a>> IntoView for &'a V {
     type View = V::Type;
+    #[inline]
     fn into_view(self) -> Self::View {
         self.view()
     }
@@ -60,6 +64,7 @@ impl<'a, V: View<'a>> IntoView for &'a V {
 
 impl<'a, V: ViewMut<'a>> IntoView for &'a mut V {
     type View = V::Type;
+    #[inline]
     fn into_view(self) -> Self::View {
         self.view_mut()
     }

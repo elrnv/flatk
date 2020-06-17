@@ -3,6 +3,7 @@ use super::*;
 impl<T> ValueType for Vec<T> {}
 
 impl<T> Clear for Vec<T> {
+    #[inline]
     fn clear(&mut self) {
         Vec::<T>::clear(self);
     }
@@ -11,6 +12,7 @@ impl<T> Clear for Vec<T> {
 impl<T> Set for Vec<T> {
     type Elem = T;
     type Atom = T;
+    #[inline]
     fn len(&self) -> usize {
         Vec::len(self)
     }
@@ -19,6 +21,7 @@ impl<T> Set for Vec<T> {
 impl<'a, T: 'a> View<'a> for Vec<T> {
     type Type = &'a [T];
 
+    #[inline]
     fn view(&'a self) -> Self::Type {
         self.as_slice()
     }
@@ -27,6 +30,7 @@ impl<'a, T: 'a> View<'a> for Vec<T> {
 impl<'a, T: 'a> ViewMut<'a> for Vec<T> {
     type Type = &'a mut [T];
 
+    #[inline]
     fn view_mut(&'a mut self) -> Self::Type {
         self.as_mut_slice()
     }
@@ -36,6 +40,7 @@ impl<'a, T: 'a> ViewIterator<'a> for Vec<T> {
     type Item = &'a T;
     type Iter = std::slice::Iter<'a, T>;
 
+    #[inline]
     fn view_iter(&'a self) -> Self::Iter {
         self.iter()
     }
@@ -44,6 +49,7 @@ impl<'a, T: 'a> ViewMutIterator<'a> for Vec<T> {
     type Item = &'a mut T;
     type Iter = std::slice::IterMut<'a, T>;
 
+    #[inline]
     fn view_mut_iter(&'a mut self) -> Self::Iter {
         self.iter_mut()
     }
@@ -52,6 +58,7 @@ impl<'a, T: 'a> ViewMutIterator<'a> for Vec<T> {
 impl<'a, T: 'a> AtomIterator<'a> for Vec<T> {
     type Item = &'a T;
     type Iter = std::slice::Iter<'a, T>;
+    #[inline]
     fn atom_iter(&'a self) -> Self::Iter {
         self.iter()
     }
@@ -60,18 +67,21 @@ impl<'a, T: 'a> AtomIterator<'a> for Vec<T> {
 impl<'a, T: 'a> AtomMutIterator<'a> for Vec<T> {
     type Item = &'a mut T;
     type Iter = std::slice::IterMut<'a, T>;
+    #[inline]
     fn atom_mut_iter(&'a mut self) -> Self::Iter {
         self.iter_mut()
     }
 }
 
 impl<T> Push<T> for Vec<T> {
+    #[inline]
     fn push(&mut self, element: T) {
         Vec::push(self, element);
     }
 }
 
 impl<T> SplitOff for Vec<T> {
+    #[inline]
     fn split_off(&mut self, mid: usize) -> Self {
         Vec::split_off(self, mid)
     }
@@ -84,6 +94,7 @@ where
 {
     type Prefix = N::Array;
 
+    #[inline]
     fn split_prefix(mut self) -> Option<(Self::Prefix, Self)> {
         if self.len() < N::to_usize() {
             return None;
@@ -113,6 +124,7 @@ impl<T, N: Array<T>> UniChunkable<N> for Vec<T> {
 }
 
 impl<T: Clone, N: Array<T>> PushChunk<N> for Vec<T> {
+    #[inline]
     fn push_chunk(&mut self, chunk: Self::Chunk) {
         self.extend_from_slice(N::as_slice(&chunk));
     }
@@ -125,6 +137,7 @@ where
     type Item = N::Array;
     type IterType = std::vec::IntoIter<N::Array>;
 
+    #[inline]
     fn into_static_chunk_iter(self) -> Self::IterType {
         assert_eq!(self.len() % N::to_usize(), 0);
         ReinterpretAsGrouped::<N>::reinterpret_as_grouped(self).into_iter()
@@ -135,6 +148,7 @@ impl<T> IntoStorage for Vec<T> {
     type StorageType = Vec<T>;
     /// Since a `Vec` has no information about the structure of its underlying
     /// data, this is effectively a no-op.
+    #[inline]
     fn into_storage(self) -> Self::StorageType {
         self
     }
@@ -142,6 +156,7 @@ impl<T> IntoStorage for Vec<T> {
 
 impl<'a, T: 'a> StorageView<'a> for Vec<T> {
     type StorageView = &'a [T];
+    #[inline]
     fn storage_view(&'a self) -> Self::StorageView {
         self.as_slice()
     }
@@ -150,6 +165,7 @@ impl<'a, T: 'a> StorageView<'a> for Vec<T> {
 impl<T> Storage for Vec<T> {
     type Storage = Vec<T>;
     /// `Vec` is a type of storage, simply return an immutable reference to self.
+    #[inline]
     fn storage(&self) -> &Self::Storage {
         self
     }
@@ -157,6 +173,7 @@ impl<T> Storage for Vec<T> {
 
 impl<T> StorageMut for Vec<T> {
     /// `Vec` is a type of storage, simply return a mutable reference to self.
+    #[inline]
     fn storage_mut(&mut self) -> &mut Self::Storage {
         self
     }
@@ -166,6 +183,7 @@ impl<T> CloneWithStorage<Vec<T>> for Vec<T> {
     type CloneType = Vec<T>;
     /// This function simply ignores self and returns storage since self is already
     /// a storage type.
+    #[inline]
     fn clone_with_storage(&self, storage: Vec<T>) -> Self::CloneType {
         assert_eq!(self.len(), storage.len());
         storage
@@ -173,6 +191,7 @@ impl<T> CloneWithStorage<Vec<T>> for Vec<T> {
 }
 
 impl<T> SplitAt for Vec<T> {
+    #[inline]
     fn split_at(mut self, mid: usize) -> (Self, Self) {
         let r = self.split_off(mid);
         (self, r)
@@ -180,6 +199,7 @@ impl<T> SplitAt for Vec<T> {
 }
 
 impl<T> RemovePrefix for Vec<T> {
+    #[inline]
     fn remove_prefix(&mut self, n: usize) {
         self.rotate_left(n);
         self.truncate(self.len() - n);
@@ -189,6 +209,7 @@ impl<T> RemovePrefix for Vec<T> {
 /// Since `Vec` already owns its data, this is simply a noop.
 impl<T> IntoOwned for Vec<T> {
     type Owned = Self;
+    #[inline]
     fn into_owned(self) -> Self::Owned {
         self
     }
@@ -197,6 +218,7 @@ impl<T> IntoOwned for Vec<T> {
 /// Since `Vec` already owns its data, this is simply a noop.
 impl<T> IntoOwnedData for Vec<T> {
     type OwnedData = Self;
+    #[inline]
     fn into_owned_data(self) -> Self::OwnedData {
         self
     }
@@ -238,12 +260,14 @@ where
 }
 
 impl<T> Dummy for Vec<T> {
+    #[inline]
     unsafe fn dummy() -> Self {
         Vec::new()
     }
 }
 
 impl<T> Truncate for Vec<T> {
+    #[inline]
     fn truncate(&mut self, new_len: usize) {
         Vec::truncate(self, new_len);
     }
@@ -251,6 +275,7 @@ impl<T> Truncate for Vec<T> {
 
 impl<T: Clone> ExtendFromSlice for Vec<T> {
     type Item = T;
+    #[inline]
     fn extend_from_slice(&mut self, other: &[Self::Item]) {
         Vec::extend_from_slice(self, other);
     }
@@ -275,6 +300,7 @@ impl<T: Clone> ExtendFromSlice for Vec<T> {
 /// ```
 impl<T, S: Into<T>> StorageInto<Vec<T>> for Vec<S> {
     type Output = Vec<T>;
+    #[inline]
     fn storage_into(self) -> Self::Output {
         self.into_iter().map(|x| x.into()).collect()
     }
@@ -290,23 +316,27 @@ impl<T> PermuteInPlace for Vec<T> {
     /// The slice `seen` is provided to keep track of which elements have already been seen.
     /// `seen` is assumed to be initialized to `false` and have length equal or
     /// larger than this collection.
+    #[inline]
     fn permute_in_place(&mut self, permutation: &[usize], seen: &mut [bool]) {
         self.as_mut_slice().permute_in_place(permutation, seen);
     }
 }
 
 impl<T: Clone> CloneIntoOther for Vec<T> {
+    #[inline]
     fn clone_into_other(&self, other: &mut Vec<T>) {
         other.clone_from(self);
     }
 }
 
 impl<T: Clone> CloneIntoOther<[T]> for Vec<T> {
+    #[inline]
     fn clone_into_other(&self, other: &mut [T]) {
         other.clone_from_slice(self.as_slice());
     }
 }
 impl<T> Reserve for Vec<T> {
+    #[inline]
     fn reserve_with_storage(&mut self, n: usize, storage_n: usize) {
         self.reserve(n.max(storage_n));
     }

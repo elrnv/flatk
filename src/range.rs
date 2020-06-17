@@ -8,9 +8,11 @@ use std::ops::{Range, RangeInclusive, RangeTo, RangeToInclusive};
 
 impl<T: IntBound> BoundedRange for Range<T> {
     type Index = T;
+    #[inline]
     fn start(&self) -> Self::Index {
         self.start.clone()
     }
+    #[inline]
     fn end(&self) -> Self::Index {
         self.end.clone()
     }
@@ -18,9 +20,11 @@ impl<T: IntBound> BoundedRange for Range<T> {
 
 impl<T: IntBound> BoundedRange for RangeInclusive<T> {
     type Index = T;
+    #[inline]
     fn start(&self) -> Self::Index {
         RangeInclusive::start(self).clone()
     }
+    #[inline]
     fn end(&self) -> Self::Index {
         RangeInclusive::end(self).clone() + 1
     }
@@ -28,9 +32,11 @@ impl<T: IntBound> BoundedRange for RangeInclusive<T> {
 
 impl<T: IntBound> BoundedRange for RangeTo<T> {
     type Index = T;
+    #[inline]
     fn start(&self) -> Self::Index {
         0usize.into()
     }
+    #[inline]
     fn end(&self) -> Self::Index {
         self.end.clone()
     }
@@ -38,9 +44,11 @@ impl<T: IntBound> BoundedRange for RangeTo<T> {
 
 impl<T: IntBound> BoundedRange for RangeToInclusive<T> {
     type Index = T;
+    #[inline]
     fn start(&self) -> Self::Index {
         0usize.into()
     }
+    #[inline]
     fn end(&self) -> Self::Index {
         self.end.clone() + 1
     }
@@ -53,6 +61,7 @@ macro_rules! impls_for_range {
         impl<I: IntBound> Set for $range<I> {
             type Elem = <Self as BoundedRange>::Index;
             type Atom = <Self as BoundedRange>::Index;
+            #[inline]
             fn len(&self) -> usize {
                 (BoundedRange::end(self) - BoundedRange::start(self)).into()
             }
@@ -63,6 +72,7 @@ macro_rules! impls_for_range {
         }
         impl<'a, I: IntBound> View<'a> for $range<I> {
             type Type = Self;
+            #[inline]
             fn view(&'a self) -> Self::Type {
                 self.clone()
             }
@@ -80,6 +90,7 @@ where
     R: BoundedRange + Set,
 {
     type Output = R::Index;
+    #[inline]
     fn get(self, rng: &R) -> Option<Self::Output> {
         if self >= rng.len() {
             return None;
@@ -93,6 +104,7 @@ where
     R: BoundedRange + Set,
 {
     type Output = Range<R::Index>;
+    #[inline]
     fn get(self, rng: &R) -> Option<Self::Output> {
         if self.end > rng.len() {
             return None;
@@ -113,6 +125,7 @@ where
 {
     type Prefix = N::Array;
 
+    #[inline]
     fn split_prefix(self) -> Option<(Self::Prefix, Self)> {
         if self.len() < N::to_usize() {
             return None;
@@ -143,6 +156,7 @@ where
 {
     type Item = <Self as SplitPrefix<N>>::Prefix;
     type IterType = UniChunkedIter<Self, N>;
+    #[inline]
     fn into_static_chunk_iter(self) -> Self::IterType {
         self.into_generic_static_chunk_iter()
     }
@@ -150,6 +164,7 @@ where
 
 impl<T> IntoStorage for Range<T> {
     type StorageType = Range<T>;
+    #[inline]
     fn into_storage(self) -> Self::StorageType {
         self
     }
@@ -159,6 +174,7 @@ impl<T> SplitAt for Range<T>
 where
     T: From<usize>,
 {
+    #[inline]
     fn split_at(self, mid: usize) -> (Self, Self) {
         let Range { start, end } = self;
         (
@@ -178,6 +194,7 @@ impl<T> Dummy for Range<T>
 where
     T: Default,
 {
+    #[inline]
     unsafe fn dummy() -> Self {
         Range {
             start: T::default(),
@@ -190,6 +207,7 @@ impl<T> Dummy for RangeTo<T>
 where
     T: Default,
 {
+    #[inline]
     unsafe fn dummy() -> Self {
         RangeTo { end: T::default() }
     }
@@ -199,6 +217,7 @@ impl<T> RemovePrefix for Range<T>
 where
     T: From<usize>,
 {
+    #[inline]
     fn remove_prefix(&mut self, n: usize) {
         self.start = n.into();
     }
@@ -206,6 +225,7 @@ where
 
 impl<'a, T: Clone> StorageView<'a> for Range<T> {
     type StorageView = Self;
+    #[inline]
     fn storage_view(&'a self) -> Self::StorageView {
         self.clone()
     }
@@ -214,6 +234,7 @@ impl<'a, T: Clone> StorageView<'a> for Range<T> {
 impl<T> Storage for Range<T> {
     type Storage = Range<T>;
     /// A range is a type of storage, simply return an immutable reference to self.
+    #[inline]
     fn storage(&self) -> &Self::Storage {
         self
     }
@@ -221,6 +242,7 @@ impl<T> Storage for Range<T> {
 
 impl<T> StorageMut for Range<T> {
     /// A range is a type of storage, simply return a mutable reference to self.
+    #[inline]
     fn storage_mut(&mut self) -> &mut Self::Storage {
         self
     }
@@ -228,6 +250,7 @@ impl<T> StorageMut for Range<T> {
 
 impl<T: IntBound> Truncate for Range<T> {
     /// Truncate the range to a specified length.
+    #[inline]
     fn truncate(&mut self, new_len: usize) {
         self.end = self.start.clone() + new_len;
     }
@@ -235,6 +258,7 @@ impl<T: IntBound> Truncate for Range<T> {
 
 impl<T: IntBound> IsolateIndex<Range<T>> for usize {
     type Output = T;
+    #[inline]
     fn try_isolate(self, rng: Range<T>) -> Option<Self::Output> {
         if self < rng.distance().into() {
             Some(rng.start + self)
@@ -247,6 +271,7 @@ impl<T: IntBound> IsolateIndex<Range<T>> for usize {
 impl<T: IntBound> IsolateIndex<Range<T>> for std::ops::Range<usize> {
     type Output = Range<T>;
 
+    #[inline]
     fn try_isolate(self, rng: Range<T>) -> Option<Self::Output> {
         if self.start >= rng.distance().into() || self.end > rng.distance().into() {
             return None;
@@ -261,6 +286,7 @@ impl<T: IntBound> IsolateIndex<Range<T>> for std::ops::Range<usize> {
 
 impl<T: IntBound> IsolateIndex<RangeTo<T>> for usize {
     type Output = T;
+    #[inline]
     fn try_isolate(self, rng: RangeTo<T>) -> Option<Self::Output> {
         if self < rng.distance().into() {
             Some(self.into())
@@ -273,6 +299,7 @@ impl<T: IntBound> IsolateIndex<RangeTo<T>> for usize {
 impl<T: IntBound> IsolateIndex<RangeTo<T>> for std::ops::Range<usize> {
     type Output = Range<T>;
 
+    #[inline]
     fn try_isolate(self, rng: RangeTo<T>) -> Option<Self::Output> {
         if self.start >= rng.distance().into() || self.end > rng.distance().into() {
             return None;
@@ -287,6 +314,7 @@ impl<T: IntBound> IsolateIndex<RangeTo<T>> for std::ops::Range<usize> {
 
 impl<T> IntoOwned for Range<T> {
     type Owned = Self;
+    #[inline]
     fn into_owned(self) -> Self::Owned {
         self
     }
@@ -294,6 +322,7 @@ impl<T> IntoOwned for Range<T> {
 
 impl<T> IntoOwnedData for Range<T> {
     type OwnedData = Self;
+    #[inline]
     fn into_owned_data(self) -> Self::OwnedData {
         self
     }
@@ -301,6 +330,7 @@ impl<T> IntoOwnedData for Range<T> {
 
 impl<T> IntoOwned for RangeTo<T> {
     type Owned = Self;
+    #[inline]
     fn into_owned(self) -> Self::Owned {
         self
     }
@@ -308,6 +338,7 @@ impl<T> IntoOwned for RangeTo<T> {
 
 impl<T> IntoOwnedData for RangeTo<T> {
     type OwnedData = Self;
+    #[inline]
     fn into_owned_data(self) -> Self::OwnedData {
         self
     }

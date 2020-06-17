@@ -153,6 +153,7 @@ impl<S, I> Subset<S, I> {
     /// assert_eq!(Some(&3), subset_iter.next());
     /// assert_eq!(None, subset_iter.next());
     /// ```
+    #[inline]
     pub fn all(data: S) -> Self {
         Subset {
             indices: None,
@@ -223,6 +224,7 @@ impl<'a, S, I: AsRef<[usize]>> Subset<S, I> {
     /// Checks that the given set of indices are sorted.
     // TODO: replace this with std version when RFC 2351 lands
     // (https://github.com/rust-lang/rust/issues/53485)
+    #[inline]
     fn is_sorted(indices: &I) -> bool {
         Self::is_sorted_by(indices, |a, b| a.partial_cmp(b))
     }
@@ -256,11 +258,13 @@ impl<'a, S, I: AsRef<[usize]>> Subset<S, I> {
 impl<'a, S: Set, I> Subset<S, I> {
     /// Get a references to the underlying indices. If `None` is returned, then
     /// this subset spans the entire domain `data`.
+    #[inline]
     pub fn indices(&self) -> Option<&I> {
         self.indices.as_ref()
     }
 
     /// Return the superset of this `Subset`. This is just the set it was created with.
+    #[inline]
     pub fn into_super(self) -> S {
         self.data
     }
@@ -303,6 +307,7 @@ impl<S: Set, I: AsRef<[usize]>> Set for Subset<S, I> {
     /// let subset = Subset::from_indices(vec![0,2,4], v.as_slice());
     /// assert_eq!(3, subset.len());
     /// ```
+    #[inline]
     fn len(&self) -> usize {
         self.indices
             .as_ref()
@@ -317,6 +322,7 @@ where
     I: AsRef<[usize]>,
 {
     type Type = Subset<S::Type, &'a [usize]>;
+    #[inline]
     fn view(&'a self) -> Self::Type {
         // Note: it is assumed that the first index corresponds to the first
         // element in data, regardless of what the value of the index is.
@@ -347,6 +353,7 @@ where
     /// }
     /// assert_eq!(v, vec![2,2,4,4,6]);
     /// ```
+    #[inline]
     fn view_mut(&'a mut self) -> Self::Type {
         // Note: it is assumed that the first index corresponds to the first
         // element in data, regardless of what the value of the index is.
@@ -380,6 +387,7 @@ where
     /// assert_eq!(Some(&5), iter_r.next());
     /// assert_eq!(None, iter_r.next());
     /// ```
+    #[inline]
     fn split_at(self, mid: usize) -> (Self, Self) {
         if let Some(ref indices) = self.indices {
             let (indices_l, indices_r) = indices.split_at(mid);
@@ -425,6 +433,7 @@ where
     type First = S::First;
 
     /// Split the first element of this subset.
+    #[inline]
     fn split_first(self) -> Option<(Self::First, Self)> {
         use std::borrow::Borrow;
         let Subset { data, indices } = self;
@@ -461,6 +470,7 @@ where
 
 impl<S: Set + RemovePrefix, I: RemovePrefix + AsRef<[usize]>> RemovePrefix for Subset<S, I> {
     /// This function will panic if `n` is larger than `self.len()`.
+    #[inline]
     fn remove_prefix(&mut self, n: usize) {
         if n == 0 {
             return;
@@ -527,6 +537,7 @@ where
 {
     type Output = <S as Get<'a, usize>>::Output;
 
+    #[inline]
     fn get(self, subset: &Subset<S, O>) -> Option<Self::Output> {
         // TODO: too much bounds checking here, add a get_unchecked call to GetIndex.
         if let Some(ref indices) = subset.indices {
@@ -549,6 +560,7 @@ where
 {
     type Output = <S as Isolate<usize>>::Output;
 
+    #[inline]
     fn try_isolate(self, subset: Subset<S, O>) -> Option<Self::Output> {
         // TODO: too much bounds checking here, add a get_unchecked call to GetIndex.
         let Subset { indices, data } = subset;
@@ -612,6 +624,7 @@ where
     /// assert_eq!([5,6], subset[1]);
     /// assert_eq!([9,10], subset[2]);
     /// ```
+    #[inline]
     fn index(&self, idx: usize) -> &Self::Output {
         impl_index_fn!(self, idx, index)
     }
@@ -640,6 +653,7 @@ where
     /// assert_eq!(subset[1], 100);
     /// assert_eq!(subset[2], 5);
     /// ```
+    #[inline]
     fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
         impl_index_fn!(self, idx, index_mut)
     }
@@ -664,6 +678,7 @@ where
     /// let subset = Subset::from_indices(vec![0,2,4], v.as_slice());
     /// assert_eq!(3, subset[1]);
     /// ```
+    #[inline]
     fn index(&self, idx: usize) -> &Self::Output {
         impl_index_fn!(self, idx, index)
     }
@@ -688,6 +703,7 @@ where
     /// let mut subset = Subset::from_indices(vec![0,2,4], v.as_mut_slice());
     /// assert_eq!(3, subset[1]);
     /// ```
+    #[inline]
     fn index(&self, idx: usize) -> &Self::Output {
         impl_index_fn!(self, idx, index)
     }
@@ -715,6 +731,7 @@ where
     /// assert_eq!(subset[1], 100);
     /// assert_eq!(subset[2], 5);
     /// ```
+    #[inline]
     fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
         impl_index_fn!(self, idx, index_mut)
     }
@@ -746,6 +763,7 @@ where
     /// assert_eq!(Some(&6), iter.next());
     /// assert_eq!(None, iter.next());
     /// ```
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         SubsetIter {
             indices: self.indices,
@@ -770,6 +788,7 @@ where
 {
     type Item = S::First;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         use std::borrow::Borrow;
         let SubsetIter { indices, data } = self;
@@ -819,6 +838,7 @@ where
     /// assert_eq!(Some(&5), iter.next());
     /// assert_eq!(None, iter.next());
     /// ```
+    #[inline]
     pub fn iter(&'a self) -> SubsetIter<S::Type, &'a [usize]> {
         SubsetIter {
             indices: self.indices.as_ref().map(|indices| indices.as_ref()),
@@ -845,6 +865,7 @@ where
     /// }
     /// assert_eq!(v, vec![2,2,4,4,6]);
     /// ```
+    #[inline]
     pub fn iter_mut(&'a mut self) -> SubsetIter<<S as ViewMut<'a>>::Type, &'a [usize]> {
         SubsetIter {
             indices: self.indices.as_ref().map(|indices| indices.as_ref()),
@@ -862,6 +883,7 @@ where
     type Item = <<S as View<'a>>::Type as SplitFirst>::First;
     type Iter = SubsetIter<S::Type, &'a [usize]>;
 
+    #[inline]
     fn view_iter(&'a self) -> Self::Iter {
         self.iter()
     }
@@ -876,12 +898,14 @@ where
     type Item = <<S as ViewMut<'a>>::Type as SplitFirst>::First;
     type Iter = SubsetIter<S::Type, &'a [usize]>;
 
+    #[inline]
     fn view_mut_iter(&'a mut self) -> Self::Iter {
         self.iter_mut()
     }
 }
 
 impl<S: Dummy, I> Dummy for Subset<S, I> {
+    #[inline]
     unsafe fn dummy() -> Self {
         Subset {
             data: Dummy::dummy(),
@@ -891,6 +915,7 @@ impl<S: Dummy, I> Dummy for Subset<S, I> {
 }
 
 impl<S: Truncate, I: Truncate> Truncate for Subset<S, I> {
+    #[inline]
     fn truncate(&mut self, new_len: usize) {
         match &mut self.indices {
             // The target data remains untouched.
@@ -916,6 +941,7 @@ impl<S: Truncate, I: Truncate> Truncate for Subset<S, I> {
 /// Pass through the conversion for structure type `Subset`.
 impl<S: StorageInto<T>, I, T> StorageInto<T> for Subset<S, I> {
     type Output = Subset<S::Output, I>;
+    #[inline]
     fn storage_into(self) -> Self::Output {
         Subset {
             data: self.data.storage_into(),
@@ -941,6 +967,7 @@ impl<'a, S: StorageView<'a>, I> StorageView<'a> for Subset<S, I> {
     /// let s1 = Subset::from_indices(vec![0, 2, 3], s0.clone());
     /// assert_eq!(s1.storage_view(), v.as_slice());
     /// ```
+    #[inline]
     fn storage_view(&'a self) -> Self::StorageView {
         self.data.storage_view()
     }
@@ -959,6 +986,7 @@ impl<S: Storage, I> Storage for Subset<S, I> {
     /// let s1 = Subset::from_indices(vec![0, 2, 3], s0.clone());
     /// assert_eq!(s1.storage(), &v);
     /// ```
+    #[inline]
     fn storage(&self) -> &Self::Storage {
         self.data.storage()
     }
@@ -976,6 +1004,7 @@ impl<S: StorageMut, I> StorageMut for Subset<S, I> {
     /// let mut s1 = Subset::from_indices(vec![0, 2, 3], s0.clone());
     /// assert_eq!(s1.storage_mut(), &mut v);
     /// ```
+    #[inline]
     fn storage_mut(&mut self) -> &mut Self::Storage {
         self.data.storage_mut()
     }
@@ -986,12 +1015,14 @@ impl<S: StorageMut, I> StorageMut for Subset<S, I> {
  */
 
 impl<S: ChunkSize, I> ChunkSize for Subset<S, I> {
+    #[inline]
     fn chunk_size(&self) -> usize {
         self.data.chunk_size()
     }
 }
 
 impl<S: ChunkSize, I, N: Dimension> Subset<UniChunked<S, N>, I> {
+    #[inline]
     pub fn inner_chunk_size(&self) -> usize {
         self.data.inner_chunk_size()
     }
@@ -1004,6 +1035,7 @@ impl<S: ChunkSize, I, N: Dimension> Subset<UniChunked<S, N>, I> {
 impl<S: IntoOwned, I: IntoOwned> IntoOwned for Subset<S, I> {
     type Owned = Subset<S::Owned, I::Owned>;
 
+    #[inline]
     fn into_owned(self) -> Self::Owned {
         Subset {
             indices: self.indices.map(|x| x.into_owned()),
@@ -1017,6 +1049,7 @@ where
     S: IntoOwnedData,
 {
     type OwnedData = Subset<S::OwnedData, I>;
+    #[inline]
     fn into_owned_data(self) -> Self::OwnedData {
         Subset {
             indices: self.indices,

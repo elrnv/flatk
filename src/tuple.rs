@@ -8,6 +8,7 @@ impl<S, T> ValueType for (S, T) {}
 impl<S: Viewed, T: Viewed> Viewed for (S, T) {}
 
 impl<A, B, S: Push<A>, T: Push<B>> Push<(A, B)> for (S, T) {
+    #[inline]
     fn push(&mut self, (a, b): (A, B)) {
         self.0.push(a);
         self.1.push(b);
@@ -15,6 +16,7 @@ impl<A, B, S: Push<A>, T: Push<B>> Push<(A, B)> for (S, T) {
 }
 
 impl<S: Truncate, T: Truncate> Truncate for (S, T) {
+    #[inline]
     fn truncate(&mut self, len: usize) {
         self.0.truncate(len);
         self.1.truncate(len);
@@ -22,6 +24,7 @@ impl<S: Truncate, T: Truncate> Truncate for (S, T) {
 }
 
 impl<S: Clear, T: Clear> Clear for (S, T) {
+    #[inline]
     fn clear(&mut self) {
         self.0.clear();
         self.1.clear();
@@ -31,6 +34,7 @@ impl<S: Clear, T: Clear> Clear for (S, T) {
 impl<S: IntoStorage, T: IntoStorage> IntoStorage for (S, T) {
     type StorageType = (S::StorageType, T::StorageType);
 
+    #[inline]
     fn into_storage(self) -> Self::StorageType {
         (self.0.into_storage(), self.1.into_storage())
     }
@@ -38,6 +42,7 @@ impl<S: IntoStorage, T: IntoStorage> IntoStorage for (S, T) {
 
 impl<U, V, S: StorageInto<U>, T: StorageInto<V>> StorageInto<(U, V)> for (S, T) {
     type Output = (S::Output, T::Output);
+    #[inline]
     fn storage_into(self) -> Self::Output {
         (self.0.storage_into(), self.1.storage_into())
     }
@@ -45,6 +50,7 @@ impl<U, V, S: StorageInto<U>, T: StorageInto<V>> StorageInto<(U, V)> for (S, T) 
 
 impl<S, T, U> CloneWithStorage<U> for (S, T) {
     type CloneType = U;
+    #[inline]
     fn clone_with_storage(&self, storage: U) -> Self::CloneType {
         storage
     }
@@ -52,6 +58,7 @@ impl<S, T, U> CloneWithStorage<U> for (S, T) {
 
 impl<S: IntoOwned, T: IntoOwned> IntoOwned for (S, T) {
     type Owned = (S::Owned, T::Owned);
+    #[inline]
     fn into_owned(self) -> Self::Owned {
         (self.0.into_owned(), self.1.into_owned())
     }
@@ -59,6 +66,7 @@ impl<S: IntoOwned, T: IntoOwned> IntoOwned for (S, T) {
 
 impl<S: IntoOwnedData, T: IntoOwnedData> IntoOwnedData for (S, T) {
     type OwnedData = (S::OwnedData, T::OwnedData);
+    #[inline]
     fn into_owned_data(self) -> Self::OwnedData {
         (self.0.into_owned_data(), self.1.into_owned_data())
     }
@@ -70,6 +78,7 @@ where
     T: Get<'a, usize>,
 {
     type Output = (S::Output, T::Output);
+    #[inline]
     fn get(self, (ref s, ref t): &(S, T)) -> Option<Self::Output> {
         s.get(self)
             .and_then(|s_item| t.get(self).map(|t_item| (s_item, t_item)))
@@ -82,6 +91,7 @@ where
     T: Get<'a, std::ops::Range<usize>>,
 {
     type Output = (S::Output, T::Output);
+    #[inline]
     fn get(self, (ref s, ref t): &(S, T)) -> Option<Self::Output> {
         s.get(self.clone())
             .and_then(|s_item| t.get(self).map(|t_item| (s_item, t_item)))
@@ -95,6 +105,7 @@ where
     N: Unsigned + Copy,
 {
     type Output = (S::Output, T::Output);
+    #[inline]
     fn get(self, (ref s, ref t): &(S, T)) -> Option<Self::Output> {
         s.get(self)
             .and_then(|s_item| t.get(self).map(|t_item| (s_item, t_item)))
@@ -107,6 +118,7 @@ where
     T: Isolate<usize>,
 {
     type Output = (S::Output, T::Output);
+    #[inline]
     fn try_isolate(self, (s, t): (S, T)) -> Option<Self::Output> {
         s.try_isolate(self)
             .and_then(|s_item| t.try_isolate(self).map(|t_item| (s_item, t_item)))
@@ -119,6 +131,7 @@ where
     T: Isolate<std::ops::Range<usize>>,
 {
     type Output = (S::Output, T::Output);
+    #[inline]
     fn try_isolate(self, (s, t): (S, T)) -> Option<Self::Output> {
         s.try_isolate(self.clone())
             .and_then(|s_item| t.try_isolate(self).map(|t_item| (s_item, t_item)))
@@ -128,6 +141,7 @@ where
 impl<S: Set, T: Set> Set for (S, T) {
     type Elem = (S::Elem, T::Elem);
     type Atom = (S::Atom, T::Atom);
+    #[inline]
     fn len(&self) -> usize {
         debug_assert_eq!(self.0.len(), self.1.len());
         self.0.len()
@@ -137,6 +151,7 @@ impl<S: Set, T: Set> Set for (S, T) {
 impl<'a, S: View<'a>, T: View<'a>> View<'a> for (S, T) {
     type Type = (S::Type, T::Type);
 
+    #[inline]
     fn view(&'a self) -> Self::Type {
         (self.0.view(), self.1.view())
     }
@@ -145,6 +160,7 @@ impl<'a, S: View<'a>, T: View<'a>> View<'a> for (S, T) {
 impl<'a, S: ViewMut<'a>, T: ViewMut<'a>> ViewMut<'a> for (S, T) {
     type Type = (S::Type, T::Type);
 
+    #[inline]
     fn view_mut(&'a mut self) -> Self::Type {
         (self.0.view_mut(), self.1.view_mut())
     }
@@ -155,6 +171,7 @@ where
     S: SplitAt,
     T: SplitAt,
 {
+    #[inline]
     fn split_at(self, mid: usize) -> (Self, Self) {
         let (s, t) = self;
         let (s_l, s_r) = s.split_at(mid);
@@ -168,6 +185,7 @@ where
     S: SplitOff,
     T: SplitOff,
 {
+    #[inline]
     fn split_off(&mut self, mid: usize) -> Self {
         let (s, t) = self;
         let s_r = s.split_off(mid);
@@ -183,6 +201,7 @@ where
 {
     type Prefix = (S::Prefix, T::Prefix);
 
+    #[inline]
     fn split_prefix(self) -> Option<(Self::Prefix, Self)> {
         let (s, t) = self;
         s.split_prefix().and_then(|(s_prefix, s_rest)| {
@@ -199,6 +218,7 @@ where
 {
     type First = (S::First, T::First);
 
+    #[inline]
     fn split_first(self) -> Option<(Self::First, Self)> {
         let (s, t) = self;
         s.split_first().and_then(|(s_first, s_rest)| {
@@ -213,24 +233,28 @@ where
 /// storage is the tuple itself.
 impl<S: Storage<Storage = S>, T: Storage<Storage = T>> Storage for (S, T) {
     type Storage = (S, T);
+    #[inline]
     fn storage(&self) -> &Self::Storage {
         self
     }
 }
 
 impl<S: StorageMut<Storage = S>, T: StorageMut<Storage = T>> StorageMut for (S, T) {
+    #[inline]
     fn storage_mut(&mut self) -> &mut Self::Storage {
         self
     }
 }
 
 impl<S: Dummy, T: Dummy> Dummy for (S, T) {
+    #[inline]
     unsafe fn dummy() -> Self {
         (S::dummy(), T::dummy())
     }
 }
 
 impl<S: RemovePrefix, T: RemovePrefix> RemovePrefix for (S, T) {
+    #[inline]
     fn remove_prefix(&mut self, n: usize) {
         self.0.remove_prefix(n);
         self.1.remove_prefix(n);
@@ -246,6 +270,7 @@ where
     type Item = (S::Item, T::Item);
     type IterType = std::iter::Zip<S::IterType, T::IterType>;
 
+    #[inline]
     fn into_static_chunk_iter(self) -> Self::IterType {
         self.0
             .into_static_chunk_iter()

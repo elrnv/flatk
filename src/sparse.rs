@@ -42,6 +42,7 @@ where
     /// assert_eq!(Some((3, &6, 3)), iter.next());
     /// assert_eq!(None, iter.next());
     /// ```
+    #[inline]
     pub fn from_dim(indices: I, dim: usize, values: S) -> Self {
         Sparse::new(Select::new(indices, ..dim), values)
     }
@@ -58,6 +59,7 @@ where
     ///
     /// # Panics
     /// This function will panic if `selection` and `source` have different sizes.
+    #[inline]
     pub fn new(selection: Select<T, I>, source: S) -> Self {
         Self::validate(Sparse { selection, source })
     }
@@ -169,6 +171,7 @@ where
     S: Set<Elem = A> + Push<A>,
     I: Push<usize>,
 {
+    #[inline]
     fn push(&mut self, (index, elem): (usize, A)) {
         self.source.push(elem);
         self.selection.indices.push(index);
@@ -177,27 +180,33 @@ where
 
 impl<'a, S, T, I> Sparse<S, T, I> {
     /// Get a reference to the underlying source data.
+    #[inline]
     pub fn source(&self) -> &S {
         &self.source
     }
     /// Get a mutable reference to the underlying source data.
+    #[inline]
     pub fn source_mut(&mut self) -> &mut S {
         &mut self.source
     }
     /// Get a reference to the underlying selection.
+    #[inline]
     pub fn selection(&self) -> &Select<T, I> {
         &self.selection
     }
 
+    #[inline]
     pub fn selection_mut(&mut self) -> &mut Select<T, I> {
         &mut self.selection
     }
 
     /// Get a reference to the underlying indices.
+    #[inline]
     pub fn indices(&self) -> &I {
         &self.selection.indices
     }
 
+    #[inline]
     pub fn indices_mut(&mut self) -> &mut I {
         &mut self.selection.indices
     }
@@ -224,6 +233,7 @@ impl<S: Set, T, I> Set for Sparse<S, T, I> {
     /// let sparse = Sparse::from_dim(vec![0,2,2,1,1], 3, v.as_slice());
     /// assert_eq!(5, sparse.len());
     /// ```
+    #[inline]
     fn len(&self) -> usize {
         self.source.len()
     }
@@ -237,6 +247,7 @@ where
     I: AsRef<[usize]>,
 {
     type Type = Sparse<S::Type, T::Type, &'a [usize]>;
+    #[inline]
     fn view(&'a self) -> Self::Type {
         Sparse {
             selection: self.selection.view(),
@@ -252,6 +263,7 @@ where
     I: AsMut<[usize]>,
 {
     type Type = Sparse<S::Type, T::Type, &'a mut [usize]>;
+    #[inline]
     fn view_mut(&'a mut self) -> Self::Type {
         let Sparse {
             selection: Select {
@@ -277,6 +289,7 @@ where
     T: Set + Clone,
     I: SplitAt,
 {
+    #[inline]
     fn split_at(self, mid: usize) -> (Self, Self) {
         let Sparse { selection, source } = self;
         let (selection_l, selection_r) = selection.split_at(mid);
@@ -295,6 +308,7 @@ where
 }
 
 impl<S: RemovePrefix, T, I: RemovePrefix> RemovePrefix for Sparse<S, T, I> {
+    #[inline]
     fn remove_prefix(&mut self, n: usize) {
         self.selection.remove_prefix(n);
         self.source.remove_prefix(n);
@@ -313,6 +327,7 @@ where
 {
     type Output = (usize, <S as Get<'a, usize>>::Output);
 
+    #[inline]
     fn get(self, sparse: &Sparse<S, T, I>) -> Option<Self::Output> {
         let Sparse { selection, source } = sparse;
         let selected = selection.indices.as_ref();
@@ -333,6 +348,7 @@ where
         <T as Isolate<usize>>::Output,
     );
 
+    #[inline]
     fn try_isolate(self, sparse: Sparse<S, T, I>) -> Option<Self::Output> {
         let Sparse { selection, source } = sparse;
         source
@@ -352,6 +368,7 @@ where
 {
     type Output = Sparse<S::Output, T, I::Output>;
 
+    #[inline]
     fn try_isolate(self, sparse: Sparse<S, T, I>) -> Option<Self::Output> {
         let Sparse { selection, source } = sparse;
         source.try_isolate(self.clone()).and_then(|source| {
@@ -376,6 +393,7 @@ where
     type Item = (usize, S::First);
     type IntoIter = SparseIter<'a, S>;
 
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         SparseIter {
             indices: self.selection.indices,
@@ -395,6 +413,7 @@ where
 {
     type Item = (usize, S::First);
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let source_slice = std::mem::replace(&mut self.source, unsafe { Dummy::dummy() });
         source_slice.split_first().map(|(first, rest)| {
@@ -414,6 +433,7 @@ where
     T: Set + Get<'a, usize> + View<'a>,
     I: AsRef<[usize]>,
 {
+    #[inline]
     pub fn iter(
         &'a self,
     ) -> impl Iterator<
@@ -435,6 +455,7 @@ where
     S: View<'a>,
     <S as View<'a>>::Type: Set + IntoIterator,
 {
+    #[inline]
     pub fn source_iter(&'a self) -> <<S as View<'a>>::Type as IntoIterator>::IntoIter {
         self.source.view().into_iter()
     }
@@ -444,6 +465,7 @@ impl<'a, S, T, I> Sparse<S, T, I>
 where
     I: AsRef<[usize]>,
 {
+    #[inline]
     pub fn index_iter(&'a self) -> std::iter::Cloned<std::slice::Iter<'a, usize>> {
         self.selection.index_iter().cloned()
     }
@@ -455,6 +477,7 @@ where
     <S as View<'a>>::Type: Set + IntoIterator,
     I: AsRef<[usize]>,
 {
+    #[inline]
     pub fn indexed_source_iter(
         &'a self,
     ) -> std::iter::Zip<
@@ -474,6 +497,7 @@ where
     S: ViewMut<'a>,
     <S as ViewMut<'a>>::Type: Set + IntoIterator,
 {
+    #[inline]
     pub fn source_iter_mut(&'a mut self) -> <<S as ViewMut<'a>>::Type as IntoIterator>::IntoIter {
         self.source.view_mut().into_iter()
     }
@@ -488,6 +512,7 @@ where
     <S as ViewMut<'a>>::Type: Set + IntoIterator,
     I: AsRef<[usize]>,
 {
+    #[inline]
     pub fn indexed_source_iter_mut(
         &'a mut self,
     ) -> impl Iterator<Item = (usize, <<S as ViewMut<'a>>::Type as IntoIterator>::Item)> {
@@ -507,6 +532,7 @@ where
     <S as ViewMut<'a>>::Type: Set + IntoIterator,
     I: AsMut<[usize]>,
 {
+    #[inline]
     pub fn iter_mut(
         &'a mut self,
     ) -> std::iter::Zip<
@@ -526,6 +552,7 @@ where
     <S as View<'a>>::Type: Set + IntoIterator,
     I: AsMut<[usize]>,
 {
+    #[inline]
     pub fn index_iter_mut(
         &'a mut self,
     ) -> impl Iterator<Item = (&'a mut usize, <<S as View<'a>>::Type as IntoIterator>::Item)> {
@@ -543,6 +570,7 @@ where
     type Item = <<S as View<'a>>::Type as IntoIterator>::Item;
     type Iter = <<S as View<'a>>::Type as IntoIterator>::IntoIter;
 
+    #[inline]
     fn view_iter(&'a self) -> Self::Iter {
         self.source_iter()
     }
@@ -556,6 +584,7 @@ where
     type Item = <<S as ViewMut<'a>>::Type as IntoIterator>::Item;
     type Iter = <<S as ViewMut<'a>>::Type as IntoIterator>::IntoIter;
 
+    #[inline]
     fn view_mut_iter(&'a mut self) -> Self::Iter {
         self.source_iter_mut()
     }
@@ -564,6 +593,7 @@ where
 impl_atom_iterators_recursive!(impl<S, T, I> for Sparse<S, T, I> { source });
 
 impl<S: Dummy, T: Dummy, I: Dummy> Dummy for Sparse<S, T, I> {
+    #[inline]
     unsafe fn dummy() -> Self {
         Sparse {
             selection: Dummy::dummy(),
@@ -573,6 +603,7 @@ impl<S: Dummy, T: Dummy, I: Dummy> Dummy for Sparse<S, T, I> {
 }
 
 impl<S: Truncate, T, I: Truncate> Truncate for Sparse<S, T, I> {
+    #[inline]
     fn truncate(&mut self, new_len: usize) {
         self.selection.truncate(new_len);
         self.source.truncate(new_len);
@@ -580,6 +611,7 @@ impl<S: Truncate, T, I: Truncate> Truncate for Sparse<S, T, I> {
 }
 
 impl<S: Clear, T, I: Clear> Clear for Sparse<S, T, I> {
+    #[inline]
     fn clear(&mut self) {
         self.source.clear();
         self.selection.clear();
@@ -612,6 +644,7 @@ where
     /// s.trim(); // remove unindexed elements.
     /// assert_eq!(4, s.storage().len());
     /// ```
+    #[inline]
     pub fn trim(&mut self) -> usize {
         let num_removed = self.source.trim();
         self.selection.truncate(self.source.len());
@@ -626,6 +659,7 @@ where
 /// Pass through the conversion for structure type `Subset`.
 impl<S: StorageInto<U>, T, I, U> StorageInto<U> for Sparse<S, T, I> {
     type Output = Sparse<S::Output, T, I>;
+    #[inline]
     fn storage_into(self) -> Self::Output {
         Sparse {
             source: self.source.storage_into(),
@@ -637,6 +671,7 @@ impl<S: StorageInto<U>, T, I, U> StorageInto<U> for Sparse<S, T, I> {
 impl<S: IntoStorage, T, I> IntoStorage for Sparse<S, T, I> {
     type StorageType = S::StorageType;
     /// Convert the sparse set into its raw storage representation.
+    #[inline]
     fn into_storage(self) -> Self::StorageType {
         self.source.into_storage()
     }
@@ -644,6 +679,7 @@ impl<S: IntoStorage, T, I> IntoStorage for Sparse<S, T, I> {
 
 impl<T: Clone, S: CloneWithStorage<U>, I: Clone, U> CloneWithStorage<U> for Sparse<S, T, I> {
     type CloneType = Sparse<S::CloneType, T, I>;
+    #[inline]
     fn clone_with_storage(&self, storage: U) -> Self::CloneType {
         Sparse {
             selection: self.selection.clone(),
@@ -669,6 +705,7 @@ impl<'a, S: StorageView<'a>, T, I> StorageView<'a> for Sparse<S, T, I> {
     /// let s1 = Sparse::from_dim(vec![0, 2, 2, 0], 4, s0.clone());
     /// assert_eq!(s1.storage_view(), v.as_slice());
     /// ```
+    #[inline]
     fn storage_view(&'a self) -> Self::StorageView {
         self.source.storage_view()
     }
@@ -687,6 +724,7 @@ impl<S: Storage, T, I> Storage for Sparse<S, T, I> {
     /// let s1 = Sparse::from_dim(vec![0, 2, 2, 0], 4, s0.clone());
     /// assert_eq!(s1.storage(), &v);
     /// ```
+    #[inline]
     fn storage(&self) -> &Self::Storage {
         self.source.storage()
     }
@@ -704,12 +742,14 @@ impl<S: StorageMut, T, I> StorageMut for Sparse<S, T, I> {
     /// let mut s1 = Sparse::from_dim(vec![0, 2, 2, 0], 4, s0.clone());
     /// assert_eq!(s1.storage_mut(), &mut v);
     /// ```
+    #[inline]
     fn storage_mut(&mut self) -> &mut Self::Storage {
         self.source.storage_mut()
     }
 }
 
 impl<S: PermuteInPlace, T, I: PermuteInPlace> PermuteInPlace for Sparse<S, T, I> {
+    #[inline]
     fn permute_in_place(&mut self, permutation: &[usize], seen: &mut [bool]) {
         let Sparse {
             selection: Select { indices, .. },
@@ -727,6 +767,7 @@ impl<S: PermuteInPlace, T, I: PermuteInPlace> PermuteInPlace for Sparse<S, T, I>
  */
 
 impl<S: ChunkSize, T, I> ChunkSize for Sparse<S, T, I> {
+    #[inline]
     fn chunk_size(&self) -> usize {
         self.source.chunk_size()
     }
@@ -739,6 +780,7 @@ impl<S: ChunkSize, T, I> ChunkSize for Sparse<S, T, I> {
 impl<S: IntoOwned, T: IntoOwned, I: IntoOwned> IntoOwned for Sparse<S, T, I> {
     type Owned = Sparse<S::Owned, T::Owned, I::Owned>;
 
+    #[inline]
     fn into_owned(self) -> Self::Owned {
         Sparse {
             selection: self.selection.into_owned(),
@@ -752,6 +794,7 @@ where
     S: IntoOwnedData,
 {
     type OwnedData = Sparse<S::OwnedData, T, I>;
+    #[inline]
     fn into_owned_data(self) -> Self::OwnedData {
         Sparse {
             selection: self.selection,
@@ -761,6 +804,7 @@ where
 }
 
 impl<S: Reserve, T, I: Reserve> Reserve for Sparse<S, T, I> {
+    #[inline]
     fn reserve_with_storage(&mut self, n: usize, storage_n: usize) {
         self.selection.reserve_with_storage(n, storage_n);
         self.source.reserve_with_storage(n, storage_n);

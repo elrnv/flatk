@@ -6,6 +6,7 @@ where
     <N as Array<T>>::Array: 'a,
 {
     type Output = &'a N::Array;
+    #[inline]
     fn get(self, set: &&'a [T]) -> Option<Self::Output> {
         if self.end() <= set.len() {
             let slice = *set;
@@ -22,6 +23,7 @@ where
     <N as Array<T>>::Array: 'a,
 {
     type Output = &'a N::Array;
+    #[inline]
     fn try_isolate(self, set: &'a [T]) -> Option<Self::Output> {
         if self.end() <= set.len() {
             Some(unsafe { &*(set.as_ptr().add(self.start()) as *const N::Array) })
@@ -37,6 +39,7 @@ where
     <N as Array<T>>::Array: 'a,
 {
     type Output = &'a mut N::Array;
+    #[inline]
     fn try_isolate(self, set: &'a mut [T]) -> Option<Self::Output> {
         if self.end() <= set.len() {
             Some(unsafe { &mut *(set.as_mut_ptr().add(self.start()) as *mut N::Array) })
@@ -52,6 +55,7 @@ where
     <[T] as std::ops::Index<I>>::Output: 'a,
 {
     type Output = &'a <[T] as std::ops::Index<I>>::Output;
+    #[inline]
     fn get(self, set: &&'a [T]) -> Option<Self::Output> {
         Some(std::ops::Index::<I>::index(*set, self))
     }
@@ -63,6 +67,7 @@ where
     <I as std::slice::SliceIndex<[T]>>::Output: 'a,
 {
     type Output = &'a <[T] as std::ops::Index<I>>::Output;
+    #[inline]
     fn try_isolate(self, set: &'a [T]) -> Option<&'a <[T] as std::ops::Index<I>>::Output> {
         Some(std::ops::Index::<I>::index(set, self))
     }
@@ -74,6 +79,7 @@ where
     <I as std::slice::SliceIndex<[T]>>::Output: 'a,
 {
     type Output = &'a mut <[T] as std::ops::Index<I>>::Output;
+    #[inline]
     fn try_isolate(self, set: &'a mut [T]) -> Option<&'a mut <[T] as std::ops::Index<I>>::Output> {
         let slice = unsafe { std::slice::from_raw_parts_mut(set.as_mut_ptr(), set.len()) };
         Some(std::ops::IndexMut::<I>::index_mut(slice, self))
@@ -83,6 +89,7 @@ where
 impl<T> Set for [T] {
     type Elem = T;
     type Atom = T;
+    #[inline]
     fn len(&self) -> usize {
         <[T]>::len(self)
     }
@@ -91,6 +98,7 @@ impl<T> Set for [T] {
 impl<'a, T: 'a> View<'a> for [T] {
     type Type = &'a [T];
 
+    #[inline]
     fn view(&'a self) -> Self::Type {
         self
     }
@@ -99,6 +107,7 @@ impl<'a, T: 'a> View<'a> for [T] {
 impl<'a, T: 'a> ViewMut<'a> for [T] {
     type Type = &'a mut [T];
 
+    #[inline]
     fn view_mut(&'a mut self) -> Self::Type {
         self
     }
@@ -108,6 +117,7 @@ impl<'a, T: 'a> ViewIterator<'a> for [T] {
     type Item = &'a T;
     type Iter = std::slice::Iter<'a, T>;
 
+    #[inline]
     fn view_iter(&'a self) -> Self::Iter {
         self.iter()
     }
@@ -116,6 +126,7 @@ impl<'a, T: 'a> ViewMutIterator<'a> for [T] {
     type Item = &'a mut T;
     type Iter = std::slice::IterMut<'a, T>;
 
+    #[inline]
     fn view_mut_iter(&'a mut self) -> Self::Iter {
         self.iter_mut()
     }
@@ -124,6 +135,7 @@ impl<'a, T: 'a> ViewMutIterator<'a> for [T] {
 impl<'a, T: 'a> AtomIterator<'a> for [T] {
     type Item = &'a T;
     type Iter = std::slice::Iter<'a, T>;
+    #[inline]
     fn atom_iter(&'a self) -> Self::Iter {
         self.iter()
     }
@@ -132,6 +144,7 @@ impl<'a, T: 'a> AtomIterator<'a> for [T] {
 impl<'a, T: 'a> AtomMutIterator<'a> for [T] {
     type Item = &'a mut T;
     type Iter = std::slice::IterMut<'a, T>;
+    #[inline]
     fn atom_mut_iter(&'a mut self) -> Self::Iter {
         self.iter_mut()
     }
@@ -202,6 +215,7 @@ where
 {
     type Item = <Self as SplitPrefix<N>>::Prefix;
     type IterType = UniChunkedIter<Self, N>;
+    #[inline]
     fn into_static_chunk_iter(self) -> Self::IterType {
         self.into_generic_static_chunk_iter()
     }
@@ -214,6 +228,7 @@ where
 {
     type Item = <Self as SplitPrefix<N>>::Prefix;
     type IterType = UniChunkedIter<Self, N>;
+    #[inline]
     fn into_static_chunk_iter(self) -> Self::IterType {
         self.into_generic_static_chunk_iter()
     }
@@ -223,6 +238,7 @@ impl<'a, T: Send + Sync> IntoParChunkIterator for &'a [T] {
     type Item = &'a [T];
     type IterType = rayon::slice::Chunks<'a, T>;
 
+    #[inline]
     fn into_par_chunk_iter(self, chunk_size: usize) -> Self::IterType {
         use rayon::slice::ParallelSlice;
         assert_eq!(self.len() % chunk_size, 0);
@@ -234,6 +250,7 @@ impl<'a, T: Send + Sync> IntoParChunkIterator for &'a mut [T] {
     type Item = &'a mut [T];
     type IterType = rayon::slice::ChunksMut<'a, T>;
 
+    #[inline]
     fn into_par_chunk_iter(self, chunk_size: usize) -> Self::IterType {
         use rayon::slice::ParallelSliceMut;
         assert_eq!(self.len() % chunk_size, 0);
@@ -244,6 +261,7 @@ impl<'a, T: Send + Sync> IntoParChunkIterator for &'a mut [T] {
 impl<'a, T> SplitFirst for &'a [T] {
     type First = &'a T;
 
+    #[inline]
     fn split_first(self) -> Option<(Self::First, Self)> {
         self.split_first()
     }
@@ -252,6 +270,7 @@ impl<'a, T> SplitFirst for &'a [T] {
 impl<'a, T> SplitFirst for &'a mut [T] {
     type First = &'a mut T;
 
+    #[inline]
     fn split_first(self) -> Option<(Self::First, Self)> {
         self.split_first_mut()
     }
@@ -259,6 +278,7 @@ impl<'a, T> SplitFirst for &'a mut [T] {
 
 impl<'a, T> IntoStorage for &'a [T] {
     type StorageType = &'a [T];
+    #[inline]
     fn into_storage(self) -> Self::StorageType {
         self
     }
@@ -266,6 +286,7 @@ impl<'a, T> IntoStorage for &'a [T] {
 
 impl<'a, T> IntoStorage for &'a mut [T] {
     type StorageType = &'a mut [T];
+    #[inline]
     fn into_storage(self) -> Self::StorageType {
         self
     }
@@ -273,6 +294,7 @@ impl<'a, T> IntoStorage for &'a mut [T] {
 
 impl<'a, T> StorageView<'a> for &'a [T] {
     type StorageView = &'a [T];
+    #[inline]
     fn storage_view(&'a self) -> Self::StorageView {
         self
     }
@@ -280,6 +302,7 @@ impl<'a, T> StorageView<'a> for &'a [T] {
 
 impl<'a, T> Storage for &'a [T] {
     type Storage = [T];
+    #[inline]
     fn storage(&self) -> &Self::Storage {
         self
     }
@@ -287,6 +310,7 @@ impl<'a, T> Storage for &'a [T] {
 
 impl<'a, T> Storage for &'a mut [T] {
     type Storage = [T];
+    #[inline]
     fn storage(&self) -> &Self::Storage {
         self
     }
@@ -294,6 +318,7 @@ impl<'a, T> Storage for &'a mut [T] {
 
 impl<'a, T> StorageMut for &'a mut [T] {
     /// A slice is a type of storage, simply return a mutable reference to self.
+    #[inline]
     fn storage_mut(&mut self) -> &mut Self::Storage {
         self
     }
@@ -301,6 +326,7 @@ impl<'a, T> StorageMut for &'a mut [T] {
 
 impl<T> Storage for [T] {
     type Storage = [T];
+    #[inline]
     fn storage(&self) -> &Self::Storage {
         self
     }
@@ -308,6 +334,7 @@ impl<T> Storage for [T] {
 
 impl<T> StorageMut for [T] {
     /// A slice is a type of storage, simply return a mutable reference to self.
+    #[inline]
     fn storage_mut(&mut self) -> &mut Self::Storage {
         self
     }
@@ -317,6 +344,7 @@ impl<'a, T: 'a> CloneWithStorage<Vec<T>> for &'a [T] {
     type CloneType = Vec<T>;
     /// This function simply ignores self and returns storage since self is already
     /// a storage type.
+    #[inline]
     fn clone_with_storage(&self, storage: Vec<T>) -> Self::CloneType {
         assert_eq!(self.len(), storage.len());
         storage
@@ -327,6 +355,7 @@ impl<'a, T: 'a> CloneWithStorage<&'a [T]> for &'a [T] {
     type CloneType = &'a [T];
     /// This function simply ignores self and returns storage since self is already
     /// a storage type.
+    #[inline]
     fn clone_with_storage(&self, storage: &'a [T]) -> Self::CloneType {
         assert_eq!(self.len(), storage.len());
         storage
@@ -337,6 +366,7 @@ impl<'a, T: 'a> CloneWithStorage<&'a mut [T]> for &'a mut [T] {
     type CloneType = &'a mut [T];
     /// This function simply ignores self and returns storage since self is already
     /// a storage type.
+    #[inline]
     fn clone_with_storage(&self, storage: &'a mut [T]) -> Self::CloneType {
         assert_eq!(self.len(), storage.len());
         storage
@@ -344,24 +374,28 @@ impl<'a, T: 'a> CloneWithStorage<&'a mut [T]> for &'a mut [T] {
 }
 
 impl<'a, T> SplitAt for &mut [T] {
+    #[inline]
     fn split_at(self, mid: usize) -> (Self, Self) {
         self.split_at_mut(mid)
     }
 }
 
 impl<'a, T> SplitAt for &[T] {
+    #[inline]
     fn split_at(self, mid: usize) -> (Self, Self) {
         self.split_at(mid)
     }
 }
 
 impl<T> Dummy for &[T] {
+    #[inline]
     unsafe fn dummy() -> Self {
         &[]
     }
 }
 
 impl<T> Dummy for &mut [T] {
+    #[inline]
     unsafe fn dummy() -> Self {
         &mut []
     }
@@ -386,6 +420,7 @@ impl<T> RemovePrefix for &mut [T] {
     /// s.remove_prefix(2);
     /// assert_eq!(&[3,4,5], s);
     /// ```
+    #[inline]
     fn remove_prefix(&mut self, n: usize) {
         let data = std::mem::replace(self, &mut []);
         *self = &mut data[n..];
@@ -419,6 +454,7 @@ where
 impl<T> Viewed for [T] {}
 
 impl<T> Truncate for &[T] {
+    #[inline]
     fn truncate(&mut self, new_len: usize) {
         // Simply forget about the elements past new_len.
         *self = self.split_at(new_len).0;
@@ -426,6 +462,7 @@ impl<T> Truncate for &[T] {
 }
 
 impl<T> Truncate for &mut [T] {
+    #[inline]
     fn truncate(&mut self, new_len: usize) {
         let data = std::mem::replace(self, &mut []);
         // Simply forget about the elements past new_len.
@@ -441,6 +478,7 @@ impl<T> Truncate for &mut [T] {
 /// Convert a slice into an owned `Vec` type.
 impl<'a, T: Clone> StorageInto<Vec<T>> for &'a [T] {
     type Output = Vec<T>;
+    #[inline]
     fn storage_into(self) -> Self::Output {
         self.to_vec()
     }
@@ -449,6 +487,7 @@ impl<'a, T: Clone> StorageInto<Vec<T>> for &'a [T] {
 /// Convert a mutable slice into an owned `Vec` type.
 impl<'a, T: Clone> StorageInto<Vec<T>> for &'a mut [T] {
     type Output = Vec<T>;
+    #[inline]
     fn storage_into(self) -> Self::Output {
         self.to_vec()
     }
@@ -457,6 +496,7 @@ impl<'a, T: Clone> StorageInto<Vec<T>> for &'a mut [T] {
 /// Convert a mutable slice into an immutable borrow.
 impl<'a, T: 'a> StorageInto<&'a [T]> for &'a mut [T] {
     type Output = &'a [T];
+    #[inline]
     fn storage_into(self) -> Self::Output {
         &*self
     }
@@ -468,6 +508,7 @@ impl<'a, T: 'a> StorageInto<&'a [T]> for &'a mut [T] {
 
 impl<T> SwapChunks for &mut [T] {
     /// Swap non-overlapping chunks beginning at the given indices.
+    #[inline]
     fn swap_chunks(&mut self, i: usize, j: usize, chunk_size: usize) {
         assert!(i + chunk_size <= j || j + chunk_size <= i);
 
@@ -480,6 +521,7 @@ impl<T> SwapChunks for &mut [T] {
 impl<T: PartialOrd + Clone> Sort for [T] {
     /// Sort the given indices into this collection with respect to values provided by this collection.
     /// Invalid values like `NaN` in floats will be pushed to the end.
+    #[inline]
     fn sort_indices(&self, indices: &mut [usize]) {
         indices.sort_by(|&a, &b| {
             self[a]
@@ -495,6 +537,7 @@ impl<T> PermuteInPlace for &mut [T] {
     /// The slice `seen` is provided to keep track of which elements have already been seen.
     /// `seen` is assumed to be initialized to `false` and have length equal or
     /// larger than this slice.
+    #[inline]
     fn permute_in_place(&mut self, permutation: &[usize], seen: &mut [bool]) {
         let data = std::mem::replace(self, &mut []);
         UniChunked {
@@ -506,6 +549,7 @@ impl<T> PermuteInPlace for &mut [T] {
 }
 
 impl<T: Clone> CloneIntoOther<Vec<T>> for [T] {
+    #[inline]
     fn clone_into_other(&self, other: &mut Vec<T>) {
         other.clear();
         other.extend_from_slice(self);
@@ -513,6 +557,7 @@ impl<T: Clone> CloneIntoOther<Vec<T>> for [T] {
 }
 
 impl<T: Clone> CloneIntoOther for [T] {
+    #[inline]
     fn clone_into_other(&self, other: &mut [T]) {
         assert_eq!(self.len(), other.len());
         other.clone_from_slice(self);

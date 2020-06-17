@@ -81,6 +81,7 @@ impl<S: Set, I: AsRef<[usize]>> Select<S, I> {
     /// assert_eq!('c', selection[1]);
     /// assert_eq!('b', selection[2]);
     /// ```
+    #[inline]
     pub fn new(indices: I, target: S) -> Self {
         Self::validate(Select { indices, target })
     }
@@ -146,6 +147,7 @@ where
     ///     String::from_utf8(collapsed.data().clone()).unwrap().as_str()
     /// );
     /// ```
+    #[inline]
     pub fn collapse(self) -> S::Owned {
         self.indices
             .as_ref()
@@ -176,6 +178,7 @@ impl<S: Set, I: AsRef<[usize]>> Set for Select<S, I> {
     /// let selection = Select::new(vec![4,0,1,4], v.as_slice());
     /// assert_eq!(4, selection.len());
     /// ```
+    #[inline]
     fn len(&self) -> usize {
         self.indices.as_ref().len()
     }
@@ -188,6 +191,7 @@ where
     I: AsRef<[usize]>,
 {
     type Type = Select<S::Type, &'a [usize]>;
+    #[inline]
     fn view(&'a self) -> Self::Type {
         Select {
             indices: self.indices.as_ref(),
@@ -235,6 +239,7 @@ where
     /// assert_eq!(Some((1, &'a')), iter.next());
     /// assert_eq!(None, iter.next());
     /// ```
+    #[inline]
     fn view_mut(&'a mut self) -> Self::Type {
         Select {
             indices: self.indices.as_ref(),
@@ -269,6 +274,7 @@ where
     /// assert_eq!(Some((2, &3)), iter_r.next()); // Note that 3 is shared between l and r
     /// assert_eq!(None, iter_r.next());
     /// ```
+    #[inline]
     fn split_at(self, mid: usize) -> (Self, Self) {
         let Select { target, indices } = self;
         let (indices_l, indices_r) = indices.split_at(mid);
@@ -286,6 +292,7 @@ where
 }
 
 impl<S, I: RemovePrefix> RemovePrefix for Select<S, I> {
+    #[inline]
     fn remove_prefix(&mut self, n: usize) {
         self.indices.remove_prefix(n);
     }
@@ -344,6 +351,7 @@ where
 {
     type Output = (usize, <S as Get<'a, usize>>::Output);
 
+    #[inline]
     fn get(self, selection: &Select<S, I>) -> Option<Self::Output> {
         selection
             .indices
@@ -361,6 +369,7 @@ where
 {
     type Output = (I::Output, S::Output);
 
+    #[inline]
     fn try_isolate(self, selection: Select<S, I>) -> Option<Self::Output> {
         use std::borrow::Borrow;
         let Select { indices, target } = selection;
@@ -377,6 +386,7 @@ where
 {
     type Output = Select<S, I::Output>;
 
+    #[inline]
     fn try_isolate(self, selection: Select<S, I>) -> Option<Self::Output> {
         let Select { indices, target } = selection;
         indices
@@ -437,6 +447,7 @@ where
     /// assert_eq!((0, 1..3), selection.at(2));
     /// assert_eq!((4, 9..11), selection.at(3));
     /// ```
+    #[inline]
     fn index(&self, idx: usize) -> &Self::Output {
         self.target.index(self.indices.as_ref()[idx])
     }
@@ -469,6 +480,7 @@ where
     /// assert_eq!(selection[2], 100);
     /// assert_eq!(selection[3], 5);
     /// ```
+    #[inline]
     fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
         self.target.index_mut(self.indices.as_ref()[idx])
     }
@@ -494,6 +506,7 @@ where
     /// assert_eq!(3, selection[1]);
     /// assert_eq!(1, selection[2]);
     /// ```
+    #[inline]
     fn index(&self, idx: usize) -> &Self::Output {
         self.target.index(self.indices.as_ref()[idx])
     }
@@ -518,6 +531,7 @@ where
     /// let mut subset = Subset::from_indices(vec![3,2,0,4], v.as_mut_slice());
     /// assert_eq!(3, subset[1]);
     /// ```
+    #[inline]
     fn index(&self, idx: usize) -> &Self::Output {
         self.target.index(self.indices.as_ref()[idx])
     }
@@ -546,6 +560,7 @@ where
     /// assert_eq!(selection[2], 3);
     /// assert_eq!(selection[3], 100);
     /// ```
+    #[inline]
     fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
         self.target.index_mut(self.indices.as_ref()[idx])
     }
@@ -560,6 +575,7 @@ where
     S: Set + Get<'a, usize> + View<'a>,
     I: AsRef<[usize]>,
 {
+    #[inline]
     pub fn iter(&'a self) -> impl Iterator<Item = (usize, <S as Get<'a, usize>>::Output)> + Clone {
         self.indices
             .as_ref()
@@ -573,6 +589,7 @@ impl<S, I> Select<S, I>
 where
     I: AsRef<[usize]>,
 {
+    #[inline]
     pub fn index_iter(&self) -> std::slice::Iter<'_, usize> {
         self.indices.as_ref().iter()
     }
@@ -582,12 +599,14 @@ impl<S, I> Select<S, I>
 where
     I: AsMut<[usize]>,
 {
+    #[inline]
     pub fn index_iter_mut(&mut self) -> std::slice::IterMut<'_, usize> {
         self.indices.as_mut().iter_mut()
     }
 }
 
 impl<S: Dummy, I: Dummy> Dummy for Select<S, I> {
+    #[inline]
     unsafe fn dummy() -> Self {
         Select {
             indices: Dummy::dummy(),
@@ -597,6 +616,7 @@ impl<S: Dummy, I: Dummy> Dummy for Select<S, I> {
 }
 
 impl<S, I: Truncate> Truncate for Select<S, I> {
+    #[inline]
     fn truncate(&mut self, new_len: usize) {
         // The target data remains untouched.
         self.indices.truncate(new_len);
@@ -605,6 +625,7 @@ impl<S, I: Truncate> Truncate for Select<S, I> {
 
 // Clear selection
 impl<S, I: Clear> Clear for Select<S, I> {
+    #[inline]
     fn clear(&mut self) {
         self.indices.clear();
     }
@@ -617,6 +638,7 @@ impl<S, I: Clear> Clear for Select<S, I> {
 /// Pass through the conversion for structure type `Select`.
 impl<S: StorageInto<T>, I, T> StorageInto<T> for Select<S, I> {
     type Output = Select<S::Output, I>;
+    #[inline]
     fn storage_into(self) -> Self::Output {
         Select {
             target: self.target.storage_into(),
@@ -642,6 +664,7 @@ impl<'a, S: StorageView<'a>, I> StorageView<'a> for Select<S, I> {
     /// let s1 = Select::new(vec![1, 1, 0, 2], s0.clone());
     /// assert_eq!(s1.storage_view(), v.as_slice());
     /// ```
+    #[inline]
     fn storage_view(&'a self) -> Self::StorageView {
         self.target.storage_view()
     }
@@ -660,6 +683,7 @@ impl<S: Storage, I> Storage for Select<S, I> {
     /// let s1 = Select::new(vec![1, 1, 0, 2], s0.clone());
     /// assert_eq!(s1.storage(), &v);
     /// ```
+    #[inline]
     fn storage(&self) -> &Self::Storage {
         self.target.storage()
     }
@@ -677,6 +701,7 @@ impl<S: StorageMut, I> StorageMut for Select<S, I> {
     /// let mut s1 = Select::new(vec![1, 1, 0, 2], s0.clone());
     /// assert_eq!(s1.storage_mut(), &mut v);
     /// ```
+    #[inline]
     fn storage_mut(&mut self) -> &mut Self::Storage {
         self.target.storage_mut()
     }
@@ -687,6 +712,7 @@ impl<S: StorageMut, I> StorageMut for Select<S, I> {
  */
 
 impl<S: ChunkSize, I> ChunkSize for Select<S, I> {
+    #[inline]
     fn chunk_size(&self) -> usize {
         self.target.chunk_size()
     }
@@ -699,6 +725,7 @@ impl<S: ChunkSize, I> ChunkSize for Select<S, I> {
 impl<S: IntoOwned, I: IntoOwned> IntoOwned for Select<S, I> {
     type Owned = Select<S::Owned, I::Owned>;
 
+    #[inline]
     fn into_owned(self) -> Self::Owned {
         Select {
             indices: self.indices.into_owned(),
@@ -712,6 +739,7 @@ where
     S: IntoOwnedData,
 {
     type OwnedData = Select<S::OwnedData, I>;
+    #[inline]
     fn into_owned_data(self) -> Self::OwnedData {
         Select {
             indices: self.indices,
@@ -721,6 +749,7 @@ where
 }
 
 impl<S, I: Reserve> Reserve for Select<S, I> {
+    #[inline]
     fn reserve_with_storage(&mut self, n: usize, storage_n: usize) {
         self.indices.reserve_with_storage(n, storage_n);
         // Target is not necessarily modified when adding elements to a
