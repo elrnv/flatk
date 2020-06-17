@@ -214,6 +214,8 @@ pub trait Set {
     /// different than `Elem`.
     type Atom;
     fn len(&self) -> usize;
+
+    #[inline]
     fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -222,6 +224,7 @@ pub trait Set {
 impl<N: Unsigned> Set for StaticRange<N> {
     type Elem = usize;
     type Atom = usize;
+    #[inline]
     fn len(&self) -> usize {
         N::to_usize()
     }
@@ -230,6 +233,7 @@ impl<N: Unsigned> Set for StaticRange<N> {
 impl<S: Set + ?Sized> Set for &S {
     type Elem = <S as Set>::Elem;
     type Atom = <S as Set>::Elem;
+    #[inline]
     fn len(&self) -> usize {
         <S as Set>::len(self)
     }
@@ -237,6 +241,7 @@ impl<S: Set + ?Sized> Set for &S {
 impl<S: Set + ?Sized> Set for &mut S {
     type Elem = <S as Set>::Elem;
     type Atom = <S as Set>::Elem;
+    #[inline]
     fn len(&self) -> usize {
         <S as Set>::len(self)
     }
@@ -245,6 +250,7 @@ impl<S: Set + ?Sized> Set for &mut S {
 impl<S: Set + ?Sized> Set for std::cell::Ref<'_, S> {
     type Elem = <S as Set>::Elem;
     type Atom = <S as Set>::Elem;
+    #[inline]
     fn len(&self) -> usize {
         <S as Set>::len(self)
     }
@@ -253,6 +259,7 @@ impl<S: Set + ?Sized> Set for std::cell::Ref<'_, S> {
 impl<S: Set + ?Sized> Set for std::cell::RefMut<'_, S> {
     type Elem = <S as Set>::Elem;
     type Atom = <S as Set>::Elem;
+    #[inline]
     fn len(&self) -> usize {
         <S as Set>::len(self)
     }
@@ -515,6 +522,7 @@ where
 {
     type Owned;
     fn into_owned(self) -> Self::Owned;
+    #[inline]
     fn clone_into(self, target: &mut Self::Owned) {
         *target = self.into_owned();
     }
@@ -524,6 +532,7 @@ where
 /// `std::borrow::ToOwned`.
 impl<S: std::borrow::ToOwned + ?Sized> IntoOwned for &S {
     type Owned = S::Owned;
+    #[inline]
     fn into_owned(self) -> Self::Owned {
         std::borrow::ToOwned::to_owned(self)
     }
@@ -533,6 +542,7 @@ impl<S: std::borrow::ToOwned + ?Sized> IntoOwned for &S {
 /// already `std::borrow::ToOwned`.
 impl<S: std::borrow::ToOwned + ?Sized> IntoOwned for &mut S {
     type Owned = S::Owned;
+    #[inline]
     fn into_owned(self) -> Self::Owned {
         std::borrow::ToOwned::to_owned(self)
     }
@@ -546,6 +556,7 @@ where
 {
     type OwnedData;
     fn into_owned_data(self) -> Self::OwnedData;
+    #[inline]
     fn clone_into(self, target: &mut Self::OwnedData) {
         *target = self.into_owned_data();
     }
@@ -555,6 +566,7 @@ where
 /// already `std::borrow::ToOwned`.
 impl<S: std::borrow::ToOwned + ?Sized> IntoOwnedData for &S {
     type OwnedData = S::Owned;
+    #[inline]
     fn into_owned_data(self) -> Self::OwnedData {
         std::borrow::ToOwned::to_owned(self)
     }
@@ -564,6 +576,7 @@ impl<S: std::borrow::ToOwned + ?Sized> IntoOwnedData for &S {
 /// already `std::borrow::ToOwned`.
 impl<S: std::borrow::ToOwned + ?Sized> IntoOwnedData for &mut S {
     type OwnedData = S::Owned;
+    #[inline]
     fn into_owned_data(self) -> Self::OwnedData {
         std::borrow::ToOwned::to_owned(self)
     }
@@ -602,6 +615,7 @@ pub trait BoundedRange {
     type Index: IntBound;
     fn start(&self) -> Self::Index;
     fn end(&self) -> Self::Index;
+    #[inline]
     fn distance(&self) -> Self::Index {
         self.end() - self.start()
     }
@@ -617,6 +631,7 @@ pub struct StaticRange<N> {
 }
 
 impl<N> StaticRange<N> {
+    #[inline]
     fn new(start: usize) -> Self {
         StaticRange {
             start,
@@ -627,9 +642,11 @@ impl<N> StaticRange<N> {
 
 impl<N: Unsigned> BoundedRange for StaticRange<N> {
     type Index = usize;
+    #[inline]
     fn start(&self) -> usize {
         self.start
     }
+    #[inline]
     fn end(&self) -> usize {
         self.start + N::to_usize()
     }
@@ -666,6 +683,7 @@ pub trait Get<'a, I> {
     /// # Panics
     ///
     /// This function will panic if `self.get(idx)` returns `None`.
+    #[inline]
     fn at(&self, idx: I) -> Self::Output {
         self.get(idx).expect("Index out of bounds")
     }
@@ -677,6 +695,7 @@ where
     I: GetIndex<'a, Self>,
 {
     type Output = I::Output;
+    #[inline]
     fn get(&self, idx: I) -> Option<I::Output> {
         idx.get(self)
     }
@@ -703,6 +722,7 @@ pub trait Isolate<I> {
     /// # Panics
     ///
     /// This function will panic if `self.get(idx)` returns `None`.
+    #[inline]
     fn isolate(self, idx: I) -> Self::Output
     where
         Self: Sized,
@@ -717,6 +737,7 @@ where
     I: IsolateIndex<Self>,
 {
     type Output = I::Output;
+    #[inline]
     fn try_isolate(self, idx: I) -> Option<Self::Output> {
         idx.try_isolate(self)
     }
@@ -730,6 +751,7 @@ where
 {
     type Output = <std::ops::Range<usize> as GetIndex<'a, S>>::Output;
 
+    #[inline]
     fn get(self, set: &S) -> Option<Self::Output> {
         (self.start..self.start + N::to_usize()).get(set)
     }
@@ -742,6 +764,7 @@ where
 {
     type Output = <std::ops::Range<usize> as GetIndex<'a, S>>::Output;
 
+    #[inline]
     fn get(self, set: &S) -> Option<Self::Output> {
         (self.start..set.len()).get(set)
     }
@@ -753,6 +776,7 @@ where
 {
     type Output = <std::ops::Range<usize> as GetIndex<'a, S>>::Output;
 
+    #[inline]
     fn get(self, set: &S) -> Option<Self::Output> {
         (0..self.end).get(set)
     }
@@ -765,6 +789,7 @@ where
 {
     type Output = <std::ops::Range<usize> as GetIndex<'a, S>>::Output;
 
+    #[inline]
     fn get(self, set: &S) -> Option<Self::Output> {
         (0..set.len()).get(set)
     }
@@ -777,6 +802,7 @@ where
     type Output = <std::ops::Range<usize> as GetIndex<'a, S>>::Output;
 
     #[allow(clippy::range_plus_one)]
+    #[inline]
     fn get(self, set: &S) -> Option<Self::Output> {
         if *self.end() == usize::max_value() {
             None
@@ -792,6 +818,7 @@ where
 {
     type Output = <std::ops::Range<usize> as GetIndex<'a, S>>::Output;
 
+    #[inline]
     fn get(self, set: &S) -> Option<Self::Output> {
         (0..=self.end).get(set)
     }
@@ -816,6 +843,7 @@ where
 {
     type Output = <std::ops::Range<usize> as IsolateIndex<S>>::Output;
 
+    #[inline]
     fn try_isolate(self, set: S) -> Option<Self::Output> {
         IsolateIndex::try_isolate(self.start..set.len(), set)
     }
@@ -827,6 +855,7 @@ where
 {
     type Output = <std::ops::Range<usize> as IsolateIndex<S>>::Output;
 
+    #[inline]
     fn try_isolate(self, set: S) -> Option<Self::Output> {
         IsolateIndex::try_isolate(0..self.end, set)
     }
@@ -839,6 +868,7 @@ where
 {
     type Output = <std::ops::Range<usize> as IsolateIndex<S>>::Output;
 
+    #[inline]
     fn try_isolate(self, set: S) -> Option<Self::Output> {
         IsolateIndex::try_isolate(0..set.len(), set)
     }
@@ -852,6 +882,7 @@ where
     type Output = <std::ops::Range<usize> as IsolateIndex<S>>::Output;
 
     #[allow(clippy::range_plus_one)]
+    #[inline]
     fn try_isolate(self, set: S) -> Option<Self::Output> {
         if *self.end() == usize::max_value() {
             None
@@ -868,6 +899,7 @@ where
 {
     type Output = <std::ops::Range<usize> as IsolateIndex<S>>::Output;
 
+    #[inline]
     fn try_isolate(self, set: S) -> Option<Self::Output> {
         IsolateIndex::try_isolate(0..=self.end, set)
     }
@@ -975,6 +1007,7 @@ where
     type Item = S;
     type IterType = ChunkedNIter<S>;
 
+    #[inline]
     fn into_chunk_iter(self, chunk_size: usize) -> Self::IterType {
         assert_eq!(self.len() % chunk_size, 0);
         ChunkedNIter {
@@ -1037,6 +1070,7 @@ where
 /// the caller to also specify the amount of storage needed for the container at
 /// the lowest level.
 pub trait Reserve {
+    #[inline]
     fn reserve(&mut self, n: usize) {
         self.reserve_with_storage(n, 0); // By default we ignore storage.
     }
@@ -1076,6 +1110,7 @@ where
 }
 
 impl<T: Clone> CloneIntoOther<&mut T> for &T {
+    #[inline]
     fn clone_into_other(&self, other: &mut &mut T) {
         other.clone_from(self);
     }
@@ -1100,6 +1135,7 @@ where
 {
     type Item = S::Item;
     type Iter = S::Iter;
+    #[inline]
     fn atom_iter(&'a self) -> Self::Iter {
         S::atom_iter(self)
     }
@@ -1111,6 +1147,7 @@ where
 {
     type Item = S::Item;
     type Iter = S::Iter;
+    #[inline]
     fn atom_mut_iter(&'a mut self) -> Self::Iter {
         S::atom_mut_iter(self)
     }
@@ -1123,6 +1160,7 @@ pub struct StructIter<I, T> {
 }
 
 impl<I, T> StructIter<I, T> {
+    #[inline]
     pub fn new(iter: I) -> Self {
         StructIter {
             iter,

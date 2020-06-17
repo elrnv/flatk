@@ -32,6 +32,10 @@ name = "storage"
 harness = false
 
 [[bench]]
+name = "storage_ints"
+harness = false
+
+[[bench]]
 name = "chunks_iter"
 harness = false
 

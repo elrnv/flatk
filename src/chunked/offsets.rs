@@ -381,7 +381,7 @@ impl<'a> SplitOffsetsAt for Offsets<&'a [usize]> {
     /// will cause a panic.
     #[inline]
     fn split_offsets_at(self, mid: usize) -> (Offsets<&'a [usize]>, Offsets<&'a [usize]>) {
-        assert!(!Set::is_empty(&self));
+        // Check bounds, and ensure that self is not empty.
         assert!(mid < self.0.len());
         let l = &self.0[..=mid];
         let r = &self.0[mid..];

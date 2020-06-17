@@ -339,6 +339,7 @@ impl<S: Set, O: AsRef<[usize]>> Chunked<S, Offsets<O>> {
     /// assert_eq!(vec![5,6], iter.next().unwrap().to_vec());
     /// assert_eq!(None, iter.next());
     /// ```
+    #[inline]
     pub fn from_offsets(offsets: O, data: S) -> Self {
         let offsets_ref = offsets.as_ref();
         assert_eq!(
@@ -493,12 +494,14 @@ impl<S: Set, O> Chunked<S, O> {
     /// let s = Chunked::from_offsets(offsets.clone(), data.clone());
     /// assert_eq!(s.into_inner(), (chunked::Offsets::new(offsets), data));
     /// ```
+    #[inline]
     pub fn into_inner(self) -> (O, S) {
         let Chunked { chunks, data } = self;
         (chunks, data)
     }
 
     /// This function mutably borrows the inner structure of the chunked collection.
+    #[inline]
     pub fn as_inner_mut(&mut self) -> (&mut O, &mut S) {
         let Chunked { chunks, data } = self;
         (chunks, data)
@@ -506,6 +509,7 @@ impl<S: Set, O> Chunked<S, O> {
 }
 
 impl<S, O> Chunked<S, O> {
+    #[inline]
     pub fn offsets(&self) -> &O {
         &self.chunks
     }
@@ -594,6 +598,7 @@ where
     /// assert_eq!(Some(&[2,3,4,5][..]), c_iter.next());
     /// assert_eq!(None, c_iter.next());
     /// ```
+    #[inline]
     pub fn transfer_forward(&mut self, chunk_index: usize, num_elements: usize) {
         self.chunks.move_back(chunk_index + 1, num_elements);
     }
@@ -601,6 +606,7 @@ where
     /// Like `transfer_forward` but specify the number of elements to keep
     /// instead of the number of elements to transfer in the chunk at
     /// `chunk_index`.
+    #[inline]
     pub fn transfer_forward_all_but(&mut self, chunk_index: usize, num_elements_to_keep: usize) {
         let num_elements_to_transfer = self.chunk_len(chunk_index) - num_elements_to_keep;
         self.transfer_forward(chunk_index, num_elements_to_transfer);
@@ -638,6 +644,7 @@ where
     /// assert_eq!(Some(&[5][..]), c_iter.next());
     /// assert_eq!(None, c_iter.next());
     /// ```
+    #[inline]
     pub fn transfer_backward(&mut self, chunk_index: usize, num_elements: usize) {
         self.chunks.move_forward(chunk_index, num_elements);
         if chunk_index == 0 {
@@ -649,6 +656,7 @@ where
 
 impl<S: Default, O: Default> Chunked<S, O> {
     /// Construct an empty `Chunked` type.
+    #[inline]
     pub fn new() -> Self {
         Self::default()
     }
@@ -671,6 +679,7 @@ where
     /// assert_eq!(vec![5,6], iter.next().unwrap().to_vec());
     /// assert_eq!(None, iter.next());
     /// ```
+    #[inline]
     pub fn from_nested_vec(nested_data: Vec<Vec<<S as Set>::Elem>>) -> Self {
         nested_data.into_iter().collect()
     }
@@ -709,6 +718,7 @@ where
     /// let s = Chunked::from_offsets(vec![0,3,4,6], vec![1,2,3,4,5,6]);
     /// assert_eq!(3, s.len());
     /// ```
+    #[inline]
     fn len(&self) -> usize {
         self.chunks.len() - 1
     }
@@ -738,6 +748,7 @@ where
     /// s.trim_data(); // Remove unindexed elements.
     /// assert_eq!(4, s.data().len());
     /// ```
+    #[inline]
     pub fn trim_data(&mut self) -> usize {
         debug_assert!(self.chunks.len() > 0);
         let last_offset = self.chunks.last_offset();
@@ -832,6 +843,7 @@ where
     /// s.push(&[1,2]);
     /// assert_eq!(3, s.len());
     /// ```
+    #[inline]
     fn push(&mut self, element: L) {
         self.data.extend_from_slice(element.as_ref());
         self.chunks.push(self.data.len());
@@ -855,6 +867,7 @@ where
     /// s.push_slice(&[1,2]);
     /// assert_eq!(3, s.len());
     /// ```
+    #[inline]
     pub fn push_slice(&mut self, element: &[<S as Set>::Elem]) {
         self.data.extend_from_slice(element);
         self.chunks.push(self.data.len());
@@ -878,6 +891,7 @@ where
     /// assert_eq!(3, s.len());
     /// assert_eq!(&[100; 4][..], s.view().at(2));
     /// ```
+    #[inline]
     pub fn push_iter<I: IntoIterator>(&mut self, iter: I)
     where
         S: Extend<I::Item>,
@@ -904,6 +918,7 @@ where
     /// assert_eq!(2, s.len());
     /// assert_eq!(&[4, 5, 100, 100][..], s.view().at(1));
     /// ```
+    #[inline]
     pub fn extend_last<I: IntoIterator<Item = <S as Set>::Elem>>(&mut self, iter: I) {
         let init_len = self.data.len();
         self.data.extend(iter);
@@ -918,6 +933,7 @@ where
 {
     type Owned = Chunked<S::Owned, O::Owned>;
 
+    #[inline]
     fn into_owned(self) -> Self::Owned {
         Chunked {
             chunks: self.chunks.into_owned(),
@@ -931,6 +947,7 @@ where
     S: IntoOwnedData,
 {
     type OwnedData = Chunked<S::OwnedData, O>;
+    #[inline]
     fn into_owned_data(self) -> Self::OwnedData {
         let Chunked { chunks, data } = self;
         Chunked {
@@ -965,6 +982,7 @@ where
     /// assert_eq!(Some(&[5,6][..]), iter.next());
     /// assert_eq!(None, iter.next());
     /// ```
+    #[inline]
     fn from_iter<T>(iter: T) -> Self
     where
         T: IntoIterator<Item = &'a [<S as Set>::Elem]>,
@@ -1035,6 +1053,7 @@ where
     /// assert_eq!(Some(&[2,3,4][..]), s.get(1));
     /// assert_eq!(Some(&[5,6][..]), s.get(2));
     /// ```
+    #[inline]
     fn get(self, chunked: &Chunked<S, O>) -> Option<Self::Output> {
         let Chunked { ref chunks, data } = chunked;
         chunks
@@ -1063,6 +1082,7 @@ where
     /// assert_eq!(Some(&[2,3,4][..]), v.get(0));
     /// assert_eq!(Some(&[5,6][..]), v.get(1));
     /// ```
+    #[inline]
     fn get(self, chunked: &Chunked<S, O>) -> Option<Self::Output> {
         assert!(self.start <= self.end);
         let Chunked { data, ref chunks } = chunked;
@@ -1083,6 +1103,7 @@ where
     type Output = S::Output;
 
     /// Isolate a single chunk of the given `Chunked` collection.
+    #[inline]
     fn try_isolate(self, chunked: Chunked<S, O>) -> Option<Self::Output> {
         let Chunked { chunks, data } = chunked;
         chunks
@@ -1100,6 +1121,7 @@ where
     type Output = Chunked<S::Output, O::Output>;
 
     /// Isolate a `[begin..end)` range of the given `Chunked` collection.
+    #[inline]
     fn try_isolate(self, chunked: Chunked<S, O>) -> Option<Self::Output> {
         assert!(self.start <= self.end);
         let Chunked { data, chunks } = chunked;
@@ -1160,6 +1182,7 @@ where
     /// assert_eq!(2, (&s[2]).len());
     /// assert_eq!(&[5,6], &s[2]);
     /// ```
+    #[inline]
     fn index(&self, idx: usize) -> &Self::Output {
         &self.data[self.chunks[idx]..self.chunks[idx + 1]]
     }
@@ -1185,6 +1208,7 @@ where
     /// let s = Chunked::from_offsets(vec![0,3,4,6,9,11], v.as_slice());
     /// assert_eq!(&[5,6], &s[2]);
     /// ```
+    #[inline]
     fn index(&self, idx: usize) -> &Self::Output {
         &self.data[self.chunks.as_ref()[idx]..self.chunks.as_ref()[idx + 1]]
     }
@@ -1210,6 +1234,7 @@ where
     /// let s = Chunked::from_offsets(vec![0,3,4,6,9,11], v.as_mut_slice());
     /// assert_eq!(&[5,6], &s[2]);
     /// ```
+    #[inline]
     fn index(&self, idx: usize) -> &Self::Output {
         &self.data[self.chunks[idx]..self.chunks[idx + 1]]
     }
@@ -1234,6 +1259,7 @@ where
     /// s[2].copy_from_slice(&[5,6]);
     /// assert_eq!(vec![1,2,3,4,5,6,7,8,9,10,11], s.into_storage());
     /// ```
+    #[inline]
     fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
         &mut self.data[self.chunks[idx]..self.chunks[idx + 1]]
     }
@@ -1258,6 +1284,7 @@ where
     /// s[2].copy_from_slice(&[5,6]);
     /// assert_eq!(vec![1,2,3,4,5,6,7,8,9,10,11], v);
     /// ```
+    #[inline]
     fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
         &mut self.data[self.chunks[idx]..self.chunks[idx + 1]]
     }
@@ -1270,6 +1297,7 @@ where
     type Item = S;
     type IntoIter = ChunkedIter<Sizes<'a>, S>;
 
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         ChunkedIter {
             sizes: self.chunks.into_sizes(),
@@ -1287,6 +1315,7 @@ where
     type Item = <S as View<'a>>::Type;
     type Iter = ChunkedIter<Sizes<'a>, <S as View<'a>>::Type>;
 
+    #[inline]
     fn view_iter(&'a self) -> Self::Iter {
         self.iter()
     }
@@ -1301,6 +1330,7 @@ where
     type Item = <S as ViewMut<'a>>::Type;
     type Iter = ChunkedIter<Sizes<'a>, <S as ViewMut<'a>>::Type>;
 
+    #[inline]
     fn view_mut_iter(&'a mut self) -> Self::Iter {
         self.iter_mut()
     }
@@ -1357,6 +1387,7 @@ where
     /// assert_eq!(Some(&[10,11][..]), iter0.next());
     /// assert_eq!(None, iter0.next());
     /// ```
+    #[inline]
     pub fn iter(
         &'a self,
     ) -> ChunkedIter<<<O as View<'a>>::Type as IntoSizes>::Iter, <S as View<'a>>::Type> {
@@ -1423,6 +1454,7 @@ where
     /// assert_eq!(Some(&[10,11][..]), iter0.next());
     /// assert_eq!(None, iter0.next());
     /// ```
+    #[inline]
     pub fn iter_mut(
         &'a mut self,
     ) -> ChunkedIter<<<O as View<'a>>::Type as IntoSizes>::Iter, <S as ViewMut<'a>>::Type> {
@@ -1438,6 +1470,7 @@ where
     S: SplitAt + Set,
     O: SplitOffsetsAt,
 {
+    #[inline]
     fn split_at(self, mid: usize) -> (Self, Self) {
         let (offsets_l, offsets_r, off) = self.chunks.split_offsets_with_intersection_at(mid);
         let (data_l, data_r) = self.data.split_at(off);
@@ -1467,6 +1500,7 @@ where
 {
     type Item = V;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         // WARNING: After calling std::mem::replace with dummy, self.data is in a
         // temporarily invalid state.
@@ -1503,6 +1537,7 @@ where
 {
     type Item = S;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let begin = self
             .offsets
@@ -1520,6 +1555,7 @@ where
 }
 
 impl<S: SplitOff + Set> SplitOff for Chunked<S> {
+    #[inline]
     fn split_off(&mut self, mid: usize) -> Self {
         // Note: Allocations in this function heavily outweigh any cost in bounds checking.
         assert!(!self.chunks.is_empty());
@@ -1574,6 +1610,7 @@ where
     ///     assert_eq!(a,b);
     /// }
     /// ```
+    #[inline]
     fn view(&'a self) -> Self::Type {
         Chunked {
             chunks: self.chunks.view(),
@@ -1604,6 +1641,7 @@ where
     /// assert_eq!(Some(&[4,5][..]), view1_iter.next());
     /// assert_eq!(None, view1_iter.next());
     /// ```
+    #[inline]
     fn view_mut(&'a mut self) -> Self::Type {
         Chunked {
             chunks: self.chunks.view(),
@@ -1627,6 +1665,7 @@ impl<S: IntoStorage, O> IntoStorage for Chunked<S, O> {
     /// assert_eq!(s1.into_storage(), v);
     /// assert_eq!(s0.into_storage(), v);
     /// ```
+    #[inline]
     fn into_storage(self) -> Self::StorageType {
         self.data.into_storage()
     }
@@ -1646,6 +1685,7 @@ impl<'a, S: StorageView<'a>, O> StorageView<'a> for Chunked<S, O> {
     /// assert_eq!(s1.storage_view(), v.as_slice());
     /// assert_eq!(s0.storage_view(), v.as_slice());
     /// ```
+    #[inline]
     fn storage_view(&'a self) -> Self::StorageView {
         self.data.storage_view()
     }
@@ -1665,6 +1705,7 @@ impl<S: Storage, O> Storage for Chunked<S, O> {
     /// assert_eq!(s1.storage(), &v);
     /// assert_eq!(s0.storage(), &v);
     /// ```
+    #[inline]
     fn storage(&self) -> &Self::Storage {
         self.data.storage()
     }
@@ -1683,6 +1724,7 @@ impl<S: StorageMut, O> StorageMut for Chunked<S, O> {
     /// assert_eq!(s1.storage_mut(), &mut v);
     /// assert_eq!(s0.storage_mut(), &mut v);
     /// ```
+    #[inline]
     fn storage_mut(&mut self) -> &mut Self::Storage {
         self.data.storage_mut()
     }
@@ -1690,6 +1732,7 @@ impl<S: StorageMut, O> StorageMut for Chunked<S, O> {
 
 impl<T, S: CloneWithStorage<T>, O: Clone> CloneWithStorage<T> for Chunked<S, O> {
     type CloneType = Chunked<S::CloneType, O>;
+    #[inline]
     fn clone_with_storage(&self, storage: T) -> Self::CloneType {
         Chunked {
             chunks: self.chunks.clone(),
@@ -1700,6 +1743,7 @@ impl<T, S: CloneWithStorage<T>, O: Clone> CloneWithStorage<T> for Chunked<S, O> 
 
 impl<S: Default, O: Default> Default for Chunked<S, O> {
     /// Construct an empty `Chunked`.
+    #[inline]
     fn default() -> Self {
         Chunked {
             data: Default::default(),
@@ -1709,6 +1753,7 @@ impl<S: Default, O: Default> Default for Chunked<S, O> {
 }
 
 impl<S: Dummy, O: Dummy> Dummy for Chunked<S, O> {
+    #[inline]
     unsafe fn dummy() -> Self {
         Chunked {
             data: Dummy::dummy(),
@@ -1731,6 +1776,7 @@ impl<S: RemovePrefix, O: RemovePrefix + AsRef<[usize]>> RemovePrefix for Chunked
     /// assert_eq!(Some(&[4,5][..]), iter.next());
     /// assert_eq!(None, iter.next());
     /// ```
+    #[inline]
     fn remove_prefix(&mut self, n: usize) {
         let chunks = self.chunks.as_ref();
         assert!(n < chunks.len());
@@ -1743,6 +1789,7 @@ impl<S: RemovePrefix, O: RemovePrefix + AsRef<[usize]>> RemovePrefix for Chunked
 }
 
 impl<S: Clear> Clear for Chunked<S> {
+    #[inline]
     fn clear(&mut self) {
         self.chunks.clear();
         self.chunks.push(0);
@@ -1757,6 +1804,7 @@ where
     O: Set + SplitOffsetsAt,
 {
     type Prefix = Chunked<S, O>;
+    #[inline]
     fn split_prefix(self) -> Option<(Self::Prefix, Self)> {
         if N::to_usize() > self.len() {
             return None;
@@ -1771,6 +1819,7 @@ where
     O: Set + SplitOffsetsAt,
 {
     type First = S;
+    #[inline]
     fn split_first(self) -> Option<(Self::First, Self)> {
         if self.is_empty() {
             return None;
@@ -1798,6 +1847,7 @@ where
 {
     type Item = <Self as SplitPrefix<N>>::Prefix;
     type IterType = UniChunkedIter<Self, N>;
+    #[inline]
     fn into_static_chunk_iter(self) -> Self::IterType {
         self.into_generic_static_chunk_iter()
     }
@@ -1806,6 +1856,7 @@ where
 /// Pass through the conversion for structure type `Chunked`.
 impl<S: StorageInto<T>, O, T> StorageInto<T> for Chunked<S, O> {
     type Output = Chunked<S::Output, O>;
+    #[inline]
     fn storage_into(self) -> Self::Output {
         Chunked {
             data: self.data.storage_into(),
@@ -1852,6 +1903,7 @@ impl<S: StorageInto<T>, O, T> StorageInto<T> for Chunked<S, O> {
 //}
 
 impl<S: Reserve, O: Reserve> Reserve for Chunked<S, O> {
+    #[inline]
     fn reserve_with_storage(&mut self, n: usize, storage_n: usize) {
         self.chunks.reserve(n);
         self.data.reserve_with_storage(n, storage_n);

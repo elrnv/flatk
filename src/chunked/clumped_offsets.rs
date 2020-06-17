@@ -31,8 +31,8 @@ use std::ops::Range;
 /// representation can be three times the size of standard `Offsets`.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ClumpedOffsets<O = Vec<usize>> {
-    chunk_offsets: Offsets<O>,
-    offsets: Offsets<O>,
+    pub chunk_offsets: Offsets<O>,
+    pub offsets: Offsets<O>,
 }
 
 impl<O: Set + AsRef<[usize]>> GetOffset for ClumpedOffsets<O> {
@@ -271,6 +271,7 @@ impl<'a> SplitOffsetsAt for ClumpedOffsets<&'a [usize]> {
     ///
     /// This function will also panic when trying to split a clump since the offsets cannot be
     /// modified or created.
+    #[inline]
     fn split_offsets_with_intersection_at(
         self,
         mid: usize,
@@ -313,6 +314,7 @@ impl<'a> SplitOffsetsAt for ClumpedOffsets<&'a [usize]> {
     ///
     /// This function will also panic when trying to split a clump since the offsets cannot be
     /// modified or created.
+    #[inline]
     fn split_offsets_at(
         self,
         mid: usize,
