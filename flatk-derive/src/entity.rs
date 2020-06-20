@@ -629,8 +629,6 @@ fn impl_isolate(ast: &DeriveInput) -> TokenStream {
         },
     );
 
-    eprintln!("{}", &isolate_index_for_static_range_impl);
-
     quote! {
         #isolate_index_impl
         #isolate_index_for_range_impl
