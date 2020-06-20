@@ -4,7 +4,7 @@
 //! This improves on the `entity` example by sharing the structure between `cur` and `prev` fields.
 
 #[cfg(feature = "derive")]
-use flatk::{Chunked, Chunked3, Entity, Get, View, ViewMut};
+use flatk::{Chunked, Chunked3, Entity, Get, MapStorage, View, ViewMut};
 
 #[cfg(feature = "derive")]
 #[derive(Copy, Clone, Debug, PartialEq, Entity)]
@@ -74,6 +74,19 @@ fn main() {
                     *cur_x += cur_v * dt;
                     *prev_x = *cur_x;
                 }
+            }
+        }
+    }
+
+    // To isolate a particular field in the hierarchy, one can use map_storage, instead of having
+    // to destructure the whole hierarchy.
+
+    let prev_pos_only_view = state.view().map_storage(|s| s.prev.pos);
+
+    for chunk in prev_pos_only_view.iter() {
+        for pos in chunk.iter() {
+            for component in pos.iter() {
+                assert!((component - 2.0_f64).abs() < 1e-5);
             }
         }
     }

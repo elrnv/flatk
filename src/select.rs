@@ -647,6 +647,18 @@ impl<S: StorageInto<T>, I, T> StorageInto<T> for Select<S, I> {
     }
 }
 
+impl<S: MapStorage<Out>, I, Out> MapStorage<Out> for Select<S, I> {
+    type Input = S::Input;
+    type Output = Select<S::Output, I>;
+    #[inline]
+    fn map_storage<F: FnOnce(Self::Input) -> Out>(self, f: F) -> Self::Output {
+        Select {
+            target: self.target.map_storage(f),
+            indices: self.indices,
+        }
+    }
+}
+
 /*
  * Target data Access
  */

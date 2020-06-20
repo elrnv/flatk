@@ -1978,6 +1978,19 @@ impl<S: StorageInto<T>, N, T> StorageInto<T> for UniChunked<S, N> {
     }
 }
 
+/// Map the underlying storage type.
+impl<S: MapStorage<Out>, N, Out> MapStorage<Out> for UniChunked<S, N> {
+    type Input = S::Input;
+    type Output = UniChunked<S::Output, N>;
+    #[inline]
+    fn map_storage<F: FnOnce(Self::Input) -> Out>(self, f: F) -> Self::Output {
+        UniChunked {
+            data: self.data.map_storage(f),
+            chunk_size: self.chunk_size,
+        }
+    }
+}
+
 impl<S: SwapChunks> SwapChunks for ChunkedN<S> {
     #[inline]
     fn swap_chunks(&mut self, begin_a: usize, begin_b: usize, chunk_size: usize) {

@@ -286,23 +286,32 @@ impl<T: Clone> ExtendFromSlice for Vec<T> {
  * a storage type. The following are some common conversion behaviours.
  */
 
-/// Convert a `Vec` of one type into a `Vec` of another type given that the element types can be
-/// converted.
-///
-/// # Example
-///
-/// ```
-/// use flatk::*;
-/// let sentences = vec!["First", "sentence", "about", "nothing", ".", "Second", "sentence", "."];
-/// let chunked = Chunked::from_sizes(vec![5,3], sentences);
-/// let owned_sentences: Chunked<Vec<String>> = chunked.storage_into();
-/// assert_eq!(Some(&["Second".to_string(), "sentence".to_string(), ".".to_string()][..]), owned_sentences.view().get(1));
-/// ```
 impl<T, S: Into<T>> StorageInto<Vec<T>> for Vec<S> {
     type Output = Vec<T>;
+    /// Convert a `Vec` of one type into a `Vec` of another type given that the element types can be
+    /// converted.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use flatk::*;
+    /// let sentences = vec!["First", "sentence", "about", "nothing", ".", "Second", "sentence", "."];
+    /// let chunked = Chunked::from_sizes(vec![5,3], sentences);
+    /// let owned_sentences: Chunked<Vec<String>> = chunked.storage_into();
+    /// assert_eq!(Some(&["Second".to_string(), "sentence".to_string(), ".".to_string()][..]), owned_sentences.view().get(1));
+    /// ```
     #[inline]
     fn storage_into(self) -> Self::Output {
         self.into_iter().map(|x| x.into()).collect()
+    }
+}
+
+impl<S, Out> MapStorage<Out> for Vec<S> {
+    type Input = Self;
+    type Output = Out;
+    #[inline]
+    fn map_storage<F: FnOnce(Self::Input) -> Out>(self, f: F) -> Self::Output {
+        f(self)
     }
 }
 

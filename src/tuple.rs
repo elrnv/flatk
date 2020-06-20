@@ -48,6 +48,15 @@ impl<U, V, S: StorageInto<U>, T: StorageInto<V>> StorageInto<(U, V)> for (S, T) 
     }
 }
 
+impl<S, T, Out> MapStorage<Out> for (S, T) {
+    type Input = (S, T);
+    type Output = Out;
+    #[inline]
+    fn map_storage<F: FnOnce(Self::Input) -> Out>(self, f: F) -> Self::Output {
+        f(self)
+    }
+}
+
 impl<S, T, U> CloneWithStorage<U> for (S, T) {
     type CloneType = U;
     #[inline]

@@ -1945,6 +1945,19 @@ impl<S: StorageInto<T>, O, T> StorageInto<T> for Chunked<S, O> {
     }
 }
 
+impl<S: MapStorage<Out>, O, Out> MapStorage<Out> for Chunked<S, O> {
+    type Input = S::Input;
+    type Output = Chunked<S::Output, O>;
+    /// Map the underlying storage type.
+    #[inline]
+    fn map_storage<F: FnOnce(Self::Input) -> Out>(self, f: F) -> Self::Output {
+        Chunked {
+            data: self.data.map_storage(f),
+            chunks: self.chunks,
+        }
+    }
+}
+
 //impl<S: PermuteInPlace + SplitAt + Swap, O: PermuteInPlace> PermuteInPlace for Chunked<S, O> {
 //    fn permute_in_place(&mut self, permutation: &[usize], seen: &mut [bool]) {
 //        // This algorithm involves allocating since it avoids excessive copying.

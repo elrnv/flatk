@@ -950,6 +950,18 @@ impl<S: StorageInto<T>, I, T> StorageInto<T> for Subset<S, I> {
     }
 }
 
+impl<S: MapStorage<Out>, I, Out> MapStorage<Out> for Subset<S, I> {
+    type Input = S::Input;
+    type Output = Subset<S::Output, I>;
+    #[inline]
+    fn map_storage<F: FnOnce(Self::Input) -> Out>(self, f: F) -> Self::Output {
+        Subset {
+            data: self.data.map_storage(f),
+            indices: self.indices,
+        }
+    }
+}
+
 /*
  * Data access
  */

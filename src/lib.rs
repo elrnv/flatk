@@ -576,14 +576,15 @@ pub trait StorageInto<Target> {
     fn storage_into(self) -> Self::Output;
 }
 
-///// Map the storage type into another given a conversion function.
-/////
-///// This is useful for changing storage is not just a simple `Vec` or slice but a combination of
-///// independent collections.
-//pub trait MapStorage {
-//    type Output:
-//    fn map_storage<O, F: FnOnce(I) -> O>(self, f: F) -> O;
-//}
+/// Map the storage type into another given a conversion function.
+///
+/// This is useful for changing storage is not just a simple `Vec` or slice but a combination of
+/// independent collections.
+pub trait MapStorage<Out> {
+    type Input;
+    type Output;
+    fn map_storage<F: FnOnce(Self::Input) -> Out>(self, f: F) -> Self::Output;
+}
 
 pub trait CloneWithStorage<S> {
     type CloneType;

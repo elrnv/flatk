@@ -668,6 +668,18 @@ impl<S: StorageInto<U>, T, I, U> StorageInto<U> for Sparse<S, T, I> {
     }
 }
 
+impl<S: MapStorage<Out>, T, I, Out> MapStorage<Out> for Sparse<S, T, I> {
+    type Input = S::Input;
+    type Output = Sparse<S::Output, T, I>;
+    #[inline]
+    fn map_storage<F: FnOnce(Self::Input) -> Out>(self, f: F) -> Self::Output {
+        Sparse {
+            source: self.source.map_storage(f),
+            selection: self.selection,
+        }
+    }
+}
+
 impl<S: IntoStorage, T, I> IntoStorage for Sparse<S, T, I> {
     type StorageType = S::StorageType;
     /// Convert the sparse set into its raw storage representation.

@@ -486,6 +486,24 @@ impl<'a, T: Clone> StorageInto<Vec<T>> for &'a [T] {
     }
 }
 
+impl<T, Out> MapStorage<Out> for &[T] {
+    type Input = Self;
+    type Output = Out;
+    #[inline]
+    fn map_storage<F: FnOnce(Self::Input) -> Out>(self, f: F) -> Self::Output {
+        f(self)
+    }
+}
+
+impl<T, Out> MapStorage<Out> for &mut [T] {
+    type Input = Self;
+    type Output = Out;
+    #[inline]
+    fn map_storage<F: FnOnce(Self::Input) -> Out>(self, f: F) -> Self::Output {
+        f(self)
+    }
+}
+
 /// Convert a mutable slice into an owned `Vec` type.
 impl<'a, T: Clone> StorageInto<Vec<T>> for &'a mut [T] {
     type Output = Vec<T>;
