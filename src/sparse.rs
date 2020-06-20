@@ -380,7 +380,7 @@ where
     }
 }
 
-impl_isolate_index_for_static_range!(impl<S, T, I> for Sparse<S, T, I>);
+//impl_isolate_index_for_static_range!(impl<S, T, I> for Sparse<S, T, I>);
 
 /*
  * Iteration

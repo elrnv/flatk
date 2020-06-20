@@ -416,18 +416,14 @@ impl<'a> SplitOffsetsAt for Offsets<&'a [usize]> {
     }
 }
 
-impl<O: AsRef<[usize]>> IndexRange for Offsets<O> {
+impl<O: AsRef<[usize]> + Set> IndexRange for Offsets<O> {
     /// Return the `[begin..end)` bound of the chunk at the given index.
     #[inline]
     fn index_range(&self, range: Range<usize>) -> Option<Range<usize>> {
-        let offsets = self.0.as_ref();
-        if range.end < offsets.len() {
-            let first = unsafe { offsets.get_unchecked(0) };
-            let cur = unsafe { offsets.get_unchecked(range.start) };
-            let next = unsafe { offsets.get_unchecked(range.end) };
-            let begin = cur - first;
-            let end = next - first;
-            Some(begin..end)
+        if range.end < self.len() {
+            let result =
+                unsafe { self.offset_unchecked(range.start)..self.offset_unchecked(range.end) };
+            Some(result)
         } else {
             None
         }

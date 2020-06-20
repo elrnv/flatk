@@ -162,8 +162,9 @@ impl<'a> SplitOffsetsAt for SortedChunks<&'a [usize]> {
     }
 }
 
-impl<O: AsRef<[usize]>> IndexRange for SortedChunks<O> {
+impl<O: AsRef<[usize]> + Set> IndexRange for SortedChunks<O> {
     /// Return the `[begin..end)` bound of the chunk at the given index.
+    #[inline]
     fn index_range(&self, range: Range<usize>) -> Option<Range<usize>> {
         self.offsets.index_range(range)
     }

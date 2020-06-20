@@ -38,6 +38,10 @@ name = "storage_ints"
 harness = false
 
 [[bench]]
+name = "isolate_iter_mut"
+harness = false
+
+[[bench]]
 name = "chunks_iter"
 harness = false
 

@@ -477,7 +477,7 @@ fn impl_get(ast: &DeriveInput) -> TokenStream {
 
     let get_index_for_static_range_impl = impl_simple_trait(
         ast,
-        |ty_ident| quote! { #ty_ident: #crate_name::Get<'flatk_get, #crate_name::StaticRange<N>> },
+        |ty_ident| quote! { #ty_ident: #crate_name::Get<'flatk_get, #crate_name::StaticRange<_FlatkN>> },
         |mut generics,
          ImplInfo {
              entity_field,
@@ -488,16 +488,16 @@ fn impl_get(ast: &DeriveInput) -> TokenStream {
             generics
                 .make_where_clause()
                 .predicates
-                .push(parse_quote! { N: #crate_name::Unsigned + Copy });
+                .push(parse_quote! { _FlatkN: #crate_name::Unsigned + Copy });
             let sub_params =
                 associated_type_params(parse_quote! { Output }, &generics, &entity_type);
             let mut extended_generics = generics.clone();
-            extended_generics.params.push(parse_quote! { N });
+            extended_generics.params.push(parse_quote! { _FlatkN });
             extended_generics.params.push(parse_quote! { 'flatk_get });
             let (impl_generics, _, _) = extended_generics.split_for_impl();
             let (_, ty_generics, where_clause) = generics.split_for_impl();
             quote! {
-                impl #impl_generics #crate_name::GetIndex<'flatk_get, #name #ty_generics> for #crate_name::StaticRange<N>  #where_clause {
+                impl #impl_generics #crate_name::GetIndex<'flatk_get, #name #ty_generics> for #crate_name::StaticRange<_FlatkN>  #where_clause {
                     type Output = #name<#(#sub_params,)*>;
                     fn get(self, this: &#name #ty_generics) -> Option<Self::Output> {
 
@@ -590,9 +590,51 @@ fn impl_isolate(ast: &DeriveInput) -> TokenStream {
         },
     );
 
+    let isolate_index_for_static_range_impl = impl_simple_trait(
+        ast,
+        |ty_ident| quote! { #ty_ident: #crate_name::Isolate<#crate_name::StaticRange<_FlatkN>> },
+        |mut generics,
+         ImplInfo {
+             entity_field,
+             other_field,
+             entity_type,
+             ..
+         }| {
+            generics
+                .make_where_clause()
+                .predicates
+                .push(parse_quote! { _FlatkN: #crate_name::Unsigned });
+            let sub_params =
+                associated_type_params(parse_quote! { Output }, &generics, &entity_type);
+            let mut extended_generics = generics.clone();
+            extended_generics.params.push(parse_quote! { _FlatkN });
+            let (impl_generics, _, _) = extended_generics.split_for_impl();
+            let (_, ty_generics, where_clause) = generics.split_for_impl();
+            quote! {
+                impl #impl_generics #crate_name::IsolateIndex<#name #ty_generics> for #crate_name::StaticRange<_FlatkN>  #where_clause {
+                    type Output = #name<#(#sub_params,)*>;
+                    fn try_isolate(self, this: #name #ty_generics) -> Option<Self::Output> {
+
+                        Some(#name {
+                            #(
+                                #entity_field: #crate_name::Isolate::try_isolate(this.#entity_field, self.clone())?,
+                            )*
+                            #(
+                                #other_field: this.#other_field,
+                            )*
+                        })
+                    }
+                }
+            }
+        },
+    );
+
+    eprintln!("{}", &isolate_index_for_static_range_impl);
+
     quote! {
         #isolate_index_impl
         #isolate_index_for_range_impl
+        #isolate_index_for_static_range_impl
     }
 }
 

@@ -930,6 +930,27 @@ where
     }
 }
 
+impl<'a, S, N, M> GetIndex<'a, UniChunked<S, U<M>>> for StaticRange<N>
+where
+    S: Set,
+    M: Unsigned,
+    N: Unsigned + std::ops::Mul<M>,
+    StaticRange<<N as std::ops::Mul<M>>::Output>: GetIndex<'a, S>,
+{
+    type Output = UniChunked<<StaticRange<N::Output> as GetIndex<'a, S>>::Output, U<M>>;
+
+    /// Get a statically sized subview of the given `UniChunked` collection.
+    #[inline]
+    fn get(self, chunked: &UniChunked<S, U<M>>) -> Option<Self::Output> {
+        let rng = StaticRange::<N::Output>::new(self.start * M::to_usize());
+        let UniChunked { data, chunk_size } = chunked;
+        GetIndex::get(rng, data).map(|data| UniChunked {
+            data,
+            chunk_size: *chunk_size,
+        })
+    }
+}
+
 impl<'a, S> GetIndex<'a, ChunkedN<S>> for usize
 where
     S: Set + Get<'a, std::ops::Range<usize>>,
@@ -977,7 +998,7 @@ where
 
 impl<S, N> IsolateIndex<UniChunked<S, U<N>>> for usize
 where
-    S: Set + UniChunkable<N> + Isolate<StaticRange<N>>,
+    S: Set + Isolate<StaticRange<N>>,
     N: Unsigned,
 {
     type Output = S::Output;
@@ -985,7 +1006,7 @@ where
     /// Isolate a chunk of the given `UniChunked` collection.
     #[inline]
     fn try_isolate(self, chunked: UniChunked<S, U<N>>) -> Option<Self::Output> {
-        if self < chunked.len() {
+        if self * N::to_usize() < chunked.data.len() {
             chunked
                 .data
                 .try_isolate(StaticRange::new(self * N::to_usize()))
@@ -997,7 +1018,7 @@ where
 
 impl<S, N> IsolateIndex<UniChunked<S, U<N>>> for std::ops::Range<usize>
 where
-    S: Set + UniChunkable<N> + Isolate<std::ops::Range<usize>>,
+    S: Set + Isolate<std::ops::Range<usize>>,
     N: Unsigned + Default,
 {
     type Output = UniChunked<S::Output, U<N>>;
@@ -1005,10 +1026,11 @@ where
     /// Isolate a `[begin..end)` range of the given `UniChunked` collection.
     #[inline]
     fn try_isolate(self, chunked: UniChunked<S, U<N>>) -> Option<Self::Output> {
-        if self.start <= self.end && self.end <= chunked.len() {
+        let data_end = self.end * N::to_usize();
+        if self.start <= self.end && data_end <= chunked.data.len() {
             chunked
                 .data
-                .try_isolate(N::to_usize() * self.start..N::to_usize() * self.end)
+                .try_isolate(N::to_usize() * self.start..data_end)
                 .map(|data| UniChunked {
                     data,
                     chunk_size: Default::default(),
@@ -1081,7 +1103,7 @@ where
     }
 }
 
-impl_isolate_index_for_static_range!(impl<S> for ChunkedN<S>);
+//impl_isolate_index_for_static_range!(impl<S> for ChunkedN<S>);
 
 /*
  * Indexing for statically sized UniChunked types

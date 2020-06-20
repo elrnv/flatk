@@ -374,7 +374,7 @@ impl<S, T, I> DynamicRangeIndexType for Sparse<S, T, I> {}
 impl<S, I> DynamicRangeIndexType for Select<S, I> {}
 impl<S, I> DynamicRangeIndexType for Subset<S, I> {}
 impl<S, I> DynamicRangeIndexType for Chunked<S, I> {}
-impl<S, N> DynamicRangeIndexType for UniChunked<S, N> {}
+impl<S> DynamicRangeIndexType for ChunkedN<S> {}
 
 /// A marker trait to indicate an owned collection type. This is to distinguish
 /// them from borrowed types, which is essential to resolve implementation collisions.
@@ -901,17 +901,18 @@ where
     }
 }
 
-//impl<S, N: Unsigned> IsolateIndex<S> for StaticRange<N>
-//where
-//    S: Set + DynamicRangeIndexType,
-//    std::ops::Range<usize>: IsolateIndex<S>,
-//{
-//    type Output = <std::ops::Range<usize> as IsolateIndex<S>>::Output;
-//
-//    fn try_isolate(self, set: S) -> Option<Self::Output> {
-//        IsolateIndex::try_isolate(self.start..self.start + N::to_usize(), set)
-//    }
-//}
+impl<S, N> IsolateIndex<S> for StaticRange<N>
+where
+    S: Set + DynamicRangeIndexType,
+    N: Unsigned,
+    std::ops::Range<usize>: IsolateIndex<S>,
+{
+    type Output = <std::ops::Range<usize> as IsolateIndex<S>>::Output;
+
+    fn try_isolate(self, set: S) -> Option<Self::Output> {
+        IsolateIndex::try_isolate(self.start..self.start + N::to_usize(), set)
+    }
+}
 
 impl<S> IsolateIndex<S> for std::ops::RangeFrom<usize>
 where

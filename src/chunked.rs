@@ -347,10 +347,14 @@ impl<S: Set, O: AsRef<[usize]>> Chunked<S, Offsets<O>> {
     #[inline]
     pub fn from_offsets(offsets: O, data: S) -> Self {
         let offsets_ref = offsets.as_ref();
+        let last = *offsets_ref.last().expect("offsets must be non empty");
+        let first = *offsets_ref.first().unwrap();
         assert_eq!(
-            *offsets_ref.last().expect("offsets must be non empty"),
-            data.len() + *offsets_ref.first().unwrap(),
-            "the length of data must equal the difference between first and last offsets"
+            data.len(),
+            last - first,
+            "the length of data ({}) must equal the difference between first and last offsets ({})",
+            data.len(),
+            last - first
         );
         Chunked {
             chunks: Offsets(offsets),
@@ -405,10 +409,14 @@ impl<S: Set, O: AsRef<[usize]>> Clumped<S, O> {
     #[inline]
     pub fn from_clumped_offsets(chunk_offsets: O, offsets: O, data: S) -> Self {
         let offsets_ref = offsets.as_ref();
+        let last = *offsets_ref.last().expect("offsets must be non empty");
+        let first = *offsets_ref.first().unwrap();
         assert_eq!(
-            *offsets_ref.last().expect("offsets must be non empty"),
-            data.len() + *offsets_ref.first().unwrap(),
-            "the length of data must equal the difference between first and last offsets"
+            data.len(),
+            last - first,
+            "the length of data ({}) must equal the difference between first and last offsets ({})",
+            data.len(),
+            last - first,
         );
         let chunk_offsets_ref = chunk_offsets.as_ref();
         assert_eq!(
@@ -1209,7 +1217,7 @@ where
     }
 }
 
-impl_isolate_index_for_static_range!(impl<S, O> for Chunked<S, O>);
+//impl_isolate_index_for_static_range!(impl<S, O> for Chunked<S, O>);
 
 //impl<S, O, I> Isolate<I> for Chunked<S, O>
 //where
