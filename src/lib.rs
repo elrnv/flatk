@@ -1032,6 +1032,20 @@ pub trait Storage {
     fn storage(&self) -> &Self::Storage;
 }
 
+impl<S: Storage + ?Sized> Storage for &S {
+    type Storage = S::Storage;
+    fn storage(&self) -> &Self::Storage {
+        S::storage(*self)
+    }
+}
+
+impl<S: Storage + ?Sized> Storage for &mut S {
+    type Storage = S::Storage;
+    fn storage(&self) -> &Self::Storage {
+        S::storage(*self)
+    }
+}
+
 pub trait StorageView<'a> {
     type StorageView;
     fn storage_view(&'a self) -> Self::StorageView;
@@ -1040,6 +1054,12 @@ pub trait StorageView<'a> {
 /// Get a mutable reference to the underlying storage type.
 pub trait StorageMut: Storage {
     fn storage_mut(&mut self) -> &mut Self::Storage;
+}
+
+impl<S: StorageMut + ?Sized> StorageMut for &mut S {
+    fn storage_mut(&mut self) -> &mut Self::Storage {
+        S::storage_mut(*self)
+    }
 }
 
 /// A helper trait for constructing placeholder sets for use in `std::mem::replace`.

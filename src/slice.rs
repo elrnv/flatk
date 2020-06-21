@@ -302,7 +302,7 @@ impl<'a, T> StorageView<'a> for &'a [T] {
     }
 }
 
-impl<'a, T> Storage for &'a [T] {
+impl<'a, T> Storage for [T] {
     type Storage = [T];
     #[inline]
     fn storage(&self) -> &Self::Storage {
@@ -310,31 +310,7 @@ impl<'a, T> Storage for &'a [T] {
     }
 }
 
-impl<'a, T> Storage for &'a mut [T] {
-    type Storage = [T];
-    #[inline]
-    fn storage(&self) -> &Self::Storage {
-        self
-    }
-}
-
-impl<'a, T> StorageMut for &'a mut [T] {
-    /// A slice is a type of storage, simply return a mutable reference to self.
-    #[inline]
-    fn storage_mut(&mut self) -> &mut Self::Storage {
-        self
-    }
-}
-
-impl<T> Storage for [T] {
-    type Storage = [T];
-    #[inline]
-    fn storage(&self) -> &Self::Storage {
-        self
-    }
-}
-
-impl<T> StorageMut for [T] {
+impl<'a, T> StorageMut for [T] {
     /// A slice is a type of storage, simply return a mutable reference to self.
     #[inline]
     fn storage_mut(&mut self) -> &mut Self::Storage {

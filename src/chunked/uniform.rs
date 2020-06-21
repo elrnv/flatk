@@ -1936,10 +1936,11 @@ impl<S: Storage, N> Storage for UniChunked<S, N> {
     /// ```rust
     /// use flatk::*;
     /// let v = vec![1,2,3,4,5,6,7,8,9,10,11,12];
-    /// let s0 = Chunked2::from_flat(v.clone());
+    /// let mut s0 = Chunked2::from_flat(v.clone());
     /// let s1 = ChunkedN::from_flat_with_stride(s0.clone(), 3);
     /// assert_eq!(s1.storage(), &v);
     /// assert_eq!(s0.storage(), &v);
+    /// assert_eq!(s0.view_mut().storage(), v.as_slice());
     /// ```
     #[inline]
     fn storage(&self) -> &Self::Storage {
