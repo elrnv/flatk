@@ -360,7 +360,7 @@ fn impl_storage(ast: &DeriveInput) -> TokenStream {
 
     let storage_impl = impl_simple_trait(
         ast,
-        |ty_ident| quote! { #ty_ident: #crate_name::Storage<Storage = #ty_ident> },
+        |_| quote! {},
         |generics, _| {
             let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
             quote! {
@@ -377,7 +377,7 @@ fn impl_storage(ast: &DeriveInput) -> TokenStream {
 
     let storage_mut_impl = impl_simple_trait(
         ast,
-        |ty_ident| quote! { #ty_ident: #crate_name::StorageMut<Storage = #ty_ident> },
+        |_| quote! {},
         |generics, _| {
             let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
             quote! {
