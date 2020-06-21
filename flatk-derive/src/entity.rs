@@ -1159,6 +1159,28 @@ pub(crate) fn impl_entity(ast: &DeriveInput) -> TokenStream {
         },
     );
 
+    let push_chunk_impl = impl_simple_trait(
+        ast,
+        |ty_ident| quote! { #ty_ident: #crate_name::PushChunk<_FlatkN> },
+        |generics, ImplInfo { entity_field, .. }| {
+            let mut extended_generics = generics.clone();
+            extended_generics.params.push(parse_quote! { _FlatkN });
+            let (impl_generics, _, _) = extended_generics.split_for_impl();
+            let (_, ty_generics, where_clause) = generics.split_for_impl();
+
+            quote! {
+                impl #impl_generics #crate_name::PushChunk<_FlatkN> for #name #ty_generics #where_clause {
+                    fn push_chunk(&mut self, chunk: Self::Chunk) {
+                        #(
+                            self.#entity_field.push_chunk(chunk.#entity_field);
+                        )*
+                        // Other fields are ignored.
+                    }
+                }
+            }
+        },
+    );
+
     let push_impl = impl_trait(
         ast,
         |ty_ident| {
@@ -1209,6 +1231,7 @@ pub(crate) fn impl_entity(ast: &DeriveInput) -> TokenStream {
         #remove_prefix_impl
         #unichunkable_impl
         #push_impl
+        #push_chunk_impl
 
         #storage_impls
         #get_impls

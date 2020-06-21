@@ -29,18 +29,31 @@ fn main() {
         id: 0,
         // Previous state
         prev: State {
-            pos: vec![0.0; 12],
-            vel: vec![1.0; 12],
+            pos: vec![0.0; 9],
+            vel: vec![1.0; 9],
         },
         // Current state
         cur: State {
-            pos: vec![0.0; 12],
-            vel: vec![1.0; 12],
+            pos: vec![0.0; 9],
+            vel: vec![1.0; 9],
         },
     };
 
     // Select a structure for the `obj` data.
-    let mut state = Chunked::from_sizes(vec![1, 3], Chunked3::from_flat(obj));
+    let mut state = Chunked::from_sizes(vec![1, 2], Chunked3::from_flat(obj));
+
+    // Push another chunk onto the state.
+    state.push_iter(std::iter::once(Object {
+        id: 0, /* ignored */
+        prev: State {
+            pos: [0.0; 3],
+            vel: [1.0; 3],
+        },
+        cur: State {
+            pos: [0.0; 3],
+            vel: [1.0; 3],
+        },
+    }));
 
     // We can access individual element in the state through indexing using the `View` and `Get`
     // traits.

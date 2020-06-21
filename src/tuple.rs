@@ -291,6 +291,14 @@ impl<N, S: UniChunkable<N>, T: UniChunkable<N>> UniChunkable<N> for (S, T) {
     type Chunk = (S::Chunk, T::Chunk);
 }
 
+impl<S: PushChunk<N>, T: PushChunk<N>, N> PushChunk<N> for (S, T) {
+    #[inline]
+    fn push_chunk(&mut self, chunk: Self::Chunk) {
+        self.0.push_chunk(chunk.0);
+        self.1.push_chunk(chunk.1);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -317,6 +325,29 @@ mod tests {
         assert_eq!(iter.next().unwrap(), (&[1][..], &[6][..]));
         assert_eq!(iter.next().unwrap(), (&[2, 3][..], &[7, 8][..]));
         assert_eq!(iter.next().unwrap(), (&[4, 5][..], &[9, 10][..]));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn chunked_unichunked_tuple_push() {
+        let sizes = vec![1, 2];
+        let a = vec![1, 2, 3, 4, 5, 6];
+        let b = vec![7, 8, 9, 10, 11, 12];
+        let mut a_b = Chunked::from_sizes(sizes, Chunked2::from_flat((a, b)));
+        a_b.push_iter(std::iter::once(([1, 2], [3, 4])));
+        let mut iter = a_b.iter();
+        assert_eq!(
+            iter.next().unwrap(),
+            Chunked2::from_flat((&[1, 2][..], &[7, 8][..]))
+        );
+        assert_eq!(
+            iter.next().unwrap(),
+            Chunked2::from_flat((&[3, 4, 5, 6][..], &[9, 10, 11, 12][..]))
+        );
+        assert_eq!(
+            iter.next().unwrap(),
+            Chunked2::from_flat((&[1, 2][..], &[3, 4][..]))
+        );
         assert_eq!(iter.next(), None);
     }
 
