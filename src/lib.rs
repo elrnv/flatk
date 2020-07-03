@@ -709,7 +709,7 @@ pub struct StaticRange<N> {
 
 impl<N> StaticRange<N> {
     #[inline]
-    fn new(start: usize) -> Self {
+    pub fn new(start: usize) -> Self {
         StaticRange {
             start,
             phantom: std::marker::PhantomData,
