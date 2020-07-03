@@ -110,6 +110,12 @@ impl DoubleEndedIterator for OffsetValues<'_> {
 impl ExactSizeIterator for OffsetValues<'_> {}
 impl std::iter::FusedIterator for OffsetValues<'_> {}
 
+unsafe impl TrustedRandomAccess for OffsetValues<'_> {
+    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
+        *self.offset_values.get_unchecked(i)
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Sizes<'a> {
     offsets: &'a [usize],
@@ -179,6 +185,14 @@ impl<'a> DoubleEndedIterator for Sizes<'a> {
 
 impl ExactSizeIterator for Sizes<'_> {}
 impl std::iter::FusedIterator for Sizes<'_> {}
+
+unsafe impl TrustedRandomAccess for Sizes<'_> {
+    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
+        // If this function is called, i must be at least 0 since it's a usize.
+        // Thus calling self.get_unchecked(0) will be safe if self.get_unchecked(i) is.
+        *self.offsets.get_unchecked(i) - *self.offsets.get_unchecked(0)
+    }
+}
 
 impl<'a> IntoValues for Offsets<&'a [usize]> {
     type Iter = OffsetValues<'a>;
