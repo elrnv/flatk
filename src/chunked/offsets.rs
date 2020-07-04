@@ -116,9 +116,107 @@ unsafe impl TrustedRandomAccess for OffsetValues<'_> {
     }
 }
 
+/// Iterator over ranges of offsets.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Ranges<'a> {
+    /// Raw offset values used to keep track of which range we are at.
+    offset_values: &'a [usize],
+    /// The very first offset value used to normalize the generated ranges.
+    first_offset_value: usize,
+}
+
+impl<'a> Iterator for Ranges<'a> {
+    type Item = std::ops::Range<usize>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        if let &[first, ref rest @ ..] = self.offset_values {
+            if let &[second, ..] = rest {
+                self.offset_values = rest;
+                let begin = first - self.first_offset_value;
+                let end = second - self.first_offset_value;
+                return Some(begin..end);
+            }
+        }
+        None
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let n = self.offset_values.len() - 1;
+        (n, Some(n))
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.len()
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        if let (_, &[first, second, ..]) = self.offset_values.split_at(n) {
+            let begin = first - self.first_offset_value;
+            let end = second - self.first_offset_value;
+            Some(begin..end)
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<Self::Item> {
+        self.next_back()
+    }
+}
+
+impl<'a> DoubleEndedIterator for Ranges<'a> {
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if let &[ref rest @ .., last] = self.offset_values {
+            if let &[.., second_last] = rest {
+                self.offset_values = rest;
+                let begin = second_last - self.first_offset_value;
+                let end = last - self.first_offset_value;
+                return Some(begin..end);
+            }
+        }
+        None
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        if let (_, &[first, second, ..]) = self.offset_values.split_at(self.len() - 2 - n) {
+            let begin = first - self.first_offset_value;
+            let end = second - self.first_offset_value;
+            Some(begin..end)
+        } else {
+            None
+        }
+    }
+}
+
+impl ExactSizeIterator for Ranges<'_> {}
+impl std::iter::FusedIterator for Ranges<'_> {}
+
+unsafe impl TrustedRandomAccess for Ranges<'_> {
+    #[inline]
+    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
+        let begin = *self.offset_values.get_unchecked(i - 1) - self.first_offset_value;
+        let end = *self.offset_values.get_unchecked(i) - self.first_offset_value;
+        begin..end
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Sizes<'a> {
     offsets: &'a [usize],
+}
+
+impl Sizes<'_> {
+    #[inline]
+    pub unsafe fn get_offset_value_unchecked(&self, i: usize) -> usize {
+        *self.offsets.get_unchecked(i)
+    }
 }
 
 impl<'a> Iterator for Sizes<'a> {
@@ -187,10 +285,9 @@ impl ExactSizeIterator for Sizes<'_> {}
 impl std::iter::FusedIterator for Sizes<'_> {}
 
 unsafe impl TrustedRandomAccess for Sizes<'_> {
+    #[inline]
     unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
-        // If this function is called, i must be at least 0 since it's a usize.
-        // Thus calling self.get_unchecked(0) will be safe if self.get_unchecked(i) is.
-        *self.offsets.get_unchecked(i) - *self.offsets.get_unchecked(0)
+        *self.offsets.get_unchecked(i) - *self.offsets.get_unchecked(i - 1)
     }
 }
 
