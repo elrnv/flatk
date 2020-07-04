@@ -91,7 +91,7 @@ where
     <I as std::slice::SliceIndex<[T]>>::Output: 'a,
 {
     type Output = &'a mut <[T] as std::ops::Index<I>>::Output;
-    #[inline(always)]
+    #[inline]
     unsafe fn isolate_unchecked(
         self,
         set: &'a mut [T],

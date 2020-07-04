@@ -1062,7 +1062,7 @@ where
 {
     type Output = S::Output;
 
-    #[inline(always)]
+    #[inline]
     unsafe fn isolate_unchecked(self, chunked: Chunked<S, O>) -> Self::Output {
         let Chunked { chunks, data } = chunked;
         data.isolate_unchecked(chunks.index_range_unchecked(self..self + 1))

@@ -1002,7 +1002,7 @@ where
     N: Unsigned,
 {
     type Output = S::Output;
-    #[inline(always)]
+    #[inline]
     unsafe fn isolate_unchecked(self, chunked: UniChunked<S, U<N>>) -> Self::Output {
         chunked
             .data
