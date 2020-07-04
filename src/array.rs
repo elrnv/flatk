@@ -83,9 +83,13 @@ macro_rules! impl_array_for_typenum {
         {
             type Output = &'a N::Array;
             #[inline]
+            unsafe fn isolate_unchecked(self, set: &'a [T; $n]) -> Self::Output {
+                &*(set.as_ptr().add(self.start()) as *const N::Array)
+            }
+            #[inline]
             fn try_isolate(self, set: &'a [T; $n]) -> Option<Self::Output> {
                 if self.end() <= set.len() {
-                    Some(unsafe { &*(set.as_ptr().add(self.start()) as *const N::Array) })
+                    Some(unsafe { IsolateIndex::isolate_unchecked(self, set) })
                 } else {
                     None
                 }

@@ -404,15 +404,18 @@ impl<O> IndexRange for ClumpedOffsets<O>
 where
     Self: Set + GetOffset,
 {
+    #[inline]
+    unsafe fn index_range_unchecked(&self, range: Range<usize>) -> Range<usize> {
+        let begin = self.offset_unchecked(range.start);
+        let end = self.offset_unchecked(range.end);
+        begin..end
+    }
     /// Return the `[begin..end)` bound of the chunk at the given index.
+    #[inline]
     fn index_range(&self, range: Range<usize>) -> Option<Range<usize>> {
         if range.end < self.len() {
             // The following is safe because we checked the bound above.
-            unsafe {
-                let begin = self.offset_unchecked(range.start);
-                let end = self.offset_unchecked(range.end);
-                Some(begin..end)
-            }
+            unsafe { Some(self.index_range_unchecked(range)) }
         } else {
             None
         }
@@ -598,10 +601,14 @@ where
 {
     type Output = usize;
     #[inline]
+    unsafe fn isolate_unchecked(self, clumped_offsets: ClumpedOffsets<O>) -> Self::Output {
+        clumped_offsets.offset_unchecked(self)
+    }
+    #[inline]
     fn try_isolate(self, clumped_offsets: ClumpedOffsets<O>) -> Option<Self::Output> {
         if self < clumped_offsets.len() {
             // The following is safe because we checked the bound above.
-            unsafe { Some(clumped_offsets.offset_unchecked(self)) }
+            unsafe { Some(IsolateIndex::isolate_unchecked(self, clumped_offsets)) }
         } else {
             None
         }

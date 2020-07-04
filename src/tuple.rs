@@ -128,6 +128,10 @@ where
 {
     type Output = (S::Output, T::Output);
     #[inline]
+    unsafe fn isolate_unchecked(self, (s, t): (S, T)) -> Self::Output {
+        (s.isolate_unchecked(self), t.isolate_unchecked(self))
+    }
+    #[inline]
     fn try_isolate(self, (s, t): (S, T)) -> Option<Self::Output> {
         s.try_isolate(self)
             .and_then(|s_item| t.try_isolate(self).map(|t_item| (s_item, t_item)))
@@ -140,6 +144,10 @@ where
     T: Isolate<std::ops::Range<usize>>,
 {
     type Output = (S::Output, T::Output);
+    #[inline]
+    unsafe fn isolate_unchecked(self, (s, t): (S, T)) -> Self::Output {
+        (s.isolate_unchecked(self.clone()), t.isolate_unchecked(self))
+    }
     #[inline]
     fn try_isolate(self, (s, t): (S, T)) -> Option<Self::Output> {
         s.try_isolate(self.clone())
@@ -351,6 +359,7 @@ mod tests {
         assert_eq!(iter.next(), None);
     }
 
+    #[cfg(feature = "sparse")]
     #[test]
     fn sparse_chunked_tuple() {
         let idx = vec![0, 3, 4];

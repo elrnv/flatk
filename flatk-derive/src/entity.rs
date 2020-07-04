@@ -499,6 +499,7 @@ fn impl_get(ast: &DeriveInput) -> TokenStream {
             quote! {
                 impl #impl_generics #crate_name::GetIndex<'flatk_get, #name #ty_generics> for #crate_name::StaticRange<_FlatkN>  #where_clause {
                     type Output = #name<#(#sub_params,)*>;
+                    #[inline]
                     fn get(self, this: &#name #ty_generics) -> Option<Self::Output> {
 
                         Some(#name {
@@ -543,6 +544,18 @@ fn impl_isolate(ast: &DeriveInput) -> TokenStream {
             quote! {
                 impl #impl_generics #crate_name::IsolateIndex<#name #ty_generics> for usize  #where_clause {
                     type Output = #name<#(#sub_params,)*>;
+                    #[inline]
+                    unsafe fn isolate_unchecked(self, this: #name #ty_generics) -> Self::Output {
+                        #name {
+                            #(
+                                #entity_field: #crate_name::Isolate::isolate_unchecked(this.#entity_field, self),
+                            )*
+                            #(
+                                #other_field: this.#other_field,
+                            )*
+                        }
+                    }
+                    #[inline]
                     fn try_isolate(self, this: #name #ty_generics) -> Option<Self::Output> {
                         Some(#name {
                             #(
@@ -574,8 +587,19 @@ fn impl_isolate(ast: &DeriveInput) -> TokenStream {
             quote! {
                 impl #impl_generics #crate_name::IsolateIndex<#name #ty_generics> for ::std::ops::Range<usize>  #where_clause {
                     type Output = #name<#(#sub_params,)*>;
+                    #[inline]
+                    unsafe fn isolate_unchecked(self, this: #name #ty_generics) -> Self::Output {
+                        #name {
+                            #(
+                                #entity_field: #crate_name::Isolate::isolate_unchecked(this.#entity_field, self.clone()),
+                            )*
+                            #(
+                                #other_field: this.#other_field,
+                            )*
+                        }
+                    }
+                    #[inline]
                     fn try_isolate(self, this: #name #ty_generics) -> Option<Self::Output> {
-
                         Some(#name {
                             #(
                                 #entity_field: #crate_name::Isolate::try_isolate(this.#entity_field, self.clone())?,
@@ -613,8 +637,19 @@ fn impl_isolate(ast: &DeriveInput) -> TokenStream {
             quote! {
                 impl #impl_generics #crate_name::IsolateIndex<#name #ty_generics> for #crate_name::StaticRange<_FlatkN>  #where_clause {
                     type Output = #name<#(#sub_params,)*>;
+                    #[inline]
+                    unsafe fn isolate_unchecked(self, this: #name #ty_generics) -> Self::Output {
+                        #name {
+                            #(
+                                #entity_field: #crate_name::Isolate::isolate_unchecked(this.#entity_field, self.clone()),
+                            )*
+                            #(
+                                #other_field: this.#other_field,
+                            )*
+                        }
+                    }
+                    #[inline]
                     fn try_isolate(self, this: #name #ty_generics) -> Option<Self::Output> {
-
                         Some(#name {
                             #(
                                 #entity_field: #crate_name::Isolate::try_isolate(this.#entity_field, self.clone())?,

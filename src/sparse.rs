@@ -3,6 +3,26 @@ use std::convert::{AsMut, AsRef};
 
 /// A `Sparse` data set `S` where the sparsity pattern is given by `I` as select
 /// indices into a larger range.
+///
+/// For example we can represent a sparse vector by assigning values to a selection of indices:
+///
+/// ```rust
+/// use flatk::{Sparse, Get, View};
+///
+/// let values = vec![1.0, 2.0, 3.0, 4.0];
+/// let sparse_vector = Sparse::from_dim(vec![0,5,10,100], 1000, values);
+/// let sparse_vector_view = sparse_vector.view();
+///
+/// assert_eq!(sparse_vector_view.at(0), (0, &1.0));
+/// assert_eq!(sparse_vector_view.at(1), (5, &2.0));
+/// assert_eq!(sparse_vector_view.at(2), (10, &3.0));
+/// assert_eq!(sparse_vector_view.at(3), (100, &4.0));
+/// assert_eq!(sparse_vector_view.selection.target, ..1000);
+/// ```
+///
+/// In this scenario, the target set is just the range `0..1000`, however in general this can be any
+/// data set, which makes `Sparse` an implementation of a one-to-one mapping or a directed graph
+/// with disjoint source and target node sets.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Sparse<S, T = std::ops::RangeTo<usize>, I = Vec<usize>> {
     pub selection: Select<T, I>,
@@ -349,15 +369,20 @@ where
     );
 
     #[inline]
+    unsafe fn isolate_unchecked(self, sparse: Sparse<S, T, I>) -> Self::Output {
+        let Sparse { selection, source } = sparse;
+        let item = source.isolate_unchecked(self);
+        let (idx, target) = selection.isolate_unchecked(self);
+        (idx, item, target)
+    }
+
+    #[inline]
     fn try_isolate(self, sparse: Sparse<S, T, I>) -> Option<Self::Output> {
         let Sparse { selection, source } = sparse;
-        source
-            .try_isolate(self)
-            // TODO: selection.isolate can be unchecked.
-            .map(|item| {
-                let (idx, target) = selection.isolate(self);
-                (idx, item, target)
-            })
+        let item = source.try_isolate(self)?;
+        // SAFETY: selection must be the same size as source.
+        let (idx, target) = unsafe { selection.isolate_unchecked(self) };
+        Some((idx, item, target))
     }
 }
 
@@ -369,13 +394,23 @@ where
     type Output = Sparse<S::Output, T, I::Output>;
 
     #[inline]
+    unsafe fn isolate_unchecked(self, sparse: Sparse<S, T, I>) -> Self::Output {
+        let Sparse { selection, source } = sparse;
+        let source = source.isolate_unchecked(self.clone());
+        Sparse {
+            selection: selection.isolate_unchecked(self),
+            source,
+        }
+    }
+
+    #[inline]
     fn try_isolate(self, sparse: Sparse<S, T, I>) -> Option<Self::Output> {
         let Sparse { selection, source } = sparse;
-        source.try_isolate(self.clone()).and_then(|source| {
-            // TODO: selection.try_isolate can be unchecked.
-            selection
-                .try_isolate(self)
-                .map(|selection| Sparse { selection, source })
+        let source = source.try_isolate(self.clone())?;
+        // SAFETY: selection must be the same size as source.
+        Some(Sparse {
+            selection: unsafe { selection.isolate_unchecked(self) },
+            source,
         })
     }
 }

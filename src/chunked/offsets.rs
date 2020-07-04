@@ -431,13 +431,15 @@ impl<'a> SplitOffsetsAt for Offsets<&'a [usize]> {
 }
 
 impl<O: AsRef<[usize]> + Set> IndexRange for Offsets<O> {
+    #[inline]
+    unsafe fn index_range_unchecked(&self, range: Range<usize>) -> Range<usize> {
+        self.offset_unchecked(range.start)..self.offset_unchecked(range.end)
+    }
     /// Return the `[begin..end)` bound of the chunk at the given index.
     #[inline]
     fn index_range(&self, range: Range<usize>) -> Option<Range<usize>> {
         if range.end < self.len() {
-            let result =
-                unsafe { self.offset_unchecked(range.start)..self.offset_unchecked(range.end) };
-            Some(result)
+            unsafe { Some(self.index_range_unchecked(range)) }
         } else {
             None
         }
@@ -464,6 +466,10 @@ impl<'a, O: Get<'a, Range<usize>>> GetIndex<'a, Offsets<O>> for Range<usize> {
 impl<O: Isolate<usize>> IsolateIndex<Offsets<O>> for usize {
     type Output = O::Output;
     #[inline]
+    unsafe fn isolate_unchecked(self, offsets: Offsets<O>) -> Self::Output {
+        offsets.0.isolate_unchecked(self)
+    }
+    #[inline]
     fn try_isolate(self, offsets: Offsets<O>) -> Option<Self::Output> {
         offsets.0.try_isolate(self)
     }
@@ -471,6 +477,11 @@ impl<O: Isolate<usize>> IsolateIndex<Offsets<O>> for usize {
 
 impl<O: Isolate<Range<usize>>> IsolateIndex<Offsets<O>> for Range<usize> {
     type Output = Offsets<O::Output>;
+    #[inline]
+    unsafe fn isolate_unchecked(mut self, offsets: Offsets<O>) -> Self::Output {
+        self.end += 1;
+        Offsets(offsets.0.isolate_unchecked(self))
+    }
     #[inline]
     fn try_isolate(mut self, offsets: Offsets<O>) -> Option<Self::Output> {
         self.end += 1;

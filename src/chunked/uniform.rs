@@ -1002,6 +1002,12 @@ where
     N: Unsigned,
 {
     type Output = S::Output;
+    #[inline(always)]
+    unsafe fn isolate_unchecked(self, chunked: UniChunked<S, U<N>>) -> Self::Output {
+        chunked
+            .data
+            .isolate_unchecked(StaticRange::new(self * N::to_usize()))
+    }
 
     /// Isolate a chunk of the given `UniChunked` collection.
     #[inline]
@@ -1023,6 +1029,15 @@ where
 {
     type Output = UniChunked<S::Output, U<N>>;
 
+    #[inline]
+    unsafe fn isolate_unchecked(self, chunked: UniChunked<S, U<N>>) -> Self::Output {
+        UniChunked {
+            data: chunked
+                .data
+                .isolate_unchecked(N::to_usize() * self.start..self.end * N::to_usize()),
+            chunk_size: Default::default(),
+        }
+    }
     /// Isolate a `[begin..end)` range of the given `UniChunked` collection.
     #[inline]
     fn try_isolate(self, chunked: UniChunked<S, U<N>>) -> Option<Self::Output> {
@@ -1051,6 +1066,15 @@ where
     type Output = UniChunked<<StaticRange<N::Output> as IsolateIndex<S>>::Output, U<M>>;
 
     #[inline]
+    unsafe fn isolate_unchecked(self, set: UniChunked<S, U<M>>) -> Self::Output {
+        let rng = StaticRange::<N::Output>::new(self.start * M::to_usize());
+        let UniChunked { data, chunk_size } = set;
+        UniChunked {
+            data: IsolateIndex::isolate_unchecked(rng, data),
+            chunk_size,
+        }
+    }
+    #[inline]
     fn try_isolate(self, set: UniChunked<S, U<M>>) -> Option<Self::Output> {
         let rng = StaticRange::<N::Output>::new(self.start * M::to_usize());
         let UniChunked { data, chunk_size } = set;
@@ -1064,6 +1088,14 @@ where
 {
     type Output = S::Output;
 
+    #[inline]
+    unsafe fn isolate_unchecked(self, chunked: ChunkedN<S>) -> Self::Output {
+        let stride = chunked.chunk_size;
+        chunked.data.isolate_unchecked(std::ops::Range {
+            start: self * stride,
+            end: (self + 1) * stride,
+        })
+    }
     /// Isolate a chunk of the given `ChunkedN` collection.
     #[inline]
     fn try_isolate(self, chunked: ChunkedN<S>) -> Option<Self::Output> {
@@ -1085,6 +1117,16 @@ where
 {
     type Output = ChunkedN<S::Output>;
 
+    #[inline]
+    unsafe fn isolate_unchecked(self, chunked: ChunkedN<S>) -> Self::Output {
+        let stride = chunked.chunk_size;
+        UniChunked {
+            data: chunked
+                .data
+                .isolate_unchecked(stride * self.start..stride * self.end),
+            chunk_size: stride,
+        }
+    }
     /// Isolate a `[begin..end)` range of the given `ChunkedN` collection.
     #[inline]
     fn try_isolate(self, chunked: ChunkedN<S>) -> Option<Self::Output> {

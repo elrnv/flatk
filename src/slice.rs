@@ -24,9 +24,13 @@ where
 {
     type Output = &'a N::Array;
     #[inline]
+    unsafe fn isolate_unchecked(self, set: &'a [T]) -> Self::Output {
+        &*(set.as_ptr().add(self.start()) as *const N::Array)
+    }
+    #[inline]
     fn try_isolate(self, set: &'a [T]) -> Option<Self::Output> {
         if self.end() <= set.len() {
-            Some(unsafe { &*(set.as_ptr().add(self.start()) as *const N::Array) })
+            Some(unsafe { IsolateIndex::isolate_unchecked(self, set) })
         } else {
             None
         }
@@ -40,9 +44,13 @@ where
 {
     type Output = &'a mut N::Array;
     #[inline]
+    unsafe fn isolate_unchecked(self, set: &'a mut [T]) -> Self::Output {
+        &mut *(set.as_mut_ptr().add(self.start()) as *mut N::Array)
+    }
+    #[inline]
     fn try_isolate(self, set: &'a mut [T]) -> Option<Self::Output> {
         if self.end() <= set.len() {
-            Some(unsafe { &mut *(set.as_mut_ptr().add(self.start()) as *mut N::Array) })
+            Some(unsafe { IsolateIndex::isolate_unchecked(self, set) })
         } else {
             None
         }
@@ -68,6 +76,10 @@ where
 {
     type Output = &'a <[T] as std::ops::Index<I>>::Output;
     #[inline]
+    unsafe fn isolate_unchecked(self, set: &'a [T]) -> &'a <[T] as std::ops::Index<I>>::Output {
+        set.get_unchecked(self)
+    }
+    #[inline]
     fn try_isolate(self, set: &'a [T]) -> Option<&'a <[T] as std::ops::Index<I>>::Output> {
         Some(std::ops::Index::<I>::index(set, self))
     }
@@ -79,10 +91,17 @@ where
     <I as std::slice::SliceIndex<[T]>>::Output: 'a,
 {
     type Output = &'a mut <[T] as std::ops::Index<I>>::Output;
+    #[inline(always)]
+    unsafe fn isolate_unchecked(
+        self,
+        set: &'a mut [T],
+    ) -> &'a mut <[T] as std::ops::Index<I>>::Output {
+        //let slice = std::slice::from_raw_parts_mut(set.as_mut_ptr(), set.len());
+        set.get_unchecked_mut(self)
+    }
     #[inline]
     fn try_isolate(self, set: &'a mut [T]) -> Option<&'a mut <[T] as std::ops::Index<I>>::Output> {
-        let slice = unsafe { std::slice::from_raw_parts_mut(set.as_mut_ptr(), set.len()) };
-        Some(std::ops::IndexMut::<I>::index_mut(slice, self))
+        Some(unsafe { IsolateIndex::isolate_unchecked(self, set) })
     }
 }
 

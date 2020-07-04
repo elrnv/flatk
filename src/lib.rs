@@ -162,27 +162,7 @@
 //!   ```
 //!
 //! - `Sparse`: A sparse data assignment to another collection. Effectively this type attaches another
-//!   data set to a `Select`ion.
-//!
-//!   For example we can represent a sparse vector by assigning values to a selection of indices:
-//!   
-//!   ```rust
-//!   use flatk::{Sparse, Get, View};
-//!   
-//!   let values = vec![1.0, 2.0, 3.0, 4.0];
-//!   let sparse_vector = Sparse::from_dim(vec![0,5,10,100], 1000, values);
-//!   let sparse_vector_view = sparse_vector.view();
-//!   
-//!   assert_eq!(sparse_vector_view.at(0), (0, &1.0));
-//!   assert_eq!(sparse_vector_view.at(1), (5, &2.0));
-//!   assert_eq!(sparse_vector_view.at(2), (10, &3.0));
-//!   assert_eq!(sparse_vector_view.at(3), (100, &4.0));
-//!   assert_eq!(sparse_vector_view.selection.target, ..1000);
-//!   ```
-//!
-//!   In this scenario, the target set is just the range `0..1000`, however in general this can be any
-//!   data set, which makes `Sparse` an implementation of a one-to-one mapping or a directed graph
-//!   with disjoint source and target node sets.
+//!   data set to a `Select`ion. See [`Sparse`] for examples.
 //!
 //!
 //! # Indexing
@@ -197,6 +177,7 @@
 //!
 //! [`Get`]: trait.Get.html
 //! [`Isolate`]: trait.Isolate.html
+//! [`Sparse`]: struct.Sparse.html
 
 /*
  * Define macros to be used for implementing various traits in submodules
@@ -238,6 +219,11 @@ macro_rules! impl_isolate_index_for_static_range {
         {
             type Output = <std::ops::Range<usize> as IsolateIndex<$type>>::Output;
 
+            #[inline]
+            unsafe fn isolate_unchecked(self, set: $type) -> Self::Output {
+                IsolateIndex::isolate_unchecked(self.start..self.start + N::to_usize(), set)
+            }
+            #[inline]
             fn try_isolate(self, set: $type) -> Option<Self::Output> {
                 IsolateIndex::try_isolate(self.start..self.start + N::to_usize(), set)
             }
@@ -251,6 +237,7 @@ pub mod chunked;
 mod range;
 mod select;
 mod slice;
+#[cfg(feature = "sparse")]
 mod sparse;
 mod subset;
 mod tuple;
@@ -263,6 +250,7 @@ pub use chunked::*;
 pub use range::*;
 pub use select::*;
 pub use slice::*;
+#[cfg(feature = "sparse")]
 pub use sparse::*;
 pub use subset::*;
 pub use tuple::*;
@@ -370,6 +358,7 @@ pub trait Array<T> {
 /// A marker trait to identify types whose range indices give a dynamically sized type even if the
 /// range index is given as a StaticRange.
 pub trait DynamicRangeIndexType {}
+#[cfg(feature = "sparse")]
 impl<S, T, I> DynamicRangeIndexType for Sparse<S, T, I> {}
 impl<S, I> DynamicRangeIndexType for Select<S, I> {}
 impl<S, I> DynamicRangeIndexType for Subset<S, I> {}
@@ -379,6 +368,7 @@ impl<S> DynamicRangeIndexType for ChunkedN<S> {}
 /// A marker trait to indicate an owned collection type. This is to distinguish
 /// them from borrowed types, which is essential to resolve implementation collisions.
 pub trait ValueType {}
+#[cfg(feature = "sparse")]
 impl<S, T, I> ValueType for Sparse<S, T, I> {}
 impl<S, I> ValueType for Select<S, I> {}
 impl<S, I> ValueType for Subset<S, I> {}
@@ -387,6 +377,7 @@ impl<S, N> ValueType for UniChunked<S, N> {}
 
 impl<S: Viewed + ?Sized> Viewed for &S {}
 impl<S: Viewed + ?Sized> Viewed for &mut S {}
+#[cfg(feature = "sparse")]
 impl<S: Viewed, T: Viewed, I: Viewed> Viewed for Sparse<S, T, I> {}
 impl<S: Viewed, I: Viewed> Viewed for Select<S, I> {}
 impl<S: Viewed, I: Viewed> Viewed for Subset<S, I> {}
@@ -743,7 +734,7 @@ where
 pub trait IsolateIndex<S> {
     type Output;
     fn try_isolate(self, set: S) -> Option<Self::Output>;
-    //unsafe fn get_unchecked_mut(self, set: &'i mut S) -> Self::Output;
+    unsafe fn isolate_unchecked(self, set: S) -> Self::Output;
 }
 
 /// An index trait for collection types.
@@ -789,7 +780,7 @@ where
 /// why it's called `Isolate` instead of `SubView`.
 pub trait Isolate<I> {
     type Output;
-    //unsafe fn isolate_unchecked(&'i self, idx: I) -> Self::Output;
+    unsafe fn isolate_unchecked(self, idx: I) -> Self::Output;
     fn try_isolate(self, idx: I) -> Option<Self::Output>;
     /// Return a value at the given index. This is provided as the checked
     /// version of `try_isolate` that will panic if the equivalent `try_isolate`
@@ -814,6 +805,10 @@ where
     I: IsolateIndex<Self>,
 {
     type Output = I::Output;
+    #[inline]
+    unsafe fn isolate_unchecked(self, idx: I) -> Self::Output {
+        idx.isolate_unchecked(self)
+    }
     #[inline]
     fn try_isolate(self, idx: I) -> Option<Self::Output> {
         idx.try_isolate(self)
@@ -909,6 +904,11 @@ where
 {
     type Output = <std::ops::Range<usize> as IsolateIndex<S>>::Output;
 
+    #[inline]
+    unsafe fn isolate_unchecked(self, set: S) -> Self::Output {
+        IsolateIndex::isolate_unchecked(self.start..self.start + N::to_usize(), set)
+    }
+    #[inline]
     fn try_isolate(self, set: S) -> Option<Self::Output> {
         IsolateIndex::try_isolate(self.start..self.start + N::to_usize(), set)
     }
@@ -922,6 +922,10 @@ where
     type Output = <std::ops::Range<usize> as IsolateIndex<S>>::Output;
 
     #[inline]
+    unsafe fn isolate_unchecked(self, set: S) -> Self::Output {
+        IsolateIndex::isolate_unchecked(self.start..set.len(), set)
+    }
+    #[inline]
     fn try_isolate(self, set: S) -> Option<Self::Output> {
         IsolateIndex::try_isolate(self.start..set.len(), set)
     }
@@ -933,6 +937,10 @@ where
 {
     type Output = <std::ops::Range<usize> as IsolateIndex<S>>::Output;
 
+    #[inline]
+    unsafe fn isolate_unchecked(self, set: S) -> Self::Output {
+        IsolateIndex::isolate_unchecked(0..self.end, set)
+    }
     #[inline]
     fn try_isolate(self, set: S) -> Option<Self::Output> {
         IsolateIndex::try_isolate(0..self.end, set)
@@ -947,6 +955,10 @@ where
     type Output = <std::ops::Range<usize> as IsolateIndex<S>>::Output;
 
     #[inline]
+    unsafe fn isolate_unchecked(self, set: S) -> Self::Output {
+        IsolateIndex::isolate_unchecked(0..set.len(), set)
+    }
+    #[inline]
     fn try_isolate(self, set: S) -> Option<Self::Output> {
         IsolateIndex::try_isolate(0..set.len(), set)
     }
@@ -959,6 +971,11 @@ where
 {
     type Output = <std::ops::Range<usize> as IsolateIndex<S>>::Output;
 
+    #[allow(clippy::range_plus_one)]
+    #[inline]
+    unsafe fn isolate_unchecked(self, set: S) -> Self::Output {
+        IsolateIndex::isolate_unchecked(*self.start()..*self.end() + 1, set)
+    }
     #[allow(clippy::range_plus_one)]
     #[inline]
     fn try_isolate(self, set: S) -> Option<Self::Output> {
@@ -977,6 +994,10 @@ where
 {
     type Output = <std::ops::Range<usize> as IsolateIndex<S>>::Output;
 
+    #[inline]
+    unsafe fn isolate_unchecked(self, set: S) -> Self::Output {
+        IsolateIndex::isolate_unchecked(0..=self.end, set)
+    }
     #[inline]
     fn try_isolate(self, set: S) -> Option<Self::Output> {
         IsolateIndex::try_isolate(0..=self.end, set)

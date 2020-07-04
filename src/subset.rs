@@ -561,19 +561,34 @@ where
     type Output = <S as Isolate<usize>>::Output;
 
     #[inline]
-    fn try_isolate(self, subset: Subset<S, O>) -> Option<Self::Output> {
-        // TODO: too much bounds checking here, add a get_unchecked call to GetIndex.
+    unsafe fn isolate_unchecked(self, subset: Subset<S, O>) -> Self::Output {
         let Subset { indices, data } = subset;
-        if let Some(ref indices) = indices {
-            indices.as_ref().get(0).and_then(move |&first| {
-                indices
-                    .as_ref()
-                    .get(self)
-                    .and_then(move |&cur| Isolate::try_isolate(data, cur - first))
-            })
-        } else {
-            Isolate::try_isolate(data, self)
-        }
+        Isolate::isolate_unchecked(
+            data,
+            if let Some(ref indices) = indices {
+                let cur = indices.as_ref().get_unchecked(self);
+                let first = indices.as_ref().get_unchecked(0);
+                cur - first
+            } else {
+                self
+            },
+        )
+    }
+
+    #[inline]
+    fn try_isolate(self, subset: Subset<S, O>) -> Option<Self::Output> {
+        let Subset { indices, data } = subset;
+        Isolate::try_isolate(
+            data,
+            if let Some(ref indices) = indices {
+                let cur = indices.as_ref().get(self)?;
+                // SAFETY: self must be at least zero, and we just checked it above.
+                let first = unsafe { indices.as_ref().get_unchecked(0) };
+                cur - first
+            } else {
+                self
+            },
+        )
     }
 }
 

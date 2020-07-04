@@ -259,6 +259,10 @@ impl<T: IntBound> Truncate for Range<T> {
 impl<T: IntBound> IsolateIndex<Range<T>> for usize {
     type Output = T;
     #[inline]
+    unsafe fn isolate_unchecked(self, rng: Range<T>) -> Self::Output {
+        rng.start + self
+    }
+    #[inline]
     fn try_isolate(self, rng: Range<T>) -> Option<Self::Output> {
         if self < rng.distance().into() {
             Some(rng.start + self)
@@ -271,6 +275,13 @@ impl<T: IntBound> IsolateIndex<Range<T>> for usize {
 impl<T: IntBound> IsolateIndex<Range<T>> for std::ops::Range<usize> {
     type Output = Range<T>;
 
+    #[inline]
+    unsafe fn isolate_unchecked(self, rng: Range<T>) -> Self::Output {
+        Range {
+            start: rng.start.clone() + self.start,
+            end: rng.start + self.end,
+        }
+    }
     #[inline]
     fn try_isolate(self, rng: Range<T>) -> Option<Self::Output> {
         if self.start >= rng.distance().into() || self.end > rng.distance().into() {
@@ -287,6 +298,10 @@ impl<T: IntBound> IsolateIndex<Range<T>> for std::ops::Range<usize> {
 impl<T: IntBound> IsolateIndex<RangeTo<T>> for usize {
     type Output = T;
     #[inline]
+    unsafe fn isolate_unchecked(self, _: RangeTo<T>) -> Self::Output {
+        self.into()
+    }
+    #[inline]
     fn try_isolate(self, rng: RangeTo<T>) -> Option<Self::Output> {
         if self < rng.distance().into() {
             Some(self.into())
@@ -299,6 +314,13 @@ impl<T: IntBound> IsolateIndex<RangeTo<T>> for usize {
 impl<T: IntBound> IsolateIndex<RangeTo<T>> for std::ops::Range<usize> {
     type Output = Range<T>;
 
+    #[inline]
+    unsafe fn isolate_unchecked(self, _: RangeTo<T>) -> Self::Output {
+        Range {
+            start: self.start.into(),
+            end: self.end.into(),
+        }
+    }
     #[inline]
     fn try_isolate(self, rng: RangeTo<T>) -> Option<Self::Output> {
         if self.start >= rng.distance().into() || self.end > rng.distance().into() {

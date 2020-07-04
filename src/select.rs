@@ -368,14 +368,21 @@ where
     S: Isolate<usize>,
 {
     type Output = (I::Output, S::Output);
+    #[inline]
+    unsafe fn isolate_unchecked(self, selection: Select<S, I>) -> Self::Output {
+        use std::borrow::Borrow;
+        let Select { indices, target } = selection;
+        let idx = indices.isolate_unchecked(self);
+        let val = target.isolate_unchecked(*idx.borrow());
+        (idx, val)
+    }
 
     #[inline]
     fn try_isolate(self, selection: Select<S, I>) -> Option<Self::Output> {
         use std::borrow::Borrow;
         let Select { indices, target } = selection;
-        indices
-            .try_isolate(self)
-            .and_then(move |idx| target.try_isolate(*idx.borrow()).map(|val| (idx, val)))
+        let idx = indices.try_isolate(self)?;
+        target.try_isolate(*idx.borrow()).map(|val| (idx, val))
     }
 }
 
@@ -385,13 +392,20 @@ where
     I: Isolate<std::ops::Range<usize>>,
 {
     type Output = Select<S, I::Output>;
+    #[inline]
+    unsafe fn isolate_unchecked(self, selection: Select<S, I>) -> Self::Output {
+        let Select { indices, target } = selection;
+        let indices = indices.isolate_unchecked(self);
+        Select { indices, target }
+    }
 
     #[inline]
     fn try_isolate(self, selection: Select<S, I>) -> Option<Self::Output> {
         let Select { indices, target } = selection;
-        indices
-            .try_isolate(self)
-            .map(move |indices| Select { indices, target })
+        Some(Select {
+            indices: indices.try_isolate(self)?,
+            target,
+        })
     }
 }
 

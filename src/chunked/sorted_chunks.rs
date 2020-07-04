@@ -163,6 +163,10 @@ impl<'a> SplitOffsetsAt for SortedChunks<&'a [usize]> {
 }
 
 impl<O: AsRef<[usize]> + Set> IndexRange for SortedChunks<O> {
+    #[inline]
+    unsafe fn index_range_unchecked(&self, range: Range<usize>) -> Range<usize> {
+        self.offsets.index_range_unchecked(range)
+    }
     /// Return the `[begin..end)` bound of the chunk at the given index.
     #[inline]
     fn index_range(&self, range: Range<usize>) -> Option<Range<usize>> {
@@ -183,11 +187,21 @@ impl<'a, O: Get<'a, Range<usize>>> GetIndex<'a, SortedChunks<O>> for Range<usize
 
 impl<O: Isolate<Range<usize>>> IsolateIndex<SortedChunks<O>> for Range<usize> {
     type Output = SortedChunks<O::Output>;
+    #[inline]
+    unsafe fn isolate_unchecked(self, sorted_chunks: SortedChunks<O>) -> Self::Output {
+        let SortedChunks { offsets, sorted } = sorted_chunks;
+        SortedChunks {
+            sorted,
+            offsets: offsets.isolate_unchecked(self),
+        }
+    }
+    #[inline]
     fn try_isolate(self, sorted_chunks: SortedChunks<O>) -> Option<Self::Output> {
         let SortedChunks { offsets, sorted } = sorted_chunks;
-        offsets
-            .try_isolate(self)
-            .map(move |offsets| SortedChunks { sorted, offsets })
+        Some(SortedChunks {
+            sorted,
+            offsets: offsets.try_isolate(self)?,
+        })
     }
 }
 

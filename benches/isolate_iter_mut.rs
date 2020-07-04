@@ -73,8 +73,31 @@ fn isolate(mut v: ChunkedView<Chunked3<&mut [f64]>>) {
     }
 }
 
+#[inline]
+fn isolate_unchecked(mut v: ChunkedView<Chunked3<&mut [f64]>>) {
+    for i in 0..v.len() {
+        for j in 0..unsafe { v.view().isolate_unchecked(i).len() } {
+            let a = unsafe { v.view_mut().isolate_unchecked(i).isolate_unchecked(j) };
+            let res = compute(a[0], a[1], a[2]);
+            a[0] = res[0];
+            a[1] = res[1];
+            a[2] = res[2];
+        }
+    }
+}
+
 fn chunks_iter(c: &mut Criterion) {
     let mut group = c.benchmark_group("Isolate vs Iter Mut");
+
+    // Make sure all of the functions being benchmarked are doing the same thing.
+    let mut a = make_random_chunked::<f64>(900_000);
+    let mut b = make_random_chunked::<f64>(900_000);
+    let mut c = make_random_chunked::<f64>(900_000);
+    iter_mut(a.view_mut());
+    isolate(b.view_mut());
+    isolate_unchecked(c.view_mut());
+    assert_eq!(&a, &b);
+    assert_eq!(&b, &c);
 
     for &buf_size in &[3000, 30_000, 90_000, 180_000, 300_000, 600_000, 900_000] {
         group.bench_function(BenchmarkId::new("Iter Mut", buf_size), |b| {
@@ -87,6 +110,12 @@ fn chunks_iter(c: &mut Criterion) {
             let mut c = make_random_chunked::<f64>(buf_size);
 
             b.iter(|| isolate(c.view_mut()))
+        });
+
+        group.bench_function(BenchmarkId::new("Isolate Unchecked", buf_size), |b| {
+            let mut c = make_random_chunked::<f64>(buf_size);
+
+            b.iter(|| isolate_unchecked(c.view_mut()))
         });
     }
 
