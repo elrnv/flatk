@@ -96,7 +96,6 @@ where
         self,
         set: &'a mut [T],
     ) -> &'a mut <[T] as std::ops::Index<I>>::Output {
-        //let slice = std::slice::from_raw_parts_mut(set.as_mut_ptr(), set.len());
         set.get_unchecked_mut(self)
     }
     #[inline]
