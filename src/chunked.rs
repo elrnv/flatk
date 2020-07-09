@@ -1,5 +1,7 @@
 mod clumped_offsets;
 mod offsets;
+#[cfg(feature = "rayon")]
+mod par_iter;
 #[cfg(feature = "sorted_chunks")]
 mod sorted_chunks;
 #[cfg(feature = "sparse")]
@@ -43,9 +45,25 @@ pub trait IndexRange {
     fn index_range(&self, range: std::ops::Range<usize>) -> Option<std::ops::Range<usize>>;
 }
 
+pub trait IntoRanges {
+    type Iter: Iterator<Item = std::ops::Range<usize>>;
+    fn into_ranges(self) -> Self::Iter;
+}
+
 pub trait IntoSizes {
     type Iter: Iterator<Item = usize>;
     fn into_sizes(self) -> Self::Iter;
+}
+
+pub trait IntoOffsetsAndSizes {
+    type Iter: Iterator<Item = (usize, usize)>;
+    fn into_offsets_and_sizes(self) -> Self::Iter;
+}
+
+#[cfg(feature = "rayon")]
+pub trait IntoParSizes {
+    type ParIter: rayon::iter::IndexedParallelIterator<Item = usize>;
+    fn into_par_sizes(self) -> Self::ParIter;
 }
 
 pub trait IntoValues {
@@ -53,9 +71,21 @@ pub trait IntoValues {
     fn into_values(self) -> Self::Iter;
 }
 
-pub trait GetOffset: Set {
+/// Manipulate a non-empty collection of offsets.
+///
+/// # Safety
+///
+/// The implementing type must ensure that there is always at least one offset in the container.
+/// That is `num_offsets()` never returns 0.
+///
+/// If that is not inherent in the collection, the implementor should make sure to override the
+/// functions in this trait that make this assumption.
+pub unsafe trait GetOffset {
     /// A version of `offset_value` without bounds checking.
     unsafe fn offset_value_unchecked(&self, index: usize) -> usize;
+
+    /// Get the total number of offsets.
+    fn num_offsets(&self) -> usize;
 
     /// Get the length of the chunk at the given index.
     ///
@@ -66,7 +96,10 @@ pub trait GetOffset: Set {
     /// This funciton will panic if `chunk_index+1` is greater than or equal to `self.len()`.
     #[inline]
     fn chunk_len(&self, chunk_index: usize) -> usize {
-        assert!(chunk_index + 1 < self.len(), "Offset index out of bounds");
+        assert!(
+            chunk_index + 1 < self.num_offsets(),
+            "Offset index out of bounds"
+        );
         // SAFETY: The length is checked above.
         unsafe {
             self.offset_value_unchecked(chunk_index + 1) - self.offset_value_unchecked(chunk_index)
@@ -94,7 +127,7 @@ pub trait GetOffset: Set {
     /// ```
     #[inline]
     fn offset_value(&self, index: usize) -> usize {
-        assert!(index < self.len(), "Offset index out of bounds");
+        assert!(index < self.num_offsets(), "Offset index out of bounds");
         // SAFETY: just checked the bound.
         unsafe { self.offset_value_unchecked(index) }
     }
@@ -138,7 +171,7 @@ pub trait GetOffset: Set {
     #[inline]
     fn last_offset(&self) -> usize {
         // SAFETY: Offsets are never empty
-        unsafe { self.offset_unchecked(self.len() - 1) }
+        unsafe { self.offset_unchecked(self.num_offsets() - 1) }
     }
 
     /// Get the first offset.
@@ -153,7 +186,7 @@ pub trait GetOffset: Set {
     #[inline]
     fn last_offset_value(&self) -> usize {
         // SAFETY: Offsets are never empty
-        unsafe { self.offset_value_unchecked(self.len() - 1) }
+        unsafe { self.offset_value_unchecked(self.num_offsets() - 1) }
     }
 
     /// Get the raw value corresponding to the first offset.
@@ -362,8 +395,9 @@ impl<S: Set, O: AsRef<[usize]>> Chunked<S, Offsets<O>> {
             data.len(),
             last - first
         );
+        // SAFETY: offsets is guranteed to have at least one element as checked above.
         Chunked {
-            chunks: Offsets(offsets),
+            chunks: unsafe { Offsets::from_raw(offsets) },
             data,
         }
     }
@@ -432,8 +466,8 @@ impl<S: Set, O: AsRef<[usize]>> Clumped<S, O> {
         );
         Chunked {
             chunks: ClumpedOffsets {
-                chunk_offsets: Offsets(chunk_offsets),
-                offsets: Offsets(offsets),
+                chunk_offsets: Offsets::new(chunk_offsets),
+                offsets: Offsets::new(offsets),
             },
             data,
         }
@@ -531,7 +565,7 @@ where
 
 impl<S, O> Chunked<S, Offsets<O>>
 where
-    O: Set + AsRef<[usize]> + AsMut<[usize]>,
+    O: AsRef<[usize]> + AsMut<[usize]>,
 {
     /// Move a number of elements from a chunk at the given index to the
     /// following chunk. If the last chunk is selected, then the transferred
@@ -664,7 +698,7 @@ where
 impl<S, O> Set for Chunked<S, O>
 where
     S: Set,
-    O: Set,
+    O: GetOffset,
 {
     type Elem = Vec<S::Elem>;
     type Atom = S::Atom;
@@ -680,7 +714,7 @@ where
     /// ```
     #[inline]
     fn len(&self) -> usize {
-        self.chunks.len() - 1
+        self.chunks.num_offsets() - 1
     }
 }
 
@@ -710,7 +744,7 @@ where
     /// ```
     #[inline]
     pub fn trim_data(&mut self) -> usize {
-        debug_assert!(self.chunks.len() > 0);
+        debug_assert!(self.chunks.num_offsets() > 0);
         let last_offset = self.chunks.last_offset();
         let num_removed = self.data.len() - last_offset;
         self.data.truncate(last_offset);
@@ -745,7 +779,7 @@ where
     /// assert_eq!(4, s.data().len());
     /// ```
     pub fn trim(&mut self) -> usize {
-        let num_offsets = self.chunks.len();
+        let num_offsets = self.chunks.num_offsets();
         debug_assert!(num_offsets > 0);
         let last_offset = self.chunks.last_offset();
         // Count the number of identical offsets from the end.
@@ -1273,8 +1307,9 @@ where
 
 impl<'a, S, O> IntoIterator for Chunked<S, O>
 where
-    O: IntoSizes,
+    O: IntoOffsetsAndSizes,
     S: SplitAt + Set + Dummy,
+    O::Iter: ExactSizeIterator,
 {
     type Item = S;
     type IntoIter = ChunkedIter<O::Iter, S>;
@@ -1282,7 +1317,8 @@ where
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
         ChunkedIter {
-            sizes: self.chunks.into_sizes(),
+            first_offset: 0,
+            offsets_and_sizes: self.chunks.into_offsets_and_sizes(),
             data: self.data,
         }
     }
@@ -1295,7 +1331,7 @@ where
     <S as View<'a>>::Type: SplitAt + Set + Dummy,
 {
     type Item = <S as View<'a>>::Type;
-    type Iter = ChunkedIter<Sizes<'a>, <S as View<'a>>::Type>;
+    type Iter = ChunkedIter<OffsetsAndSizes<'a>, <S as View<'a>>::Type>;
 
     #[inline]
     fn view_iter(&'a self) -> Self::Iter {
@@ -1310,7 +1346,7 @@ where
     <S as ViewMut<'a>>::Type: SplitAt + Set + Dummy,
 {
     type Item = <S as ViewMut<'a>>::Type;
-    type Iter = ChunkedIter<Sizes<'a>, <S as ViewMut<'a>>::Type>;
+    type Iter = ChunkedIter<OffsetsAndSizes<'a>, <S as ViewMut<'a>>::Type>;
 
     #[inline]
     fn view_mut_iter(&'a mut self) -> Self::Iter {
@@ -1324,7 +1360,7 @@ impl<'a, S, O> Chunked<S, O>
 where
     S: View<'a>,
     O: View<'a>,
-    O::Type: IntoSizes,
+    O::Type: IntoOffsetsAndSizes,
 {
     /// Produce an iterator over elements (borrowed slices) of a `Chunked`.
     ///
@@ -1372,9 +1408,11 @@ where
     #[inline]
     pub fn iter(
         &'a self,
-    ) -> ChunkedIter<<<O as View<'a>>::Type as IntoSizes>::Iter, <S as View<'a>>::Type> {
+    ) -> ChunkedIter<<<O as View<'a>>::Type as IntoOffsetsAndSizes>::Iter, <S as View<'a>>::Type>
+    {
         ChunkedIter {
-            sizes: self.chunks.view().into_sizes(),
+            first_offset: 0,
+            offsets_and_sizes: self.chunks.view().into_offsets_and_sizes(),
             data: self.data.view(),
         }
     }
@@ -1384,7 +1422,7 @@ impl<'a, S, O> Chunked<S, O>
 where
     S: ViewMut<'a>,
     O: View<'a>,
-    O::Type: IntoSizes,
+    O::Type: IntoOffsetsAndSizes,
 {
     /// Produce a mutable iterator over elements (borrowed slices) of a
     /// `Chunked`.
@@ -1439,9 +1477,11 @@ where
     #[inline]
     pub fn iter_mut(
         &'a mut self,
-    ) -> ChunkedIter<<<O as View<'a>>::Type as IntoSizes>::Iter, <S as ViewMut<'a>>::Type> {
+    ) -> ChunkedIter<<<O as View<'a>>::Type as IntoOffsetsAndSizes>::Iter, <S as ViewMut<'a>>::Type>
+    {
         ChunkedIter {
-            sizes: self.chunks.view().into_sizes(),
+            first_offset: 0,
+            offsets_and_sizes: self.chunks.view().into_offsets_and_sizes(),
             data: self.data.view_mut(),
         }
     }
@@ -1471,30 +1511,92 @@ where
 
 /// A special iterator capable of iterating over a `Chunked` type.
 pub struct ChunkedIter<I, S> {
-    sizes: I,
+    first_offset: usize,
+    offsets_and_sizes: I,
     data: S,
 }
 
 impl<I, V> Iterator for ChunkedIter<I, V>
 where
     V: SplitAt + Set + Dummy,
-    I: Iterator<Item = usize>,
+    I: ExactSizeIterator<Item = (usize, usize)>,
 {
     type Item = V;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        // WARNING: After calling std::mem::replace with dummy, self.data is in a
+        // SAFETY: After calling std::mem::replace with dummy, self.data is in a
         // temporarily invalid state.
-        let data_slice = std::mem::replace(&mut self.data, unsafe { Dummy::dummy() });
-        self.sizes.next().map(move |n| {
-            let (l, r) = data_slice.split_at(n);
-            // self.data is restored to the valid state here.
-            self.data = r;
-            l
-        })
+        unsafe {
+            let data_slice = std::mem::replace(&mut self.data, Dummy::dummy());
+            self.offsets_and_sizes.next().map(move |(_, n)| {
+                let (l, r) = data_slice.split_at(n);
+                // self.data is restored to the valid state here.
+                self.data = r;
+                self.first_offset += n;
+                l
+            })
+        }
+    }
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        // SAFETY: After calling std::mem::replace with dummy, self.data is in a
+        // temporarily invalid state.
+        unsafe {
+            let data_slice = std::mem::replace(&mut self.data, Dummy::dummy());
+            self.offsets_and_sizes.nth(n).map(move |(off, size)| {
+                let (_, r) = data_slice.split_at(off - self.first_offset);
+                let (l, r) = r.split_at(size);
+                // self.data is restored to the valid state here.
+                self.data = r;
+                self.first_offset = off;
+                l
+            })
+        }
     }
 }
+
+impl<I, V> DoubleEndedIterator for ChunkedIter<I, V>
+where
+    V: SplitAt + Set + Dummy,
+    I: ExactSizeIterator + DoubleEndedIterator<Item = (usize, usize)>,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        // SAFETY: After calling std::mem::replace with dummy, self.data is in a
+        // temporarily invalid state.
+        unsafe {
+            let data_slice = std::mem::replace(&mut self.data, Dummy::dummy());
+            self.offsets_and_sizes.next_back().map(move |(off, _)| {
+                let (l, r) = data_slice.split_at(off - self.first_offset);
+                // self.data is restored to the valid state here.
+                self.data = l;
+                self.first_offset = off;
+                r
+            })
+        }
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        // SAFETY: After calling std::mem::replace with dummy, self.data is in a
+        // temporarily invalid state.
+        unsafe {
+            let data_slice = std::mem::replace(&mut self.data, Dummy::dummy());
+            self.offsets_and_sizes.nth_back(n).map(move |(off, size)| {
+                let (l, r) = data_slice.split_at(off - self.first_offset);
+                let (v, _) = r.split_at(size);
+                // self.data is restored to the valid state here.
+                self.data = l;
+                self.first_offset = off;
+                v
+            })
+        }
+    }
+}
+
+impl<I, V> ExactSizeIterator for ChunkedIter<I, V> where Self: Iterator {}
+impl<I, V> std::iter::FusedIterator for ChunkedIter<I, V> where Self: Iterator {}
 
 /*
  * `IntoIterator` implementation for `Chunked`. Note that this type of
@@ -1540,8 +1642,8 @@ impl<S: SplitOff + Set> SplitOff for Chunked<S> {
     #[inline]
     fn split_off(&mut self, mid: usize) -> Self {
         // Note: Allocations in this function heavily outweigh any cost in bounds checking.
-        assert!(!self.chunks.is_empty());
-        assert!(mid < self.chunks.len());
+        assert!(self.chunks.num_offsets() > 0);
+        assert!(mid < self.chunks.num_offsets());
         let off = self.chunks[mid] - self.chunks[0];
         let offsets_l = self.chunks[..=mid].to_vec();
         let offsets_r = self.chunks[mid..].to_vec();
@@ -1783,7 +1885,7 @@ impl<S, O, N> SplitPrefix<N> for Chunked<S, O>
 where
     S: Viewed + Set + SplitAt,
     N: Unsigned,
-    O: Set + SplitOffsetsAt,
+    O: GetOffset + SplitOffsetsAt,
 {
     type Prefix = Chunked<S, O>;
     #[inline]
@@ -1798,7 +1900,7 @@ where
 impl<S, O> SplitFirst for Chunked<S, O>
 where
     S: Viewed + Set + SplitAt,
-    O: Set + SplitOffsetsAt,
+    O: GetOffset + SplitOffsetsAt,
 {
     type First = S;
     #[inline]
@@ -1908,6 +2010,27 @@ impl<S: Reserve, O: Reserve> Reserve for Chunked<S, O> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn chunked_iter() {
+        let s = Chunked::from_offsets(vec![0, 3, 5, 6], vec![0, 1, 2, 3, 4, 5]);
+        let mut iter = s.iter();
+        assert_eq!(iter.next().unwrap(), &[0, 1, 2]);
+        assert_eq!(iter.next_back().unwrap(), &[5]);
+        assert_eq!(iter.next().unwrap(), &[3, 4]);
+        assert_eq!(iter.next(), None);
+
+        assert_eq!(s.len(), 3);
+        assert_eq!(s.iter().nth(0).unwrap(), &[0, 1, 2]);
+        assert_eq!(s.iter().nth(1).unwrap(), &[3, 4]);
+        assert_eq!(s.iter().nth(2).unwrap(), &[5]);
+        assert_eq!(s.iter().nth(3), None);
+
+        assert_eq!(s.iter().nth_back(0).unwrap(), &[5]);
+        assert_eq!(s.iter().nth_back(1).unwrap(), &[3, 4]);
+        assert_eq!(s.iter().nth_back(2).unwrap(), &[0, 1, 2]);
+        assert_eq!(s.iter().nth_back(3), None);
+    }
+
     #[test]
     fn sizes_constructor() {
         let empty: Vec<u32> = vec![];

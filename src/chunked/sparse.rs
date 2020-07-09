@@ -116,7 +116,7 @@ where
             data,
         );
 
-        let mut offsets = Vec::with_capacity(self.chunks.len());
+        let mut offsets = Vec::with_capacity(self.chunks.num_offsets());
         offsets.push(0);
 
         for (i, sparse_chunk) in self.iter().enumerate() {

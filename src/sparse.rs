@@ -656,7 +656,7 @@ impl<S: Clear, T, I: Clear> Clear for Sparse<S, T, I> {
 impl<S, O, T, I> Sparse<Chunked<S, O>, T, I>
 where
     S: Set + Truncate,
-    O: AsRef<[usize]> + GetOffset + Truncate + Set,
+    O: AsRef<[usize]> + GetOffset + Truncate,
     I: Truncate,
 {
     /// Remove any empty elements (indexed chunks) at the end of the collection and any unindexed

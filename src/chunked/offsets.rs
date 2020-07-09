@@ -2,28 +2,59 @@ use super::*;
 use std::convert::{AsMut, AsRef};
 use std::ops::Range;
 
+#[cfg(feature = "rayon")]
+pub(crate) mod par_iter;
+
 /// A collection of offsets into another collection.
 /// This newtype is intended to verify basic invariants about offsets into
 /// another collection, namely that the collection is monotonically increasing
 /// and non-empty.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Offsets<O = Vec<usize>>(pub(crate) O);
+pub struct Offsets<O = Vec<usize>>(O);
 
-impl<O: Set> Set for Offsets<O> {
-    type Elem = O::Elem;
-    type Atom = O::Atom;
-    /// Total number of offsets stored in this collection.
-    ///
-    /// This is one more than the number of chunks represented.
+impl<O: AsRef<[usize]> + Set> Offsets<O> {
     #[inline]
-    fn len(&self) -> usize {
-        self.0.len()
+    fn offset_value_ranges(&self) -> OffsetValueRanges {
+        self.view().into_offset_value_ranges()
+    }
+}
+
+impl<'a> Offsets<&'a [usize]> {
+    #[inline]
+    fn into_offset_value_ranges(self) -> OffsetValueRanges<'a> {
+        OffsetValueRanges { offsets: self }
+    }
+}
+
+impl<O: RemovePrefix + Set> Offsets<O> {
+    /// Unchecked version of `RemovePrefix::remove_prefix`.
+    ///
+    /// # Safety
+    ///
+    /// This function may cause undefined behaviour in safe APIs if calling this function produces
+    /// an empty `offsets` collection.
+    #[inline]
+    pub unsafe fn remove_prefix_unchecked(&mut self, n: usize) {
+        self.0.remove_prefix(n);
+    }
+}
+
+impl Offsets<&[usize]> {
+    /// Remove `n` offsets from the end.
+    ///
+    /// # Safety
+    ///
+    /// This function may cause undefined behaviour in safe APIs if calling this function produces
+    /// an empty `offsets` collection.
+    #[inline]
+    pub unsafe fn remove_suffix_unchecked(&mut self, n: usize) {
+        self.0 = &self.0.get_unchecked(..self.0.len() - n);
     }
 }
 
 impl<O: Viewed> Viewed for Offsets<O> {}
 
-impl<O: AsRef<[usize]> + Set> GetOffset for Offsets<O> {
+unsafe impl<O: AsRef<[usize]>> GetOffset for Offsets<O> {
     /// A version of `offset_value` without bounds checking.
     ///
     /// # Safety
@@ -33,13 +64,20 @@ impl<O: AsRef<[usize]> + Set> GetOffset for Offsets<O> {
     unsafe fn offset_value_unchecked(&self, index: usize) -> usize {
         *self.0.as_ref().get_unchecked(index)
     }
+
+    /// Get the total number of offsets.
+    ///
+    /// This is one more than the number of chunks represented.
+    fn num_offsets(&self) -> usize {
+        self.0.as_ref().len()
+    }
 }
 
-impl<O: AsRef<[usize]> + Set> BinarySearch<usize> for Offsets<O> {
+impl<O: AsRef<[usize]>> BinarySearch<usize> for Offsets<O> {
     /// Binary search the offsets for a given offset `off`.
     ///
     /// `off` is expected to be with respect to the beginning of the range represented by the
-    /// current offests. In other words, we are searching for offsets, not raw offset values
+    /// current offsets. In other words, we are searching for offsets, not raw offset values
     /// stored in `Offsets`.
     ///
     /// The semantics of this function are identical to Rust's `std::slice::binary_search`.
@@ -116,34 +154,52 @@ unsafe impl TrustedRandomAccess for OffsetValues<'_> {
     }
 }
 
-/// Iterator over ranges of offsets.
+/// Iterator over ranges of offset values.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Ranges<'a> {
-    /// Raw offset values used to keep track of which range we are at.
-    offset_values: &'a [usize],
-    /// The very first offset value used to normalize the generated ranges.
-    first_offset_value: usize,
+pub struct OffsetValueRanges<'a> {
+    /// Offsets used to keep track of which range we are at.
+    offsets: Offsets<&'a [usize]>,
 }
 
-impl<'a> Iterator for Ranges<'a> {
+// SAFETY: since sizes are one less than offsets, the last offset will never be consumed.
+unsafe impl GetOffset for OffsetValueRanges<'_> {
+    /// Get the offset value without bounds checking.
+    ///
+    /// # Safety
+    ///
+    /// This function assumes that `i` is strictly less than `self.num_offsets()`.
+    #[inline]
+    unsafe fn offset_value_unchecked(&self, i: usize) -> usize {
+        self.offsets.offset_value_unchecked(i)
+    }
+    #[inline]
+    fn num_offsets(&self) -> usize {
+        self.offsets.num_offsets()
+    }
+}
+
+impl<'a> Iterator for OffsetValueRanges<'a> {
     type Item = std::ops::Range<usize>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        if let &[first, ref rest @ ..] = self.offset_values {
-            if let &[second, ..] = rest {
-                self.offset_values = rest;
-                let begin = first - self.first_offset_value;
-                let end = second - self.first_offset_value;
-                return Some(begin..end);
-            }
+        if self.offsets.num_offsets() < 2 {
+            return None;
         }
-        None
+        let begin = self.offsets.first_offset_value();
+
+        // SAFETY: there are at least two offsets as checked above.
+        unsafe {
+            self.offsets.remove_prefix_unchecked(1);
+        }
+
+        let end = self.offsets.first_offset_value();
+        Some(begin..end)
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = self.offset_values.len() - 1;
+        let n = self.offsets.num_offsets() - 1;
         (n, Some(n))
     }
 
@@ -154,10 +210,15 @@ impl<'a> Iterator for Ranges<'a> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        if let (_, &[first, second, ..]) = self.offset_values.split_at(n) {
-            let begin = first - self.first_offset_value;
-            let end = second - self.first_offset_value;
-            Some(begin..end)
+        if n + 1 < self.offsets.num_offsets() {
+            // SAFETY: bounds are checked above to ensure at least one more element after n
+            // elements are removed.
+            unsafe {
+                let begin = self.offsets.offset_value_unchecked(n);
+                self.offsets.remove_prefix_unchecked(n + 1);
+                let end = self.offsets.first_offset_value();
+                Some(begin..end)
+            }
         } else {
             None
         }
@@ -169,29 +230,132 @@ impl<'a> Iterator for Ranges<'a> {
     }
 }
 
-impl<'a> DoubleEndedIterator for Ranges<'a> {
+impl<'a> DoubleEndedIterator for OffsetValueRanges<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
-        if let &[ref rest @ .., last] = self.offset_values {
-            if let &[.., second_last] = rest {
-                self.offset_values = rest;
-                let begin = second_last - self.first_offset_value;
-                let end = last - self.first_offset_value;
-                return Some(begin..end);
-            }
+        if self.offsets.num_offsets() < 2 {
+            return None;
         }
-        None
+        let end = self.offsets.last_offset_value();
+        // SAFETY: there are at least two offsets as checked above.
+        unsafe {
+            self.offsets.remove_suffix_unchecked(1);
+        }
+        let begin = self.offsets.last_offset_value();
+        Some(begin..end)
     }
 
     #[inline]
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-        if let (_, &[first, second, ..]) = self.offset_values.split_at(self.len() - 2 - n) {
-            let begin = first - self.first_offset_value;
-            let end = second - self.first_offset_value;
-            Some(begin..end)
+        let num_offsets = self.offsets.num_offsets();
+        if n + 1 < num_offsets {
+            // SAFETY: bounds are checked above to ensure at least one more element after n
+            // elements are removed.
+            unsafe {
+                let end = self.offsets.offset_value_unchecked(num_offsets - 1 - n);
+                self.offsets.remove_suffix_unchecked(n + 1);
+                let begin = self.offsets.last_offset_value();
+                Some(begin..end)
+            }
         } else {
             None
         }
+    }
+}
+
+impl ExactSizeIterator for OffsetValueRanges<'_> {}
+impl std::iter::FusedIterator for OffsetValueRanges<'_> {}
+
+unsafe impl TrustedRandomAccess for OffsetValueRanges<'_> {
+    #[inline]
+    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
+        let begin = self.offsets.offset_value_unchecked(i - 1);
+        let end = self.offsets.offset_value_unchecked(i);
+        begin..end
+    }
+}
+
+/// Iterator over ranges of offsets.
+///
+/// This is basically an adapter for `OffsetValueRanges` that subtracts the first offset value from
+/// each reange to generate a useful offset range.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Ranges<'a> {
+    /// Offset value ranges iterator.
+    offset_value_ranges: OffsetValueRanges<'a>,
+    /// The very first offset value used to normalize the generated ranges.
+    first_offset_value: usize,
+}
+
+impl<'a> Ranges<'a> {
+    /// Produces a function that converts an offset *value* range into a bona-fide offset range by
+    /// subtracting the first offset from both endpoints.
+    #[inline]
+    fn offset_range_converter<'b>(&'b self) -> impl Fn(Range<usize>) -> Range<usize> + 'b {
+        move |Range { start, end }| start - self.first_offset_value..end - self.first_offset_value
+    }
+}
+
+// SAFETY: since ranges are one less than offsets, the last offset will never be consumed.
+unsafe impl GetOffset for Ranges<'_> {
+    #[inline]
+    unsafe fn offset_value_unchecked(&self, i: usize) -> usize {
+        self.offset_value_ranges.offset_value_unchecked(i)
+    }
+    #[inline]
+    fn num_offsets(&self) -> usize {
+        self.offset_value_ranges.num_offsets()
+    }
+}
+
+impl<'a> Iterator for Ranges<'a> {
+    type Item = Range<usize>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.offset_value_ranges
+            .next()
+            .map(self.offset_range_converter())
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.offset_value_ranges.size_hint()
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.offset_value_ranges.count()
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        self.offset_value_ranges
+            .nth(n)
+            .map(self.offset_range_converter())
+    }
+
+    #[inline]
+    fn last(self) -> Option<Self::Item> {
+        self.offset_value_ranges
+            .last()
+            .map(self.offset_range_converter())
+    }
+}
+
+impl<'a> DoubleEndedIterator for Ranges<'a> {
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.offset_value_ranges
+            .next_back()
+            .map(self.offset_range_converter())
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        self.offset_value_ranges
+            .nth_back(n)
+            .map(self.offset_range_converter())
     }
 }
 
@@ -201,21 +365,34 @@ impl std::iter::FusedIterator for Ranges<'_> {}
 unsafe impl TrustedRandomAccess for Ranges<'_> {
     #[inline]
     unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
-        let begin = *self.offset_values.get_unchecked(i - 1) - self.first_offset_value;
-        let end = *self.offset_values.get_unchecked(i) - self.first_offset_value;
-        begin..end
+        let rng = self.offset_value_ranges.get_unchecked(i);
+        (self.offset_range_converter())(rng)
     }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Sizes<'a> {
-    offsets: &'a [usize],
+    offset_value_ranges: OffsetValueRanges<'a>,
 }
 
-impl Sizes<'_> {
+impl<'a> Sizes<'a> {
+    /// Produces a function that converts an offset value range into a range size by
+    /// subtracting the last and first end points.
     #[inline]
-    pub unsafe fn get_offset_value_unchecked(&self, i: usize) -> usize {
-        *self.offsets.get_unchecked(i)
+    fn range_to_size_mapper<'b>(&'b self) -> impl Fn(Range<usize>) -> usize + 'b {
+        move |Range { start, end }| end - start
+    }
+}
+
+// SAFETY: since sizes are one less than offsets, the last offset will never be consumed.
+unsafe impl GetOffset for Sizes<'_> {
+    #[inline]
+    unsafe fn offset_value_unchecked(&self, i: usize) -> usize {
+        self.offset_value_ranges.offset_value_unchecked(i)
+    }
+    #[inline]
+    fn num_offsets(&self) -> usize {
+        self.offset_value_ranges.num_offsets()
     }
 }
 
@@ -224,60 +401,49 @@ impl<'a> Iterator for Sizes<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<usize> {
-        if let &[first, ref rest @ ..] = self.offsets {
-            if let &[second, ..] = rest {
-                self.offsets = rest;
-                return Some(second - first);
-            }
-        }
-        None
+        self.offset_value_ranges
+            .next()
+            .map(self.range_to_size_mapper())
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = self.offsets.len() - 1;
-        (n, Some(n))
+        self.offset_value_ranges.size_hint()
     }
 
     #[inline]
     fn count(self) -> usize {
-        self.len()
+        self.offset_value_ranges.count()
     }
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        if let (_, &[first, second, ..]) = self.offsets.split_at(n) {
-            Some(second - first)
-        } else {
-            None
-        }
+        self.offset_value_ranges
+            .nth(n)
+            .map(self.range_to_size_mapper())
     }
 
     #[inline]
-    fn last(mut self) -> Option<Self::Item> {
-        self.next_back()
+    fn last(self) -> Option<Self::Item> {
+        self.offset_value_ranges
+            .last()
+            .map(self.range_to_size_mapper())
     }
 }
 
 impl<'a> DoubleEndedIterator for Sizes<'a> {
     #[inline]
-    fn next_back(&mut self) -> Option<usize> {
-        if let &[ref rest @ .., last] = self.offsets {
-            if let &[.., second_last] = rest {
-                self.offsets = rest;
-                return Some(last - second_last);
-            }
-        }
-        None
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.offset_value_ranges
+            .next_back()
+            .map(self.range_to_size_mapper())
     }
 
     #[inline]
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-        if let (_, &[first, second, ..]) = self.offsets.split_at(self.len() - 2 - n) {
-            Some(second - first)
-        } else {
-            None
-        }
+        self.offset_value_ranges
+            .nth_back(n)
+            .map(self.range_to_size_mapper())
     }
 }
 
@@ -287,7 +453,91 @@ impl std::iter::FusedIterator for Sizes<'_> {}
 unsafe impl TrustedRandomAccess for Sizes<'_> {
     #[inline]
     unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
-        *self.offsets.get_unchecked(i) - *self.offsets.get_unchecked(i - 1)
+        let rng = self.offset_value_ranges.get_unchecked(i);
+        (self.range_to_size_mapper())(rng)
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct OffsetsAndSizes<'a> {
+    offset_value_ranges: OffsetValueRanges<'a>,
+    first_offset_value: usize,
+}
+
+impl<'a> OffsetsAndSizes<'a> {
+    /// Produces a function that converts an offset value range into a range size by
+    /// subtracting the last and first end points.
+    #[inline]
+    fn range_mapper<'b>(&'b self) -> impl Fn(Range<usize>) -> (usize, usize) + 'b {
+        move |Range { start, end }| (start - self.first_offset_value, end - start)
+    }
+}
+
+// SAFETY: since sizes are one less than offsets, the last offset will never be consumed.
+unsafe impl GetOffset for OffsetsAndSizes<'_> {
+    #[inline]
+    unsafe fn offset_value_unchecked(&self, i: usize) -> usize {
+        self.offset_value_ranges.offset_value_unchecked(i)
+    }
+    #[inline]
+    fn num_offsets(&self) -> usize {
+        self.offset_value_ranges.num_offsets()
+    }
+}
+
+impl<'a> Iterator for OffsetsAndSizes<'a> {
+    type Item = (usize, usize);
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.offset_value_ranges.next().map(self.range_mapper())
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.offset_value_ranges.size_hint()
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.offset_value_ranges.count()
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        self.offset_value_ranges.nth(n).map(self.range_mapper())
+    }
+
+    #[inline]
+    fn last(self) -> Option<Self::Item> {
+        self.offset_value_ranges.last().map(self.range_mapper())
+    }
+}
+
+impl<'a> DoubleEndedIterator for OffsetsAndSizes<'a> {
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.offset_value_ranges
+            .next_back()
+            .map(self.range_mapper())
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        self.offset_value_ranges
+            .nth_back(n)
+            .map(self.range_mapper())
+    }
+}
+
+impl ExactSizeIterator for OffsetsAndSizes<'_> {}
+impl std::iter::FusedIterator for OffsetsAndSizes<'_> {}
+
+unsafe impl TrustedRandomAccess for OffsetsAndSizes<'_> {
+    #[inline]
+    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
+        let rng = self.offset_value_ranges.get_unchecked(i);
+        (self.range_mapper())(rng)
     }
 }
 
@@ -307,16 +557,42 @@ impl<'a> IntoSizes for Offsets<&'a [usize]> {
     /// Returns an iterator over chunk sizes represented by the stored `Offsets`.
     #[inline]
     fn into_sizes(self) -> Sizes<'a> {
-        Sizes { offsets: self.0 }
+        Sizes {
+            offset_value_ranges: self.into_offset_value_ranges(),
+        }
     }
 }
 
-impl<O: AsRef<[usize]>> Offsets<O> {
+impl<'a> IntoOffsetsAndSizes for Offsets<&'a [usize]> {
+    type Iter = OffsetsAndSizes<'a>;
+    /// Returns an iterator over offset and chunk size pairs.
+    #[inline]
+    fn into_offsets_and_sizes(self) -> OffsetsAndSizes<'a> {
+        OffsetsAndSizes {
+            offset_value_ranges: self.into_offset_value_ranges(),
+            first_offset_value: self.first_offset_value(),
+        }
+    }
+}
+
+impl<'a> IntoRanges for Offsets<&'a [usize]> {
+    type Iter = Ranges<'a>;
+    /// Returns an iterator over offset ranges represented by the stored `Offsets`.
+    #[inline]
+    fn into_ranges(self) -> Ranges<'a> {
+        Ranges {
+            offset_value_ranges: self.into_offset_value_ranges(),
+            first_offset_value: self.first_offset_value(),
+        }
+    }
+}
+
+impl<O: AsRef<[usize]> + Set> Offsets<O> {
     /// Returns an iterator over chunk sizes represented by the stored `Offsets`.
     #[inline]
     pub fn sizes(&self) -> Sizes {
         Sizes {
-            offsets: self.0.as_ref(),
+            offset_value_ranges: self.offset_value_ranges(),
         }
     }
 
@@ -334,6 +610,15 @@ impl<O: AsRef<[usize]>> Offsets<O> {
     pub fn values(&self) -> OffsetValues {
         OffsetValues {
             offset_values: self.0.as_ref(),
+        }
+    }
+
+    /// Returns an iterator over offset ranges.
+    #[inline]
+    pub fn ranges(&self) -> Ranges {
+        Ranges {
+            offset_value_ranges: self.offset_value_ranges(),
+            first_offset_value: self.first_offset_value(),
         }
     }
 }
@@ -399,9 +684,24 @@ impl<O: Dummy> Dummy for Offsets<O> {
 }
 
 impl<O: AsRef<[usize]>> Offsets<O> {
+    /// Construct a set `Offsets` from a given set of offsets.
+    ///
+    /// # Panics
+    ///
+    /// The given `offsets` must be a non-empty collection, otherwise this function will panic.
     #[inline]
     pub fn new(offsets: O) -> Self {
         assert!(!offsets.as_ref().is_empty());
+        Offsets(offsets)
+    }
+
+    /// An unchecked version of the `new` constructor.
+    ///
+    /// # Safety
+    ///
+    /// Calling this function with empty `offsets` may cause undefined behaviour in safe APIs.
+    #[inline]
+    pub unsafe fn from_raw(offsets: O) -> Self {
         Offsets(offsets)
     }
 }
@@ -535,7 +835,7 @@ impl<O: AsRef<[usize]> + Set> IndexRange for Offsets<O> {
     /// Return the `[begin..end)` bound of the chunk at the given index.
     #[inline]
     fn index_range(&self, range: Range<usize>) -> Option<Range<usize>> {
-        if range.end < self.len() {
+        if range.end < self.num_offsets() {
             unsafe { Some(self.index_range_unchecked(range)) }
         } else {
             None
@@ -664,5 +964,79 @@ mod tests {
         assert_eq!(3, s.offset(1));
         assert_eq!(4, s.offset(2));
         assert_eq!(6, s.offset(3));
+    }
+
+    #[test]
+    fn sizes_iter() {
+        let offsets = Offsets(vec![0, 3, 5, 6, 10]);
+        assert_eq!(3, offsets.sizes().nth(0).unwrap());
+        assert_eq!(2, offsets.sizes().nth(1).unwrap());
+        assert_eq!(1, offsets.sizes().nth(2).unwrap());
+        assert_eq!(4, offsets.sizes().nth(3).unwrap());
+        assert_eq!(None, offsets.sizes().nth(4));
+    }
+
+    #[test]
+    fn double_ended_sizes_iter() {
+        use ExactSizeIterator;
+        let offsets = Offsets::new(vec![0, 3, 6, 9, 12, 16, 20, 24, 27, 30, 33, 36]);
+        let mut iter = offsets.sizes();
+        let iter_len = iter.len();
+        assert_eq!(iter_len, offsets.num_offsets() - 1);
+        assert_eq!(iter_len, iter.count());
+
+        assert_eq!(iter.next().unwrap(), 3);
+        assert_eq!(iter.nth(2).unwrap(), 3);
+        assert_eq!(iter.next().unwrap(), 4);
+
+        assert_eq!(iter.next_back().unwrap(), 3);
+        assert_eq!(iter.nth_back(2).unwrap(), 3);
+        assert_eq!(iter.next_back().unwrap(), 4);
+        assert_eq!(iter.next().unwrap(), 4);
+        assert_eq!(iter.next(), None);
+
+        // The following checks that count is correctly implemented for the sizes iterator.
+        let mut count = 0;
+        for _ in offsets.sizes() {
+            count += 1;
+        }
+        assert_eq!(iter_len, count);
+    }
+
+    #[test]
+    fn ranges_iter() {
+        let offsets = Offsets(vec![0, 3, 5, 6, 10]);
+        assert_eq!(0..3, offsets.ranges().nth(0).unwrap());
+        assert_eq!(3..5, offsets.ranges().nth(1).unwrap());
+        assert_eq!(5..6, offsets.ranges().nth(2).unwrap());
+        assert_eq!(6..10, offsets.ranges().nth(3).unwrap());
+        assert_eq!(None, offsets.ranges().nth(4));
+    }
+
+    #[test]
+    fn double_ended_ranges_iter() {
+        use ExactSizeIterator;
+        let offsets = Offsets::new(vec![0, 3, 6, 9, 12, 16, 20, 24, 27, 30, 33, 36]);
+        let mut iter = offsets.ranges();
+        let iter_len = iter.len();
+        assert_eq!(iter_len, offsets.num_offsets() - 1);
+        assert_eq!(iter_len, iter.count());
+
+        assert_eq!(iter.next().unwrap(), 0..3);
+        assert_eq!(iter.nth(2).unwrap(), 9..12);
+        assert_eq!(iter.next().unwrap(), 12..16);
+
+        assert_eq!(iter.next_back().unwrap(), 33..36);
+        assert_eq!(iter.nth_back(2).unwrap(), 24..27);
+        assert_eq!(iter.next_back().unwrap(), 20..24);
+        assert_eq!(iter.next().unwrap(), 16..20);
+        assert_eq!(iter.next(), None);
+
+        // The following checks that count is correctly implemented for the sizes iterator.
+        let mut count = 0;
+        for _ in offsets.sizes() {
+            count += 1;
+        }
+        assert_eq!(iter_len, count);
     }
 }
