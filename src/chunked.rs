@@ -55,15 +55,20 @@ pub trait IntoSizes {
     fn into_sizes(self) -> Self::Iter;
 }
 
-pub trait IntoOffsetsAndSizes {
+//pub trait IntoOffsetsAndSizes {
+//    type Iter: Iterator<Item = (usize, usize)>;
+//    fn into_offsets_and_sizes(self) -> Self::Iter;
+//}
+
+pub trait IntoOffsetValuesAndSizes {
     type Iter: Iterator<Item = (usize, usize)>;
-    fn into_offsets_and_sizes(self) -> Self::Iter;
+    fn into_offset_values_and_sizes(self) -> Self::Iter;
 }
 
 #[cfg(feature = "rayon")]
-pub trait IntoParSizes {
-    type ParIter: rayon::iter::IndexedParallelIterator<Item = usize>;
-    fn into_par_sizes(self) -> Self::ParIter;
+pub trait IntoParOffsetValuesAndSizes {
+    type ParIter: rayon::iter::IndexedParallelIterator<Item = (usize, usize)>;
+    fn into_par_offset_values_and_sizes(self) -> Self::ParIter;
 }
 
 pub trait IntoValues {
@@ -93,7 +98,8 @@ pub unsafe trait GetOffset {
     ///
     /// # Panics
     ///
-    /// This funciton will panic if `chunk_index+1` is greater than or equal to `self.len()`.
+    /// This funciton will panic if `chunk_index+1` is greater than or equal to
+    /// `self.num_offsets()`.
     #[inline]
     fn chunk_len(&self, chunk_index: usize) -> usize {
         assert!(
@@ -101,9 +107,20 @@ pub unsafe trait GetOffset {
             "Offset index out of bounds"
         );
         // SAFETY: The length is checked above.
-        unsafe {
-            self.offset_value_unchecked(chunk_index + 1) - self.offset_value_unchecked(chunk_index)
-        }
+        unsafe { self.chunk_len_unchecked(chunk_index) }
+    }
+
+    /// Get the length of the chunk at the given index without bounds checking.
+    ///
+    /// Returns the distance between offsets at `index` and `index + 1`.
+    ///
+    /// # Safety
+    ///
+    /// May cause undefined behaviour if `chunk_index+1` is greater than or equal to
+    /// `self.num_offsets()`.
+    #[inline]
+    unsafe fn chunk_len_unchecked(&self, chunk_index: usize) -> usize {
+        self.offset_value_unchecked(chunk_index + 1) - self.offset_value_unchecked(chunk_index)
     }
 
     /// Return the raw value corresponding to the offset at the given index.
@@ -1307,7 +1324,7 @@ where
 
 impl<'a, S, O> IntoIterator for Chunked<S, O>
 where
-    O: IntoOffsetsAndSizes,
+    O: IntoOffsetValuesAndSizes + GetOffset,
     S: SplitAt + Set + Dummy,
     O::Iter: ExactSizeIterator,
 {
@@ -1317,8 +1334,8 @@ where
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
         ChunkedIter {
-            first_offset: 0,
-            offsets_and_sizes: self.chunks.into_offsets_and_sizes(),
+            first_offset_value: self.chunks.first_offset_value(),
+            offset_values_and_sizes: self.chunks.into_offset_values_and_sizes(),
             data: self.data,
         }
     }
@@ -1331,7 +1348,7 @@ where
     <S as View<'a>>::Type: SplitAt + Set + Dummy,
 {
     type Item = <S as View<'a>>::Type;
-    type Iter = ChunkedIter<OffsetsAndSizes<'a>, <S as View<'a>>::Type>;
+    type Iter = ChunkedIter<OffsetValuesAndSizes<'a>, <S as View<'a>>::Type>;
 
     #[inline]
     fn view_iter(&'a self) -> Self::Iter {
@@ -1346,7 +1363,7 @@ where
     <S as ViewMut<'a>>::Type: SplitAt + Set + Dummy,
 {
     type Item = <S as ViewMut<'a>>::Type;
-    type Iter = ChunkedIter<OffsetsAndSizes<'a>, <S as ViewMut<'a>>::Type>;
+    type Iter = ChunkedIter<OffsetValuesAndSizes<'a>, <S as ViewMut<'a>>::Type>;
 
     #[inline]
     fn view_mut_iter(&'a mut self) -> Self::Iter {
@@ -1360,7 +1377,7 @@ impl<'a, S, O> Chunked<S, O>
 where
     S: View<'a>,
     O: View<'a>,
-    O::Type: IntoOffsetsAndSizes,
+    O::Type: IntoOffsetValuesAndSizes + GetOffset,
 {
     /// Produce an iterator over elements (borrowed slices) of a `Chunked`.
     ///
@@ -1408,11 +1425,11 @@ where
     #[inline]
     pub fn iter(
         &'a self,
-    ) -> ChunkedIter<<<O as View<'a>>::Type as IntoOffsetsAndSizes>::Iter, <S as View<'a>>::Type>
+    ) -> ChunkedIter<<<O as View<'a>>::Type as IntoOffsetValuesAndSizes>::Iter, <S as View<'a>>::Type>
     {
         ChunkedIter {
-            first_offset: 0,
-            offsets_and_sizes: self.chunks.view().into_offsets_and_sizes(),
+            first_offset_value: self.chunks.view().first_offset_value(),
+            offset_values_and_sizes: self.chunks.view().into_offset_values_and_sizes(),
             data: self.data.view(),
         }
     }
@@ -1422,7 +1439,7 @@ impl<'a, S, O> Chunked<S, O>
 where
     S: ViewMut<'a>,
     O: View<'a>,
-    O::Type: IntoOffsetsAndSizes,
+    O::Type: IntoOffsetValuesAndSizes + GetOffset,
 {
     /// Produce a mutable iterator over elements (borrowed slices) of a
     /// `Chunked`.
@@ -1477,11 +1494,13 @@ where
     #[inline]
     pub fn iter_mut(
         &'a mut self,
-    ) -> ChunkedIter<<<O as View<'a>>::Type as IntoOffsetsAndSizes>::Iter, <S as ViewMut<'a>>::Type>
-    {
+    ) -> ChunkedIter<
+        <<O as View<'a>>::Type as IntoOffsetValuesAndSizes>::Iter,
+        <S as ViewMut<'a>>::Type,
+    > {
         ChunkedIter {
-            first_offset: 0,
-            offsets_and_sizes: self.chunks.view().into_offsets_and_sizes(),
+            first_offset_value: self.chunks.view().first_offset_value(),
+            offset_values_and_sizes: self.chunks.view().into_offset_values_and_sizes(),
             data: self.data.view_mut(),
         }
     }
@@ -1511,8 +1530,8 @@ where
 
 /// A special iterator capable of iterating over a `Chunked` type.
 pub struct ChunkedIter<I, S> {
-    first_offset: usize,
-    offsets_and_sizes: I,
+    first_offset_value: usize,
+    offset_values_and_sizes: I,
     data: S,
 }
 
@@ -1529,11 +1548,11 @@ where
         // temporarily invalid state.
         unsafe {
             let data_slice = std::mem::replace(&mut self.data, Dummy::dummy());
-            self.offsets_and_sizes.next().map(move |(_, n)| {
+            self.offset_values_and_sizes.next().map(move |(_, n)| {
                 let (l, r) = data_slice.split_at(n);
                 // self.data is restored to the valid state here.
                 self.data = r;
-                self.first_offset += n;
+                self.first_offset_value += n;
                 l
             })
         }
@@ -1544,12 +1563,12 @@ where
         // temporarily invalid state.
         unsafe {
             let data_slice = std::mem::replace(&mut self.data, Dummy::dummy());
-            self.offsets_and_sizes.nth(n).map(move |(off, size)| {
-                let (_, r) = data_slice.split_at(off - self.first_offset);
+            self.offset_values_and_sizes.nth(n).map(move |(off, size)| {
+                let (_, r) = data_slice.split_at(off - self.first_offset_value);
                 let (l, r) = r.split_at(size);
                 // self.data is restored to the valid state here.
                 self.data = r;
-                self.first_offset = off;
+                self.first_offset_value = off;
                 l
             })
         }
@@ -1567,13 +1586,15 @@ where
         // temporarily invalid state.
         unsafe {
             let data_slice = std::mem::replace(&mut self.data, Dummy::dummy());
-            self.offsets_and_sizes.next_back().map(move |(off, _)| {
-                let (l, r) = data_slice.split_at(off - self.first_offset);
-                // self.data is restored to the valid state here.
-                self.data = l;
-                self.first_offset = off;
-                r
-            })
+            self.offset_values_and_sizes
+                .next_back()
+                .map(move |(off, _)| {
+                    let (l, r) = data_slice.split_at(off - self.first_offset_value);
+                    // self.data is restored to the valid state here.
+                    self.data = l;
+                    self.first_offset_value = off;
+                    r
+                })
         }
     }
 
@@ -1583,14 +1604,16 @@ where
         // temporarily invalid state.
         unsafe {
             let data_slice = std::mem::replace(&mut self.data, Dummy::dummy());
-            self.offsets_and_sizes.nth_back(n).map(move |(off, size)| {
-                let (l, r) = data_slice.split_at(off - self.first_offset);
-                let (v, _) = r.split_at(size);
-                // self.data is restored to the valid state here.
-                self.data = l;
-                self.first_offset = off;
-                v
-            })
+            self.offset_values_and_sizes
+                .nth_back(n)
+                .map(move |(off, size)| {
+                    let (l, r) = data_slice.split_at(off - self.first_offset_value);
+                    let (v, _) = r.split_at(size);
+                    // self.data is restored to the valid state here.
+                    self.data = l;
+                    self.first_offset_value = off;
+                    v
+                })
         }
     }
 }

@@ -5,15 +5,16 @@ use rayon::prelude::*;
 /// A parallel chunk iterator.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ChunkedParIter<I, S> {
-    sizes: I,
+    first_offset_value: usize,
+    offset_values_and_sizes: I,
     data: S,
 }
 
 impl<I, S> ParallelIterator for ChunkedParIter<I, S>
 where
     S: Send + SplitAt + Dummy + Set,
-    I: Send + GetOffset + IndexedParallelIterator + Producer<Item = usize>,
-    I::IntoIter: ExactSizeIterator<Item = usize> + GetOffset,
+    I: Send + GetOffset + IndexedParallelIterator + Producer<Item = (usize, usize)>,
+    I::IntoIter: ExactSizeIterator<Item = (usize, usize)> + GetOffset,
 {
     type Item = S;
 
@@ -32,8 +33,8 @@ where
 impl<I, S> IndexedParallelIterator for ChunkedParIter<I, S>
 where
     S: Send + SplitAt + Dummy + Set,
-    I: Send + GetOffset + IndexedParallelIterator + Producer<Item = usize>,
-    I::IntoIter: ExactSizeIterator<Item = usize> + GetOffset,
+    I: Send + GetOffset + IndexedParallelIterator + Producer<Item = (usize, usize)>,
+    I::IntoIter: ExactSizeIterator<Item = (usize, usize)> + GetOffset,
 {
     fn drive<C>(self, consumer: C) -> C::Result
     where
@@ -43,7 +44,7 @@ where
     }
 
     fn len(&self) -> usize {
-        self.sizes.len()
+        self.offset_values_and_sizes.len()
     }
 
     fn with_producer<CB>(self, callback: CB) -> CB::Output
@@ -51,44 +52,49 @@ where
         CB: ProducerCallback<Self::Item>,
     {
         callback.callback(ChunkedProducer {
-            sizes_producer: self.sizes,
+            first_offset_value: self.first_offset_value,
+            offset_values_and_sizes_producer: self.offset_values_and_sizes,
             data: self.data,
         })
     }
 }
 
 struct ChunkedProducer<I, S> {
-    sizes_producer: I,
+    first_offset_value: usize,
+    offset_values_and_sizes_producer: I,
     data: S,
 }
 
 impl<I, S> Producer for ChunkedProducer<I, S>
 where
     S: Send + SplitAt + Dummy + Set,
-    I: Send + GetOffset + Producer<Item = usize>,
-    I::IntoIter: ExactSizeIterator<Item = usize> + GetOffset,
+    I: Send + GetOffset + Producer<Item = (usize, usize)>,
+    I::IntoIter: ExactSizeIterator<Item = (usize, usize)> + GetOffset,
 {
     type Item = S;
     type IntoIter = ChunkedIter<I::IntoIter, S>;
 
     fn into_iter(self) -> Self::IntoIter {
         ChunkedIter {
-            sizes: self.sizes_producer.into_iter(),
+            first_offset_value: self.first_offset_value,
+            offset_values_and_sizes: self.offset_values_and_sizes_producer.into_iter(),
             data: self.data,
         }
     }
 
     fn split_at(self, index: usize) -> (Self, Self) {
-        let off = self.sizes_producer.offset(index);
-        let (ls, rs) = self.sizes_producer.split_at(index);
-        let (l, r) = self.data.split_at(off);
+        let off = self.offset_values_and_sizes_producer.offset_value(index);
+        let (ls, rs) = self.offset_values_and_sizes_producer.split_at(index);
+        let (l, r) = self.data.split_at(off - self.first_offset_value);
         (
             ChunkedProducer {
-                sizes_producer: ls,
+                first_offset_value: self.first_offset_value,
+                offset_values_and_sizes_producer: ls,
                 data: l,
             },
             ChunkedProducer {
-                sizes_producer: rs,
+                first_offset_value: off,
+                offset_values_and_sizes_producer: rs,
                 data: r,
             },
         )
@@ -99,16 +105,19 @@ impl<'a, S, O> Chunked<S, O>
 where
     S: View<'a>,
     O: View<'a>,
-    O::Type: IntoParSizes,
+    O::Type: IntoParOffsetValuesAndSizes + GetOffset,
 {
     /// Produce a parallel iterator over elements (borrowed slices) of a `Chunked`.
     #[inline]
     pub fn par_iter(
         &'a self,
-    ) -> ChunkedParIter<<<O as View<'a>>::Type as IntoParSizes>::ParIter, <S as View<'a>>::Type>
-    {
+    ) -> ChunkedParIter<
+        <<O as View<'a>>::Type as IntoParOffsetValuesAndSizes>::ParIter,
+        <S as View<'a>>::Type,
+    > {
         ChunkedParIter {
-            sizes: self.chunks.view().into_par_sizes(),
+            first_offset_value: self.chunks.view().first_offset_value(),
+            offset_values_and_sizes: self.chunks.view().into_par_offset_values_and_sizes(),
             data: self.data.view(),
         }
     }
@@ -116,9 +125,9 @@ where
 
 impl<S, O> IntoParallelIterator for Chunked<S, O>
 where
-    O: IntoParSizes,
+    O: IntoParOffsetValuesAndSizes + GetOffset,
     S: Send + SplitAt + Set + Dummy,
-    O::ParIter: Producer<Item = usize> + GetOffset,
+    O::ParIter: Producer<Item = (usize, usize)> + GetOffset,
     <O::ParIter as Producer>::IntoIter: GetOffset,
 {
     type Item = S;
@@ -127,7 +136,8 @@ where
     #[inline]
     fn into_par_iter(self) -> Self::Iter {
         ChunkedParIter {
-            sizes: self.chunks.into_par_sizes(),
+            first_offset_value: self.chunks.first_offset_value(),
+            offset_values_and_sizes: self.chunks.into_par_offset_values_and_sizes(),
             data: self.data,
         }
     }
