@@ -13,6 +13,18 @@ pub struct ParUnclumpedOffsetValuesAndSizes<'a> {
     clumped_offsets: ClumpedOffsets<&'a [usize]>,
 }
 
+// SAFETY: ParUnclumpedOffsetValuesAndSizes will never consume the last offset.
+unsafe impl GetOffset for ParUnclumpedOffsetValuesAndSizes<'_> {
+    unsafe fn offset_value_unchecked(&self, index: usize) -> usize {
+        self.clumped_offsets
+            .offset_value_unchecked(index + self.front_clump_off)
+    }
+
+    fn num_offsets(&self) -> usize {
+        self.clumped_offsets.num_offsets() - self.front_clump_off - self.back_clump_off
+    }
+}
+
 impl<'o> ParallelIterator for ParUnclumpedOffsetValuesAndSizes<'o> {
     type Item = (usize, usize);
 
@@ -37,10 +49,7 @@ impl<'o> IndexedParallelIterator for ParUnclumpedOffsetValuesAndSizes<'o> {
     }
 
     fn len(&self) -> usize {
-        let mut n = self.clumped_offsets.num_offsets() - 1;
-        n -= self.front_clump_off;
-        n -= self.back_clump_off;
-        n
+        self.num_offsets() - 1
     }
 
     fn with_producer<CB>(self, callback: CB) -> CB::Output
@@ -102,13 +111,29 @@ pub struct DEUnclumpedOffsetValuesAndSizes<'a> {
 // SAFETY: DEUnclumpedOffsetValuesAndSizes will never consume the last offset.
 unsafe impl GetOffset for DEUnclumpedOffsetValuesAndSizes<'_> {
     #[inline]
-    unsafe fn offset_value_unchecked(&self, i: usize) -> usize {
+    unsafe fn offset_value_unchecked(&self, mut i: usize) -> usize {
+        let first_offset_value = self.clumped_offsets.first_offset_value();
+        if self.front > first_offset_value {
+            debug_assert!(self.front_stride > 0);
+            i += (self.front - first_offset_value) / self.front_stride;
+        }
         self.clumped_offsets.offset_value_unchecked(i)
     }
 
     #[inline]
     fn num_offsets(&self) -> usize {
-        self.clumped_offsets.num_offsets()
+        let mut n = self.clumped_offsets.num_offsets();
+        let first_offset_value = self.clumped_offsets.first_offset_value();
+        if self.front > first_offset_value {
+            debug_assert!(self.front_stride > 0);
+            n -= (self.front - first_offset_value) / self.front_stride;
+        }
+        let last_offset_value = self.clumped_offsets.last_offset_value();
+        if self.back < last_offset_value {
+            debug_assert!(self.back_stride > 0);
+            n -= (last_offset_value - self.back) / self.back_stride;
+        }
+        n
     }
 }
 

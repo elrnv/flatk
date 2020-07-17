@@ -5,6 +5,7 @@ use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
  */
 use rand::distributions::{Distribution, Standard};
 use rand::prelude::*;
+use rayon::prelude::*;
 use reinterpret::*;
 
 static SEED: [u8; 32] = [3; 32];
@@ -45,6 +46,16 @@ fn chunks_exact(v: &mut Vec<f64>) {
 }
 
 #[inline]
+fn chunks_exact_par(v: &mut Vec<f64>) {
+    v.par_chunks_exact_mut(3).for_each(|a| {
+        let res = compute(a[0], a[1], a[2]);
+        a[0] = res[0];
+        a[1] = res[1];
+        a[2] = res[2];
+    });
+}
+
+#[inline]
 fn chunked3(v: &mut Vec<f64>) {
     use flatk::Chunked3;
     for a in Chunked3::from_flat(v.as_mut_slice()).into_iter() {
@@ -61,6 +72,32 @@ fn chunked_n(v: &mut Vec<f64>) {
 }
 
 #[inline]
+fn chunked_n_par(v: &mut Vec<f64>) {
+    use flatk::ChunkedN;
+    ChunkedN::from_flat_with_stride(v.as_mut_slice(), 3)
+        .into_par_iter()
+        .for_each(|a| {
+            a.copy_from_slice(&compute(a[0], a[1], a[2]));
+        });
+}
+
+#[inline]
+fn chunked(v: &mut Vec<f64>, offsets: &[usize]) {
+    use flatk::Chunked;
+    for a in Chunked::from_offsets(offsets, v.as_mut_slice()).into_iter() {
+        a.copy_from_slice(&compute(a[0], a[1], a[2]));
+    }
+}
+
+#[inline]
+fn chunked_par(v: &mut Vec<f64>, offsets: &[usize]) {
+    use flatk::Chunked;
+    Chunked::into_par_iter(Chunked::from_offsets(offsets, v.as_mut_slice())).for_each(|a| {
+        a.copy_from_slice(&compute(a[0], a[1], a[2]));
+    });
+}
+
+#[inline]
 fn clumped(v: &mut Vec<f64>) {
     use flatk::Clumped;
     for a in
@@ -69,6 +106,16 @@ fn clumped(v: &mut Vec<f64>) {
     {
         a.copy_from_slice(&compute(a[0], a[1], a[2]));
     }
+}
+
+#[inline]
+fn clumped_par(v: &mut Vec<f64>) {
+    use flatk::Clumped;
+    Clumped::from_clumped_offsets(&[0, v.len() / 3][..], &[0, v.len()][..], v.as_mut_slice())
+        .into_par_iter()
+        .for_each(|a| {
+            a.copy_from_slice(&compute(a[0], a[1], a[2]));
+        });
 }
 
 #[inline]
@@ -97,6 +144,13 @@ fn chunks_iter(c: &mut Criterion) {
             })
         });
 
+        group.bench_function(BenchmarkId::new("Chunks Exact Par", buf_size), |b| {
+            let mut v = make_random_vec(buf_size);
+            b.iter(|| {
+                chunks_exact_par(&mut v);
+            })
+        });
+
         group.bench_function(BenchmarkId::new("Reinterpret", buf_size), |b| {
             let mut v = make_random_vec(buf_size);
             b.iter(|| {
@@ -117,10 +171,37 @@ fn chunks_iter(c: &mut Criterion) {
                 chunked_n(&mut v);
             })
         });
+        group.bench_function(BenchmarkId::new("ChunkedN Par", buf_size), |b| {
+            let mut v = make_random_vec(buf_size);
+            b.iter(|| {
+                chunked_n_par(&mut v);
+            })
+        });
         group.bench_function(BenchmarkId::new("Clumped", buf_size), |b| {
             let mut v = make_random_vec(buf_size);
             b.iter(|| {
                 clumped(&mut v);
+            })
+        });
+        group.bench_function(BenchmarkId::new("Clumped Par", buf_size), |b| {
+            let mut v = make_random_vec(buf_size);
+            b.iter(|| {
+                clumped_par(&mut v);
+            })
+        });
+        group.bench_function(BenchmarkId::new("Chunked", buf_size), |b| {
+            let mut v = make_random_vec(buf_size);
+            let offsets: Vec<_> = (0..=v.len() / 3).map(|i| 3 * i).collect();
+            b.iter(|| {
+                chunked(&mut v, offsets.as_slice());
+            })
+        });
+
+        group.bench_function(BenchmarkId::new("Chunked Par", buf_size), |b| {
+            let mut v = make_random_vec(buf_size);
+            let offsets: Vec<_> = (0..=v.len() / 3).map(|i| 3 * i).collect();
+            b.iter(|| {
+                chunked_par(&mut v, offsets.as_slice());
             })
         });
     }

@@ -10,6 +10,17 @@ pub struct ParOffsetValueRanges<'a> {
     offsets: Offsets<&'a [usize]>,
 }
 
+// SAFETY: ParOffsetValueRanges will never consume the last offset.
+unsafe impl GetOffset for ParOffsetValueRanges<'_> {
+    unsafe fn offset_value_unchecked(&self, index: usize) -> usize {
+        self.offsets.offset_value_unchecked(index)
+    }
+
+    fn num_offsets(&self) -> usize {
+        self.offsets.num_offsets()
+    }
+}
+
 impl<'o> ParallelIterator for ParOffsetValueRanges<'o> {
     type Item = Range<usize>;
 
@@ -74,6 +85,17 @@ impl<'a> Offsets<&'a [usize]> {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ParOffsetValuesAndSizes<'a> {
     offset_value_ranges: ParOffsetValueRanges<'a>,
+}
+
+// SAFETY: ParOffsetValuesAndSizes will never consume the last offset.
+unsafe impl GetOffset for ParOffsetValuesAndSizes<'_> {
+    unsafe fn offset_value_unchecked(&self, index: usize) -> usize {
+        self.offset_value_ranges.offset_value_unchecked(index)
+    }
+
+    fn num_offsets(&self) -> usize {
+        self.offset_value_ranges.num_offsets()
+    }
 }
 
 impl<'o> ParallelIterator for ParOffsetValuesAndSizes<'o> {

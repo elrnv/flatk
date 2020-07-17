@@ -667,18 +667,6 @@ where
     }
 }
 
-#[cfg(feature = "rayon")]
-impl<S: IntoParChunkIterator, N: Dimension> rayon::iter::IntoParallelIterator for UniChunked<S, N> {
-    type Item = <S as IntoParChunkIterator>::Item;
-    type Iter = <S as IntoParChunkIterator>::IterType;
-
-    /// Convert a `UniChunked` collection into a parallel iterator over grouped elements.
-    #[inline]
-    fn into_par_iter(self) -> Self::Iter {
-        self.data.into_par_chunk_iter(self.chunk_size.value())
-    }
-}
-
 impl<S, N> std::iter::Extend<<Self as Set>::Elem> for UniChunked<S, U<N>>
 where
     N: Unsigned,

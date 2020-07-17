@@ -123,6 +123,28 @@ where
     }
 }
 
+impl<'a, S, O> Chunked<S, O>
+where
+    S: ViewMut<'a>,
+    O: View<'a>,
+    O::Type: IntoParOffsetValuesAndSizes + GetOffset,
+{
+    /// Produce a parallel iterator over elements (borrowed slices) of a `Chunked`.
+    #[inline]
+    pub fn par_iter_mut(
+        &'a mut self,
+    ) -> ChunkedParIter<
+        <<O as View<'a>>::Type as IntoParOffsetValuesAndSizes>::ParIter,
+        <S as ViewMut<'a>>::Type,
+    > {
+        ChunkedParIter {
+            first_offset_value: self.chunks.view().first_offset_value(),
+            offset_values_and_sizes: self.chunks.view().into_par_offset_values_and_sizes(),
+            data: self.data.view_mut(),
+        }
+    }
+}
+
 impl<S, O> IntoParallelIterator for Chunked<S, O>
 where
     O: IntoParOffsetValuesAndSizes + GetOffset,
@@ -140,5 +162,41 @@ where
             offset_values_and_sizes: self.chunks.into_par_offset_values_and_sizes(),
             data: self.data,
         }
+    }
+}
+
+impl<S: IntoParChunkIterator, N: Dimension> IntoParallelIterator for UniChunked<S, N> {
+    type Item = <S as IntoParChunkIterator>::Item;
+    type Iter = <S as IntoParChunkIterator>::IterType;
+
+    /// Convert a `UniChunked` collection into a parallel iterator over grouped elements.
+    #[inline]
+    fn into_par_iter(self) -> Self::Iter {
+        self.data.into_par_chunk_iter(self.chunk_size.value())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn chunked_par() {
+        let vecs = vec![vec![0, 1, 2, 3, 4], vec![5, 6], vec![7, 8]];
+        let mut chunked = Chunked::<Vec<_>>::from_nested_vec(vecs.clone());
+        let mut view_mut = chunked.view_mut();
+        view_mut.par_iter_mut().for_each(|a| {
+            for x in a {
+                *x += 1;
+            }
+        });
+
+        chunked.view().par_iter().zip(vecs.par_iter()).for_each(
+            |(a, b): (&[usize], &Vec<usize>)| {
+                for (&x, y) in a.iter().zip(b.iter()) {
+                    assert_eq!(x, y + 1);
+                }
+            },
+        );
     }
 }

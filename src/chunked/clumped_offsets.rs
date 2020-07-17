@@ -130,7 +130,7 @@ impl<O: AsRef<[usize]>> ClumpedOffsets<O> {
     ///
     /// This function panics if `index` is greater than or equal to `self.num_clumps()`.
     #[inline]
-    fn clump_stride(&self, index: usize) -> usize {
+    pub fn clump_stride(&self, index: usize) -> usize {
         assert!(index < self.num_clumps(), "Offset index out of bounds");
 
         // SAFETY: The length is checked above.
