@@ -234,6 +234,8 @@ macro_rules! impl_isolate_index_for_static_range {
 mod array;
 mod boxed;
 pub mod chunked;
+#[cfg(feature = "gpu")]
+pub mod gpu;
 mod range;
 mod select;
 mod slice;
@@ -247,6 +249,7 @@ mod view;
 pub use array::*;
 pub use boxed::*;
 pub use chunked::*;
+pub use gpu::IntoGpu;
 pub use range::*;
 pub use select::*;
 pub use slice::*;
