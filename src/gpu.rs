@@ -562,7 +562,6 @@ impl<T: Primitive> CompiledProgram<Slice<T>, OutputBuffer<T>> {
         let buffer_future = buffer_slice.map_async(wgpu::MapMode::Read);
 
         gpu.device.poll(wgpu::Maintain::Wait);
-        gpu.device.poll(wgpu::Maintain::Wait);
 
         if let Ok(()) = buffer_future.await {
             let data = buffer_slice.get_mapped_range();
