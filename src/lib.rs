@@ -249,6 +249,7 @@ mod view;
 pub use array::*;
 pub use boxed::*;
 pub use chunked::*;
+#[cfg(feature = "gpu")]
 pub use gpu::IntoGpu;
 pub use range::*;
 pub use select::*;
