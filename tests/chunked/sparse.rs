@@ -1,4 +1,4 @@
-#![cfg(features = "sparse")]
+#![cfg(feature = "sparse")]
 /// This suite of tests checks sparse collections.
 use flatk::*;
 

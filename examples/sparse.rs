@@ -1,4 +1,4 @@
-#[cfg(features = "sparse")]
+#[cfg(feature = "sparse")]
 fn main() {
     use flatk::{Get, Sparse, View};
 
@@ -13,7 +13,7 @@ fn main() {
     assert_eq!(sparse_vector_view.selection.target, ..1000);
 }
 
-#[cfg(not(features = "sparse"))]
+#[cfg(not(feature = "sparse"))]
 fn main() {
     eprintln!("This example requires the \"sparse\" feature");
 }
