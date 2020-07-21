@@ -5,13 +5,18 @@ rust:
   - beta
   - nightly
  
-matrix:
+jobs:
   allow_failures:
     - rust: nightly
   fast_finish: true
+  include:
+    - rust: nightly
+      script:
+          - cargo build --verbose --all-features
+          - cargo test --verbose --all-features
 
 cache: cargo
 
 script:
-  - cargo build --verbose --all
-  - cargo test --verbose --all
+  - cargo build --verbose
+  - cargo test --verbose
