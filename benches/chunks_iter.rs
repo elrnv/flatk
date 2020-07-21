@@ -6,7 +6,6 @@ use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rand::distributions::{Distribution, Standard};
 use rand::prelude::*;
 use rayon::prelude::*;
-use reinterpret::*;
 
 static SEED: [u8; 32] = [3; 32];
 
@@ -120,7 +119,7 @@ fn clumped_par(v: &mut Vec<f64>) {
 
 #[inline]
 fn reinterpret(v: &mut Vec<f64>) {
-    let s: &mut [[f64; 3]] = unsafe { reinterpret_mut_slice(v.as_mut_slice()) };
+    let s: &mut [[f64; 3]] = bytemuck::cast_slice_mut(v.as_mut_slice());
     for a in s.iter_mut() {
         *a = compute(a[0], a[1], a[2]);
     }

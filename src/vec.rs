@@ -133,6 +133,7 @@ impl<T: Clone, N: Array<T>> PushChunk<N> for Vec<T> {
 impl<T, N> IntoStaticChunkIterator<N> for Vec<T>
 where
     N: Unsigned + Array<T>,
+    T: bytemuck::Pod,
 {
     type Item = N::Array;
     type IterType = std::vec::IntoIter<N::Array>;
@@ -226,36 +227,43 @@ impl<T> IntoOwnedData for Vec<T> {
 
 impl<'a, T, N> ReinterpretAsGrouped<N> for Vec<T>
 where
+    T: bytemuck::Pod,
     N: Array<T>,
 {
     type Output = Vec<N::Array>;
     #[inline]
     fn reinterpret_as_grouped(self) -> Self::Output {
         unsafe { reinterpret::reinterpret_vec(self) }
+        // TODO: switch to bytemuck when it can do cast between element types of different sizes.
+        //bytemuck::cast_vec(self)
     }
 }
 
 impl<'a, T, N> ReinterpretAsGrouped<N> for &'a Vec<T>
 where
+    T: bytemuck::Pod,
     N: Array<T>,
     <N as Array<T>>::Array: 'a,
 {
     type Output = &'a [N::Array];
     #[inline]
     fn reinterpret_as_grouped(self) -> Self::Output {
-        unsafe { reinterpret::reinterpret_slice(self.as_slice()) }
+        //unsafe { reinterpret::reinterpret_slice(self.as_slice()) }
+        bytemuck::cast_slice(self.as_slice())
     }
 }
 
 impl<'a, T, N> ReinterpretAsGrouped<N> for &'a mut Vec<T>
 where
+    T: bytemuck::Pod,
     N: Array<T>,
     <N as Array<T>>::Array: 'a,
 {
     type Output = &'a mut [N::Array];
     #[inline]
     fn reinterpret_as_grouped(self) -> Self::Output {
-        unsafe { reinterpret::reinterpret_mut_slice(self.as_mut_slice()) }
+        //unsafe { reinterpret::reinterpret_mut_slice(self.as_mut_slice()) }
+        bytemuck::cast_slice_mut(self.as_mut_slice())
     }
 }
 

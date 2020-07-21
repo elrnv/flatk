@@ -1152,6 +1152,7 @@ where
 impl<T, N> std::ops::Index<usize> for UniChunked<Vec<T>, U<N>>
 where
     N: Unsigned + Array<T>,
+    T: bytemuck::Pod,
 {
     type Output = N::Array;
 
@@ -1232,6 +1233,7 @@ where
 impl<T, N> std::ops::IndexMut<usize> for UniChunked<Vec<T>, U<N>>
 where
     N: Unsigned + Array<T>,
+    T: bytemuck::Pod,
 {
     /// Mutably index the `UniChunked` `Vec` by `usize`.
     ///

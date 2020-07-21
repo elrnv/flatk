@@ -26,7 +26,7 @@ fn compute(x: f64, y: f64, z: f64) -> [f64; 3] {
 
 fn main() -> Result<(), Error> {
     let mut v: Vec<f64> = make_random_vec(30_000_000);
-    let s: &mut [[f64; 3]] = unsafe { reinterpret::reinterpret_mut_slice(v.as_mut_slice()) };
+    let s: &mut [[f64; 3]] = bytemuck::cast_slice_mut(v.as_mut_slice());
     for a in s.iter_mut() {
         //for (i, a) in v.chunks_exact_mut(3).enumerate() {
         //for a in flatk::Chunked3::from_flat(v.as_mut_slice()).into_iter() {
