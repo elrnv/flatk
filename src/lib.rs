@@ -349,7 +349,7 @@ impl<T> AsSlice<T> for T {
 }
 
 pub trait Array<T> {
-    type Array: Set<Elem = T>;
+    type Array: Set<Elem = T> + bytemuck::Pod;
     fn iter_mut(array: &mut Self::Array) -> std::slice::IterMut<T>;
     fn iter(array: &Self::Array) -> std::slice::Iter<T>;
     fn as_slice(array: &Self::Array) -> &[T];

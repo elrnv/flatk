@@ -103,7 +103,12 @@ impl<S, N: Copy> UniChunked<S, N> {
     }
 }
 
-impl<S: Set, N: Array<<S as Set>::Elem>> UniChunked<S, U<N>> {
+impl<S, N> UniChunked<S, U<N>>
+where
+    S: Set,
+    N: Array<<S as Set>::Elem>,
+    <S as Set>::Elem: bytemuck::Pod,
+{
     /// Convert this `UniChunked` collection into arrays.
     ///
     /// # Example
@@ -149,21 +154,25 @@ impl<S: Set, N: Array<<S as Set>::Elem>> UniChunked<S, U<N>> {
 }
 
 // Note: These must be separate in order to avoid conflict with standard library.
-impl<T: Clone, N: Array<T> + Unsigned> Into<Vec<N::Array>> for UniChunked<Vec<T>, U<N>> {
+impl<T: Clone + bytemuck::Pod, N: Array<T> + Unsigned> Into<Vec<N::Array>>
+    for UniChunked<Vec<T>, U<N>>
+{
     #[inline]
     fn into(self) -> Vec<N::Array> {
         self.into_arrays()
     }
 }
 
-impl<'a, T: Clone, N: Array<T> + Unsigned> Into<&'a [N::Array]> for UniChunked<&'a [T], U<N>> {
+impl<'a, T: Clone + bytemuck::Pod, N: Array<T> + Unsigned> Into<&'a [N::Array]>
+    for UniChunked<&'a [T], U<N>>
+{
     #[inline]
     fn into(self) -> &'a [N::Array] {
         self.into_arrays()
     }
 }
 
-impl<'a, T: Clone, N: Array<T> + Unsigned> Into<&'a mut [N::Array]>
+impl<'a, T: Clone + bytemuck::Pod, N: Array<T> + Unsigned> Into<&'a mut [N::Array]>
     for UniChunked<&'a mut [T], U<N>>
 {
     #[inline]
@@ -806,6 +815,7 @@ impl<S: Set + ReinterpretAsGrouped<N>, N: Array<<S as Set>::Elem> + Unsigned> As
 where
     <S as ReinterpretAsGrouped<N>>::Output: AsRef<[N::Array]>,
     S: AsRef<[<S as Set>::Elem]>,
+    <S as Set>::Elem: bytemuck::Pod,
 {
     #[inline]
     fn as_ref(&self) -> &[N::Array] {
@@ -1168,6 +1178,7 @@ where
 impl<T, N> std::ops::Index<usize> for UniChunked<&[T], U<N>>
 where
     N: Unsigned + Array<T>,
+    T: bytemuck::Pod,
 {
     type Output = N::Array;
 
@@ -1194,6 +1205,7 @@ where
 impl<T, N> std::ops::Index<usize> for UniChunked<&mut [T], U<N>>
 where
     N: Unsigned + Array<T>,
+    T: bytemuck::Pod,
 {
     type Output = N::Array;
 
@@ -1246,6 +1258,7 @@ where
 impl<T, N> std::ops::IndexMut<usize> for UniChunked<&mut [T], U<N>>
 where
     N: Unsigned + Array<T>,
+    T: bytemuck::Pod,
 {
     /// Mutably index the `UniChunked` mutably borrowed slice by `usize`.
     ///

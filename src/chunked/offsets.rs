@@ -67,12 +67,13 @@ impl Offsets<&[usize]> {
 
 impl<O: Viewed> Viewed for Offsets<O> {}
 
+// SAFETY: Offsets should always be non-empty.
 unsafe impl<O: AsRef<[usize]>> GetOffset for Offsets<O> {
     /// A version of `offset_value` without bounds checking.
     ///
     /// # Safety
     ///
-    /// It is assumed that `index` is strictly less than `self.len()`.
+    /// It is assumed that `index` is strictly less than `self.num_offsets()`.
     #[inline]
     unsafe fn offset_value_unchecked(&self, index: usize) -> usize {
         *self.0.as_ref().get_unchecked(index)

@@ -96,7 +96,7 @@ macro_rules! impl_array_for_typenum {
             }
         }
 
-        impl<T> Array<T> for consts::$nty {
+        impl<T: bytemuck::Pod> Array<T> for consts::$nty {
             type Array = [T; $n];
 
             #[inline]

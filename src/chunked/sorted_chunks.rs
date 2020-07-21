@@ -24,11 +24,24 @@ impl<O: AsMut<[usize]>> AsMut<[usize]> for SortedChunks<O> {
     }
 }
 
-impl<O: Set> Set for SortedChunks<O> {
-    type Elem = O::Elem;
-    type Atom = O::Atom;
-    fn len(&self) -> usize {
-        self.offsets.len()
+// SAFETY: Safety requirements are inherited from Offsets:
+// offsets should never be empty.
+unsafe impl<O: AsRef<[usize]>> GetOffset for SortedChunks<O> {
+    /// A version of `offset_value` without bounds checking.
+    ///
+    /// # Safety
+    ///
+    /// It is assumed that `index` is strictly less than `self.num_offsets()`.
+    #[inline]
+    unsafe fn offset_value_unchecked(&self, index: usize) -> usize {
+        self.offsets.offset_value_unchecked(index)
+    }
+
+    /// Get the total number of offsets.
+    ///
+    /// This is one more than the number of chunks represented.
+    fn num_offsets(&self) -> usize {
+        self.offsets.num_offsets()
     }
 }
 

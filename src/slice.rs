@@ -425,13 +425,15 @@ impl<T> RemovePrefix for &mut [T] {
 
 impl<'a, T, N> ReinterpretAsGrouped<N> for &'a [T]
 where
+    T: bytemuck::Pod,
     N: Array<T>,
     <N as Array<T>>::Array: 'a,
 {
     type Output = &'a [N::Array];
     #[inline]
     fn reinterpret_as_grouped(self) -> Self::Output {
-        unsafe { reinterpret::reinterpret_slice(self) }
+        //unsafe { reinterpret::reinterpret_slice(self) }
+        bytemuck::cast_slice(self)
     }
 }
 

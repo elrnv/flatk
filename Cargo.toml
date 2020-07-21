@@ -15,8 +15,8 @@ keywords = ["chunked", "sparse", "entity", "structure", "layout"]
 
 [dependencies]
 typenum = "1.12.0"
-reinterpret = "0.2.1"
-bytemuck = "1.2.0"
+reinterpret = "0.2"
+bytemuck = { version = "1.2.0", features = ["extern_crate_alloc"] }
 shaderc = { version = "0.6", optional = true }
 glsl = { version = "4.1", optional = true }
 rayon = { version = "1.3.1", optional = true }
