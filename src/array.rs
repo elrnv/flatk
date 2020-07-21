@@ -39,14 +39,17 @@ macro_rules! impl_array_for_typenum {
             }
         }
         impl<'a, T: 'a> View<'a> for [T; $n] {
-            type Type = &'a [T];
+            type Type = &'a [T; $n];
             #[inline]
             fn view(&'a self) -> Self::Type {
                 self
             }
         }
+        impl<T> Viewed for &[T; $n] {}
+        impl<T> Viewed for &mut [T; $n] {}
+
         impl<'a, T: 'a> ViewMut<'a> for [T; $n] {
-            type Type = &'a mut [T];
+            type Type = &'a mut [T; $n];
             #[inline]
             fn view_mut(&'a mut self) -> Self::Type {
                 self
@@ -60,9 +63,9 @@ macro_rules! impl_array_for_typenum {
         }
 
         impl<'a, T, N> GetIndex<'a, &'a [T; $n]> for StaticRange<N>
-            where
-                N: Unsigned + Array<T>,
-                <N as Array<T>>::Array: 'a,
+        where
+            N: Unsigned + Array<T>,
+            <N as Array<T>>::Array: 'a,
         {
             type Output = &'a N::Array;
             #[inline]
@@ -115,6 +118,7 @@ macro_rules! impl_array_for_typenum {
 
         impl<'a, T, N> ReinterpretAsGrouped<N> for &'a [T; $n]
         where
+            T: bytemuck::Pod,
             N: Unsigned + Array<T>,
             consts::$nty: PartialDiv<N>,
             <consts::$nty as PartialDiv<N>>::Output: Array<N::Array> + Unsigned,
@@ -124,34 +128,40 @@ macro_rules! impl_array_for_typenum {
             #[inline]
             fn reinterpret_as_grouped(self) -> Self::Output {
                 assert_eq!(
-                    $n / N::to_usize(),
-                    <<consts::$nty as PartialDiv<N>>::Output as Unsigned>::to_usize()
+                    $n,
+                    N::to_usize()
+                        * <<consts::$nty as PartialDiv<N>>::Output as Unsigned>::to_usize()
                 );
-                unsafe {
-                    &*(self as *const [T; $n]
-                        as *const <<consts::$nty as PartialDiv<N>>::Output as Array<N::Array>>::Array)
-                }
+                //unsafe {
+                //    &*(self as *const [T; $n]
+                //        as *const <<consts::$nty as PartialDiv<N>>::Output as Array<N::Array>>::Array)
+                //}
+                bytemuck::cast_ref(self)
             }
         }
 
         impl<'a, T, N> ReinterpretAsGrouped<N> for &'a mut [T; $n]
         where
+            T: bytemuck::Pod,
             N: Unsigned + Array<T>,
             consts::$nty: PartialDiv<N>,
             <consts::$nty as PartialDiv<N>>::Output: Array<N::Array> + Unsigned,
             <<consts::$nty as PartialDiv<N>>::Output as Array<N::Array>>::Array: 'a,
         {
-            type Output = &'a mut <<consts::$nty as PartialDiv<N>>::Output as Array<N::Array>>::Array;
+            type Output =
+                &'a mut <<consts::$nty as PartialDiv<N>>::Output as Array<N::Array>>::Array;
             #[inline]
             fn reinterpret_as_grouped(self) -> Self::Output {
                 assert_eq!(
-                    $n / N::to_usize(),
-                    <<consts::$nty as PartialDiv<N>>::Output as Unsigned>::to_usize()
+                    $n,
+                    N::to_usize()
+                        * <<consts::$nty as PartialDiv<N>>::Output as Unsigned>::to_usize()
                 );
-                unsafe {
-                    &mut *(self as *mut [T; $n]
-                        as *mut <<consts::$nty as PartialDiv<N>>::Output as Array<N::Array>>::Array)
-                }
+                //unsafe {
+                //    &mut *(self as *mut [T; $n]
+                //        as *mut <<consts::$nty as PartialDiv<N>>::Output as Array<N::Array>>::Array)
+                //}
+                bytemuck::cast_mut(self)
             }
         }
 
@@ -160,15 +170,41 @@ macro_rules! impl_array_for_typenum {
         }
 
         impl<'a, T, N: Array<T>> UniChunkable<N> for &'a [T; $n]
-            where <N as Array<T>>::Array: 'a,
+        where
+            <N as Array<T>>::Array: 'a,
         {
             type Chunk = &'a N::Array;
         }
 
         impl<'a, T, N: Array<T>> UniChunkable<N> for &'a mut [T; $n]
-            where <N as Array<T>>::Array: 'a,
+        where
+            <N as Array<T>>::Array: 'a,
         {
             type Chunk = &'a mut N::Array;
+        }
+
+        impl<'a, T, N> IntoStaticChunkIterator<N> for &'a [T; $n]
+        where
+            N: Unsigned + Array<T>,
+        {
+            type Item = <&'a [T] as SplitPrefix<N>>::Prefix;
+            type IterType = UniChunkedIter<&'a [T], N>;
+            #[inline]
+            fn into_static_chunk_iter(self) -> Self::IterType {
+                (&self[..]).into_generic_static_chunk_iter()
+            }
+        }
+
+        impl<'a, T, N> IntoStaticChunkIterator<N> for &'a mut [T; $n]
+        where
+            N: Unsigned + Array<T>,
+        {
+            type Item = <&'a mut [T] as SplitPrefix<N>>::Prefix;
+            type IterType = UniChunkedIter<&'a mut [T], N>;
+            #[inline]
+            fn into_static_chunk_iter(self) -> Self::IterType {
+                (&mut self[..]).into_generic_static_chunk_iter()
+            }
         }
 
         impl<T: Clone> CloneIntoOther<[T; $n]> for [T; $n] {
@@ -247,10 +283,11 @@ impl_array_for_typenum!(U16, 16);
 
 macro_rules! impl_as_slice_for_2d_array {
     ($r:expr, $c:expr) => {
-        impl<T> AsSlice<T> for [[T; $c]; $r] {
+        impl<T: bytemuck::Pod> AsSlice<T> for [[T; $c]; $r] {
             #[inline]
             fn as_slice(&self) -> &[T] {
-                unsafe { reinterpret::reinterpret_slice(&self[..]) }
+                //unsafe { reinterpret::reinterpret_slice(&self[..]) }
+                bytemuck::cast_slice(self)
             }
         }
     };

@@ -1,7 +1,7 @@
 use flatk::*;
 
 #[test]
-fn unichunked_unichunked() {
+fn iter() {
     let v: Vec<usize> = (1..=12).collect();
     let uni0 = Chunked2::from_flat(v);
     let uni1 = Chunked3::from_flat(uni0);

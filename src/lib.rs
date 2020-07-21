@@ -1162,7 +1162,7 @@ pub trait UniChunkable<N> {
 /// chunk of a slice is an array.
 pub trait IntoStaticChunkIterator<N>
 where
-    Self: Sized + Set + Dummy,
+    Self: Sized + Set,
     N: Unsigned,
 {
     type Item;

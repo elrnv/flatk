@@ -1,12 +1,10 @@
-
 //!
 //! This example finds the optimal workgroup size for the collatz routine run on the GPU.
 //!
 
-use flatk::*;
-
 #[cfg(feature = "gpu")]
 fn main() {
+    use flatk::*;
     use std::time::Instant;
 
     let collatz: &str = stringify! {
