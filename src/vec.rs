@@ -232,7 +232,13 @@ where
 {
     type Output = Vec<N::Array>;
     #[inline]
-    fn reinterpret_as_grouped(self) -> Self::Output {
+    fn reinterpret_as_grouped(mut self) -> Self::Output {
+        // Ensure that the reserved space can be divided into chunks of size
+        // `std::mem::size_of::<N::Array>()`.
+        // The strategy is that it is cheaper to drop than to allocate, so we do a shrink to fit
+        // here assuming that most likely the output vector wont need the additional space in most
+        // cases.
+        self.shrink_to_fit();
         unsafe { reinterpret::reinterpret_vec(self) }
         // TODO: switch to bytemuck when it can do cast between element types of different sizes.
         //bytemuck::cast_vec(self)
