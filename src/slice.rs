@@ -439,13 +439,15 @@ where
 
 impl<'a, T, N> ReinterpretAsGrouped<N> for &'a mut [T]
 where
+    T: bytemuck::Pod,
     N: Array<T>,
     <N as Array<T>>::Array: 'a,
 {
     type Output = &'a mut [N::Array];
     #[inline]
     fn reinterpret_as_grouped(self) -> Self::Output {
-        unsafe { reinterpret::reinterpret_mut_slice(self) }
+        //unsafe { reinterpret::reinterpret_mut_slice(self) }
+        bytemuck::cast_slice_mut(self)
     }
 }
 

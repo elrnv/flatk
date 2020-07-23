@@ -20,7 +20,7 @@ pub struct UniChunked<S, N> {
     pub chunk_size: N,
 }
 
-impl<T, N: Default + Array<T>> UniChunked<Vec<T>, U<N>> {
+impl<T: bytemuck::Pod, N: Default + Array<T>> UniChunked<Vec<T>, U<N>> {
     /// Create a `UniChunked` collection from a `Vec` of arrays.
     ///
     /// # Example
@@ -33,6 +33,8 @@ impl<T, N: Default + Array<T>> UniChunked<Vec<T>, U<N>> {
     /// ```
     #[inline]
     pub fn from_array_vec(data: Vec<N::Array>) -> UniChunked<Vec<T>, U<N>> {
+        // SAFETY: The reinterpret below is safe because T is constrained to be of plain old data
+        // type Pod.
         UniChunked {
             chunk_size: Default::default(),
             data: unsafe { reinterpret::reinterpret_vec(data) },
@@ -40,7 +42,7 @@ impl<T, N: Default + Array<T>> UniChunked<Vec<T>, U<N>> {
     }
 }
 
-impl<'a, T, N: Default + Array<T>> UniChunked<&'a [T], U<N>> {
+impl<'a, T: bytemuck::Pod, N: Default + Array<T>> UniChunked<&'a [T], U<N>> {
     /// Create a `UniChunked` collection from a slice of arrays.
     ///
     /// # Example
@@ -55,12 +57,12 @@ impl<'a, T, N: Default + Array<T>> UniChunked<&'a [T], U<N>> {
     pub fn from_array_slice(data: &[N::Array]) -> UniChunked<&[T], U<N>> {
         UniChunked {
             chunk_size: Default::default(),
-            data: unsafe { reinterpret::reinterpret_slice(data) },
+            data: bytemuck::cast_slice(data),
         }
     }
 }
 
-impl<'a, T, N: Default + Array<T>> UniChunked<&'a mut [T], U<N>> {
+impl<'a, T: bytemuck::Pod, N: Default + Array<T>> UniChunked<&'a mut [T], U<N>> {
     /// Create a `UniChunked` collection from a mutable slice of arrays.
     ///
     /// # Example
@@ -75,7 +77,7 @@ impl<'a, T, N: Default + Array<T>> UniChunked<&'a mut [T], U<N>> {
     pub fn from_array_slice_mut(data: &'a mut [N::Array]) -> UniChunked<&'a mut [T], U<N>> {
         UniChunked {
             chunk_size: Default::default(),
-            data: unsafe { reinterpret::reinterpret_mut_slice(data) },
+            data: bytemuck::cast_slice_mut(data),
         }
     }
 }
@@ -400,25 +402,25 @@ where
     pub fn copy_from_arrays(&mut self, src: &[N::Array])
     where
         N: Array<<S as Set>::Elem>,
-        <S as Set>::Elem: Copy,
+        <S as Set>::Elem: Copy + bytemuck::Pod,
         S: AsMut<[<S as Set>::Elem]>,
     {
         assert_eq!(src.len(), self.len());
         self.data
             .as_mut()
-            .copy_from_slice(unsafe { reinterpret::reinterpret_slice(src) });
+            .copy_from_slice(bytemuck::cast_slice(src));
     }
     /// This function panics if `src` has doesn't have a length equal to `self.len()`.
     pub fn clone_from_arrays(&mut self, src: &[N::Array])
     where
         N: Array<<S as Set>::Elem>,
-        <S as Set>::Elem: Clone,
+        <S as Set>::Elem: Clone + bytemuck::Pod,
         S: AsMut<[<S as Set>::Elem]>,
     {
         assert_eq!(src.len(), self.len());
         self.data
             .as_mut()
-            .clone_from_slice(unsafe { reinterpret::reinterpret_slice(src) });
+            .clone_from_slice(bytemuck::cast_slice(src));
     }
 }
 
@@ -464,7 +466,7 @@ impl<T> ChunkedN<Vec<T>> {
 impl<T, N> UniChunked<Vec<T>, U<N>>
 where
     N: Array<T>,
-    T: Clone,
+    T: Clone + bytemuck::Pod,
 {
     /// Extend this chunked `Vec` from a slice of arrays.
     ///
@@ -477,8 +479,7 @@ where
     /// assert_eq!(s.data(), &vec![0,1,2,3,4,5,6,7]);
     /// ```
     pub fn extend_from_slice(&mut self, slice: &[N::Array]) {
-        self.data
-            .extend_from_slice(unsafe { reinterpret::reinterpret_slice(slice) });
+        self.data.extend_from_slice(bytemuck::cast_slice(slice));
     }
 }
 
@@ -585,11 +586,11 @@ impl<S, N> ExtendFromSlice for UniChunked<S, U<N>>
 where
     S: Set + ExtendFromSlice<Item = <S as Set>::Elem>,
     N: Unsigned + Array<<S as Set>::Elem>,
+    <S as Set>::Elem: bytemuck::Pod,
 {
     type Item = N::Array;
     fn extend_from_slice(&mut self, other: &[Self::Item]) {
-        self.data
-            .extend_from_slice(unsafe { reinterpret::reinterpret_slice(other) });
+        self.data.extend_from_slice(bytemuck::cast_slice(other));
     }
 }
 
