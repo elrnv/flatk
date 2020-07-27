@@ -1,4 +1,5 @@
 #![macro_use]
+
 /// Zip multiple iterators.
 ///
 /// This is not unlike the `izip!` macro from `itertools`, but this has a simpler implementation,

@@ -231,6 +231,8 @@ macro_rules! impl_isolate_index_for_static_range {
     }
 }
 
+mod macros;
+
 mod array;
 mod boxed;
 pub mod chunked;
@@ -245,7 +247,6 @@ mod subset;
 mod tuple;
 mod vec;
 mod view;
-mod zip;
 
 pub use array::*;
 pub use boxed::*;
