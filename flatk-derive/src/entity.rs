@@ -751,41 +751,161 @@ fn impl_view(ast: &DeriveInput) -> TokenStream {
     }
 }
 
-/// Implement a trait with addition type parameters.
-fn impl_trait(
-    ast: &DeriveInput,
-    mut generate_alt_type_param: impl FnMut(&Ident) -> Option<GenericParam>,
-    mut generate_bound: impl FnMut(&Ident, Option<&GenericParam>) -> TokenStream,
-    generate_impl: impl FnOnce(&Generics, Generics, ImplInfo, Vec<GenericParam>) -> TokenStream,
-) -> TokenStream {
-    let impl_info = build_impl_info(ast);
+fn impl_slice_iter(ast: &DeriveInput) -> TokenStream {
+    let name = &ast.ident;
 
-    let mut extended_generics = ast.generics.clone();
+    let crate_name = crate_name_ident();
 
-    let mut alt_type_params = Vec::new();
-    // Here we care about order since alt_type_params will need to be passed in the correct order,
-    // so we iterate over the parameters directly.
-    for TypeParam {
-        ident: ty_ident, ..
-    } in ast.generics.type_params()
-    {
-        if impl_info.entity_type.contains(ty_ident) {
-            let alt_type = generate_alt_type_param(ty_ident);
-            let bound_tokens = generate_bound(ty_ident, alt_type.as_ref());
-            if !bound_tokens.is_empty() {
-                extended_generics
-                    .make_where_clause()
-                    .predicates
-                    .push(syn::parse2(bound_tokens).unwrap());
-            }
-            if let Some(alt_type_param) = alt_type {
-                alt_type_params.push(alt_type_param.clone());
-                extended_generics.params.push(alt_type_param);
-            }
-        }
+    fn ty_args_with(
+        generics: &Generics,
+        entity_type: &BTreeSet<Ident>,
+        mut ty_param_map: impl FnMut(&Ident) -> TokenStream,
+    ) -> PathArguments {
+        PathArguments::AngleBracketed(AngleBracketedGenericArguments {
+            colon2_token: None,
+            lt_token: generics
+                .lt_token
+                .unwrap_or_else(|| Token![<](Span::call_site())),
+            args: generics
+                .params
+                .iter()
+                .map(|param| {
+                    // Passthrough except for entity type parameters.
+                    match param {
+                        GenericParam::Type(TypeParam { ident, .. }) => {
+                            if entity_type.contains(ident) {
+                                let ty_arg = ty_param_map(ident);
+                                parse_quote! { #ty_arg }
+                            } else {
+                                parse_quote! { #ident }
+                            }
+                        }
+                        GenericParam::Lifetime(LifetimeDef { lifetime, .. }) => {
+                            GenericArgument::Lifetime(lifetime.clone())
+                        }
+                        GenericParam::Const(ConstParam { ident, .. }) => {
+                            parse_quote! { { #ident } }
+                        }
+                    }
+                })
+                .collect(),
+            gt_token: generics
+                .gt_token
+                .unwrap_or_else(|| Token![>](Span::call_site())),
+        })
     }
 
-    generate_impl(&ast.generics, extended_generics, impl_info, alt_type_params)
+    // Strictly speaking this is not a trait impl, but the same mechanism works here too.
+    let iter_slice_impl = impl_simple_trait(
+        ast,
+        |_| quote! {},
+        |generics,
+         ImplInfo {
+             entity_field,
+             other_field,
+             entity_type,
+             ..
+         }| {
+            let mut extended_generics = generics.clone();
+            extended_generics.params.push(parse_quote! { 'flatk_slice });
+            let (impl_generics, _, _) = extended_generics.split_for_impl();
+            let ty_generics = ty_args_with(&generics, &entity_type, |ident| {
+                parse_quote! { &'flatk_slice [#ident] }
+            });
+            let item_args = ty_args_with(&generics, &entity_type, |ident| {
+                parse_quote! { &'flatk_self #ident }
+            });
+
+            // Convert entity generic parameters to slices of these types.
+            let (_, _, where_clause) = generics.split_for_impl();
+
+            quote! {
+                impl #impl_generics #name #ty_generics #where_clause {
+                    fn iter<'flatk_self>(&'flatk_self self) -> impl Iterator<Item = #name #item_args> {
+                        let #name {
+                            #(
+                                #entity_field,
+                            )*
+                            #(
+                                #other_field,
+                            )*
+                        } = self;
+
+                        use #crate_name::zip;
+                        zip!(#(#entity_field.iter(),)*)
+                        .map(move |(#(#entity_field,)*)| #name {
+                            #(
+                                #entity_field,
+                            )*
+                            #(
+                                #other_field: #other_field.clone(),
+                            )*
+                        })
+                    }
+                }
+            }
+        },
+    );
+
+    let iter_slice_mut_impl = impl_simple_trait(
+        ast,
+        |_| quote! {},
+        |generics,
+         ImplInfo {
+             entity_field,
+             other_field,
+             entity_type,
+             ..
+         }| {
+            let mut extended_generics = generics.clone();
+            extended_generics.params.push(parse_quote! { 'flatk_slice });
+            let (impl_generics, _, _) = extended_generics.split_for_impl();
+            let ty_generics = ty_args_with(
+                &generics,
+                &entity_type,
+                |ident| parse_quote! { &'flatk_slice mut [#ident] },
+            );
+            let item_args = ty_args_with(
+                &generics,
+                &entity_type,
+                |ident| parse_quote! { &'flatk_self mut #ident },
+            );
+
+            // Convert entity generic parameters to slices of these types.
+            let (_, _, where_clause) = generics.split_for_impl();
+
+            quote! {
+                impl #impl_generics #name #ty_generics #where_clause {
+                    fn iter_mut<'flatk_self>(&'flatk_self mut self) -> impl Iterator<Item = #name #item_args> {
+                        let #name {
+                            #(
+                                #entity_field,
+                            )*
+                            #(
+                                #other_field,
+                            )*
+                        } = self;
+
+                        use #crate_name::zip;
+                        zip!(#(#entity_field.iter_mut(),)*)
+                        .map(move |(#(#entity_field,)*)| #name {
+                            #(
+                                #entity_field,
+                            )*
+                            #(
+                                #other_field: #other_field.clone(),
+                            )*
+                        })
+                    }
+                }
+            }
+        },
+    );
+
+    quote! {
+        #iter_slice_impl
+        #iter_slice_mut_impl
+    }
 }
 
 /// A select set of information useful for implementing entity traits.
@@ -875,7 +995,44 @@ fn build_impl_info(ast: &DeriveInput) -> ImplInfo {
     }
 }
 
-/// Implement a trait without addition type parameters.
+/// Implement a trait with addition type parameters.
+fn impl_trait(
+    ast: &DeriveInput,
+    mut generate_alt_type_param: impl FnMut(&Ident) -> Option<GenericParam>,
+    mut generate_bound: impl FnMut(&Ident, Option<&GenericParam>) -> TokenStream,
+    generate_impl: impl FnOnce(&Generics, Generics, ImplInfo, Vec<GenericParam>) -> TokenStream,
+) -> TokenStream {
+    let impl_info = build_impl_info(ast);
+
+    let mut extended_generics = ast.generics.clone();
+
+    let mut alt_type_params = Vec::new();
+    // Here we care about order since alt_type_params will need to be passed in the correct order,
+    // so we iterate over the parameters directly.
+    for TypeParam {
+        ident: ty_ident, ..
+    } in ast.generics.type_params()
+    {
+        if impl_info.entity_type.contains(ty_ident) {
+            let alt_type = generate_alt_type_param(ty_ident);
+            let bound_tokens = generate_bound(ty_ident, alt_type.as_ref());
+            if !bound_tokens.is_empty() {
+                extended_generics
+                    .make_where_clause()
+                    .predicates
+                    .push(syn::parse2(bound_tokens).unwrap());
+            }
+            if let Some(alt_type_param) = alt_type {
+                alt_type_params.push(alt_type_param.clone());
+                extended_generics.params.push(alt_type_param);
+            }
+        }
+    }
+
+    generate_impl(&ast.generics, extended_generics, impl_info, alt_type_params)
+}
+
+/// Implement a trait without additional type parameters.
 fn impl_simple_trait(
     ast: &DeriveInput,
     mut generate_bound: impl FnMut(&Ident) -> TokenStream,
@@ -1251,6 +1408,7 @@ pub(crate) fn impl_entity(ast: &DeriveInput) -> TokenStream {
     let isolate_impls = impl_isolate(ast);
     let view_impls = impl_view(ast);
     let split_impls = impl_split(ast);
+    let slice_iter_impls = impl_slice_iter(ast);
 
     quote! {
         #value_type_impl
@@ -1273,5 +1431,7 @@ pub(crate) fn impl_entity(ast: &DeriveInput) -> TokenStream {
         #isolate_impls
         #view_impls
         #split_impls
+
+        #slice_iter_impls
     }
 }

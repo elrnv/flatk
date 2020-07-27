@@ -245,6 +245,7 @@ mod subset;
 mod tuple;
 mod vec;
 mod view;
+mod zip;
 
 pub use array::*;
 pub use boxed::*;
