@@ -778,7 +778,7 @@ fn impl_iter(ast: &DeriveInput) -> TokenStream {
 
             quote! {
                 impl #impl_generics #name #ty_generics #where_clause {
-                    fn iter<'s>(&'s self) -> <<Self as View<'s>>::Type as IntoIterator>::IntoIter
+                    pub fn iter<'s>(&'s self) -> <<Self as View<'s>>::Type as IntoIterator>::IntoIter
                         #iter_where_clause
                     {
                         self.view().into_iter()
@@ -811,7 +811,7 @@ fn impl_iter(ast: &DeriveInput) -> TokenStream {
 
             quote! {
                 impl #impl_generics #name #ty_generics #where_clause {
-                    fn iter_mut<'s>(&'s mut self) -> <<Self as ViewMut<'s>>::Type as IntoIterator>::IntoIter
+                    pub fn iter_mut<'s>(&'s mut self) -> <<Self as ViewMut<'s>>::Type as IntoIterator>::IntoIter
                         #iter_where_clause
                     {
                         self.view_mut().into_iter()
