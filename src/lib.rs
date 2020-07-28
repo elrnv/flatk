@@ -1321,6 +1321,10 @@ where
     fn next_back(&mut self) -> Option<T> {
         self.iter.next_back().map(From::from)
     }
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        self.iter.nth_back(n).map(From::from)
+    }
 }
 
 /// An iterator whose items are random-accessible efficiently
