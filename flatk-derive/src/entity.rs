@@ -442,7 +442,7 @@ fn impl_get(ast: &DeriveInput) -> TokenStream {
 
     let get_index_for_range_impl = impl_simple_trait(
         ast,
-        |ty_ident| quote! { #ty_ident: #crate_name::Get<'flatk_get, std::ops::Range<usize>> },
+        |ty_ident| quote! { #ty_ident: #crate_name::Get<'flatk_get, core::ops::Range<usize>> },
         |generics,
          ImplInfo {
              entity_field,
@@ -457,7 +457,7 @@ fn impl_get(ast: &DeriveInput) -> TokenStream {
             let (impl_generics, _, _) = extended_generics.split_for_impl();
             let (_, ty_generics, where_clause) = generics.split_for_impl();
             quote! {
-                impl #impl_generics #crate_name::GetIndex<'flatk_get, #name #ty_generics> for ::std::ops::Range<usize>  #where_clause {
+                impl #impl_generics #crate_name::GetIndex<'flatk_get, #name #ty_generics> for ::core::ops::Range<usize>  #where_clause {
                     type Output = #name<#(#sub_params,)*>;
                     fn get(self, this: &#name #ty_generics) -> Option<Self::Output> {
 
@@ -573,7 +573,7 @@ fn impl_isolate(ast: &DeriveInput) -> TokenStream {
 
     let isolate_index_for_range_impl = impl_simple_trait(
         ast,
-        |ty_ident| quote! { #ty_ident: #crate_name::Isolate<std::ops::Range<usize>> },
+        |ty_ident| quote! { #ty_ident: #crate_name::Isolate<core::ops::Range<usize>> },
         |generics,
          ImplInfo {
              entity_field,
@@ -585,7 +585,7 @@ fn impl_isolate(ast: &DeriveInput) -> TokenStream {
                 associated_type_params(parse_quote! { Output }, &generics, &entity_type);
             let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
             quote! {
-                impl #impl_generics #crate_name::IsolateIndex<#name #ty_generics> for ::std::ops::Range<usize>  #where_clause {
+                impl #impl_generics #crate_name::IsolateIndex<#name #ty_generics> for ::core::ops::Range<usize>  #where_clause {
                     type Output = #name<#(#sub_params,)*>;
                     #[inline]
                     unsafe fn isolate_unchecked(self, this: #name #ty_generics) -> Self::Output {
@@ -695,7 +695,6 @@ fn impl_view(ast: &DeriveInput) -> TokenStream {
                 impl #impl_generics #crate_name::View<'flatk_view> for #name #ty_generics #where_clause {
                     type Type = #name<#(#sub_params,)*>;
                     fn view(&'flatk_view self) -> Self::Type {
-
                         #name {
                             #(
                                 #entity_field: self.#entity_field.view(),
@@ -730,7 +729,6 @@ fn impl_view(ast: &DeriveInput) -> TokenStream {
                 impl #impl_generics #crate_name::ViewMut<'flatk_view> for #name #ty_generics #where_clause {
                     type Type = #name<#(#sub_params,)*>;
                     fn view_mut(&'flatk_view mut self) -> Self::Type {
-
                         #name {
                             #(
                                 #entity_field: self.#entity_field.view_mut(),
@@ -751,151 +749,131 @@ fn impl_view(ast: &DeriveInput) -> TokenStream {
     }
 }
 
-fn impl_slice_iter(ast: &DeriveInput) -> TokenStream {
+fn impl_iter(ast: &DeriveInput) -> TokenStream {
     let name = &ast.ident;
 
     let crate_name = crate_name_ident();
 
-    fn ty_args_with(
-        generics: &Generics,
-        entity_type: &BTreeSet<Ident>,
-        mut ty_param_map: impl FnMut(&Ident) -> TokenStream,
-    ) -> PathArguments {
-        PathArguments::AngleBracketed(AngleBracketedGenericArguments {
-            colon2_token: None,
-            lt_token: generics
-                .lt_token
-                .unwrap_or_else(|| Token![<](Span::call_site())),
-            args: generics
-                .params
-                .iter()
-                .map(|param| {
-                    // Passthrough except for entity type parameters.
-                    match param {
-                        GenericParam::Type(TypeParam { ident, .. }) => {
-                            if entity_type.contains(ident) {
-                                let ty_arg = ty_param_map(ident);
-                                parse_quote! { #ty_arg }
-                            } else {
-                                parse_quote! { #ident }
-                            }
-                        }
-                        GenericParam::Lifetime(LifetimeDef { lifetime, .. }) => {
-                            GenericArgument::Lifetime(lifetime.clone())
-                        }
-                        GenericParam::Const(ConstParam { ident, .. }) => {
-                            parse_quote! { { #ident } }
-                        }
-                    }
-                })
-                .collect(),
-            gt_token: generics
-                .gt_token
-                .unwrap_or_else(|| Token![>](Span::call_site())),
-        })
-    }
-
     // Strictly speaking this is not a trait impl, but the same mechanism works here too.
-    let iter_slice_impl = impl_simple_trait(
+    let iter_impl = impl_simple_trait(
         ast,
         |_| quote! {},
-        |generics,
-         ImplInfo {
-             entity_field,
-             other_field,
-             entity_type,
-             ..
-         }| {
-            let mut extended_generics = generics.clone();
-            extended_generics.params.push(parse_quote! { 'flatk_slice });
-            let (impl_generics, _, _) = extended_generics.split_for_impl();
-            let ty_generics = ty_args_with(&generics, &entity_type, |ident| {
-                parse_quote! { &'flatk_slice [#ident] }
-            });
-            let item_args = ty_args_with(&generics, &entity_type, |ident| {
-                parse_quote! { &'flatk_self #ident }
-            });
+        |generics, ImplInfo { entity_type, .. }| {
+            let predicates = entity_type
+                .iter()
+                .flat_map(|ty_ident| {
+                    let main_pred: WherePredicate = parse_quote! { #ty_ident: View<'s> };
+                    let iter_pred: WherePredicate =
+                        parse_quote! { <#ty_ident as View<'s>>::Type: core::iter::IntoIterator };
+                    std::iter::once(main_pred).chain(std::iter::once(iter_pred))
+                })
+                .collect();
 
-            // Convert entity generic parameters to slices of these types.
-            let (_, _, where_clause) = generics.split_for_impl();
+            let iter_where_clause = WhereClause {
+                where_token: parse_quote! { where },
+                predicates,
+            };
+
+            let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
             quote! {
                 impl #impl_generics #name #ty_generics #where_clause {
-                    fn iter<'flatk_self>(&'flatk_self self) -> impl Iterator<Item = #name #item_args> {
-                        let #name {
-                            #(
-                                #entity_field,
-                            )*
-                            #(
-                                #other_field,
-                            )*
-                        } = self;
-
-                        use #crate_name::zip;
-                        zip!(#(#entity_field.iter(),)*)
-                        .map(move |(#(#entity_field,)*)| #name {
-                            #(
-                                #entity_field,
-                            )*
-                            #(
-                                #other_field: #other_field.clone(),
-                            )*
-                        })
+                    fn iter<'s>(&'s self) -> <<Self as View<'s>>::Type as IntoIterator>::IntoIter
+                        #iter_where_clause
+                    {
+                        self.view().into_iter()
                     }
                 }
             }
         },
     );
 
-    let iter_slice_mut_impl = impl_simple_trait(
+    let iter_mut_impl = impl_simple_trait(
         ast,
         |_| quote! {},
-        |generics,
-         ImplInfo {
-             entity_field,
-             other_field,
-             entity_type,
-             ..
-         }| {
-            let mut extended_generics = generics.clone();
-            extended_generics.params.push(parse_quote! { 'flatk_slice });
-            let (impl_generics, _, _) = extended_generics.split_for_impl();
-            let ty_generics = ty_args_with(
-                &generics,
-                &entity_type,
-                |ident| parse_quote! { &'flatk_slice mut [#ident] },
-            );
-            let item_args = ty_args_with(
-                &generics,
-                &entity_type,
-                |ident| parse_quote! { &'flatk_self mut #ident },
-            );
+        |generics, ImplInfo { entity_type, .. }| {
+            let predicates = entity_type
+                .iter()
+                .flat_map(|ty_ident| {
+                    let main_pred: WherePredicate = parse_quote! { #ty_ident: ViewMut<'s> };
+                    let iter_pred: WherePredicate =
+                        parse_quote! { <#ty_ident as ViewMut<'s>>::Type: core::iter::IntoIterator };
+                    std::iter::once(main_pred).chain(std::iter::once(iter_pred))
+                })
+                .collect();
 
-            // Convert entity generic parameters to slices of these types.
-            let (_, _, where_clause) = generics.split_for_impl();
+            let iter_where_clause = WhereClause {
+                where_token: parse_quote! { where },
+                predicates,
+            };
+
+            let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
             quote! {
                 impl #impl_generics #name #ty_generics #where_clause {
-                    fn iter_mut<'flatk_self>(&'flatk_self mut self) -> impl Iterator<Item = #name #item_args> {
-                        let #name {
-                            #(
-                                #entity_field,
-                            )*
-                            #(
-                                #other_field,
-                            )*
-                        } = self;
+                    fn iter_mut<'s>(&'s mut self) -> <<Self as ViewMut<'s>>::Type as IntoIterator>::IntoIter
+                        #iter_where_clause
+                    {
+                        self.view_mut().into_iter()
+                    }
+                }
+            }
+        },
+    );
 
-                        use #crate_name::zip;
-                        zip!(#(#entity_field.iter_mut(),)*)
-                        .map(move |(#(#entity_field,)*)| #name {
-                            #(
-                                #entity_field,
-                            )*
-                            #(
-                                #other_field: #other_field.clone(),
-                            )*
-                        })
+    let into_iter_impl = impl_trait(
+        ast,
+        |ty_ident| {
+            let alt_type = Ident::new(&format!("{}FlatkAlt", ty_ident), ty_ident.span());
+            Some(parse_quote! { #alt_type })
+        },
+        |ty_ident, alt_param| {
+            if let Some(GenericParam::Type(alt_type_param)) = alt_param {
+                let alt_ident = &alt_type_param.ident;
+                quote! { #ty_ident: core::iter::IntoIterator<Item = #alt_ident> }
+            } else {
+                quote! {}
+            }
+        },
+        |generics,
+         ext_generics,
+         ImplInfo {
+             entity_type,
+             field_type_attr,
+             ..
+         },
+         _| {
+            let item_params =
+                associated_type_params(parse_quote! { Item }, &generics, &entity_type);
+
+            let (_, ty_generics, _) = generics.split_for_impl();
+            let (impl_generics, _, where_clause) = ext_generics.split_for_impl();
+
+            let mut zip_iter = quote! { core::iter::Repeat<()> };
+            let mut tuple = quote! { () };
+            let mut zip_expr = quote! { core::iter::repeat(()) };
+            for (field, ty, is_entity) in field_type_attr.iter() {
+                tuple = quote! { (#tuple, #ty) };
+                if *is_entity {
+                    zip_iter = quote! { core::iter::Zip<#zip_iter, <#ty as core::iter::IntoIterator>::IntoIter> };
+                    zip_expr.extend(core::iter::once(quote! {
+                        .zip(self.#field.into_iter())
+                    }));
+                    continue;
+                }
+                zip_iter = quote! { core::iter::Zip<#zip_iter, core::iter::Repeat<#ty>> };
+                zip_expr.extend(core::iter::once(quote! {
+                    .zip(core::iter::repeat(self.#field))
+                }));
+            }
+
+            quote! {
+                impl #impl_generics core::iter::IntoIterator for #name #ty_generics #where_clause {
+                    type Item = #name<#(#item_params,)*>;
+                    type IntoIter = #crate_name::StructIter< #zip_iter, Self::Item >;
+
+                    fn into_iter(self) -> Self::IntoIter {
+                        #crate_name::StructIter::new(#zip_expr)
                     }
                 }
             }
@@ -903,8 +881,9 @@ fn impl_slice_iter(ast: &DeriveInput) -> TokenStream {
     );
 
     quote! {
-        #iter_slice_impl
-        #iter_slice_mut_impl
+        #iter_impl
+        #iter_mut_impl
+        #into_iter_impl
     }
 }
 
@@ -1258,10 +1237,10 @@ pub(crate) fn impl_entity(ast: &DeriveInput) -> TokenStream {
         // Note: the only reason we use a repeat () iterator, is to make the implementation
         // logic simpler in the body of the into_static_chunk_iter function.
 
-        let mut zip_iter = quote! { std::iter::Repeat<()> };
+        let mut zip_iter = quote! { core::iter::Repeat<()> };
         let mut tuple = quote! { () };
         let mut pattern = quote! { () };
-        let mut zip_expr = quote! { std::iter::repeat(()) };
+        let mut zip_expr = quote! { core::iter::repeat(()) };
         let fields: Vec<_> = impl_info
             .field_type_attr
             .iter()
@@ -1271,15 +1250,15 @@ pub(crate) fn impl_entity(ast: &DeriveInput) -> TokenStream {
             tuple = quote! { (#tuple, #ty) };
             pattern = quote! { (#pattern, #field) };
             if *is_entity {
-                zip_iter = quote! { std::iter::Zip<#zip_iter, <#ty as #crate_name::IntoStaticChunkIterator<_FlatkN>>::IterType> };
-                zip_expr.extend(std::iter::once(quote! {
+                zip_iter = quote! { core::iter::Zip<#zip_iter, <#ty as #crate_name::IntoStaticChunkIterator<_FlatkN>>::IterType> };
+                zip_expr.extend(core::iter::once(quote! {
                     .zip(self.#field.into_static_chunk_iter())
                 }));
                 continue;
             }
-            zip_iter = quote! { std::iter::Zip<#zip_iter, std::iter::Repeat<#ty>> };
-            zip_expr.extend(std::iter::once(quote! {
-                .zip(std::iter::repeat(self.#field))
+            zip_iter = quote! { core::iter::Zip<#zip_iter, core::iter::Repeat<#ty>> };
+            zip_expr.extend(core::iter::once(quote! {
+                .zip(core::iter::repeat(self.#field))
             }));
         }
 
@@ -1408,7 +1387,7 @@ pub(crate) fn impl_entity(ast: &DeriveInput) -> TokenStream {
     let isolate_impls = impl_isolate(ast);
     let view_impls = impl_view(ast);
     let split_impls = impl_split(ast);
-    let slice_iter_impls = impl_slice_iter(ast);
+    let iter_impls = impl_iter(ast);
 
     quote! {
         #value_type_impl
@@ -1432,6 +1411,6 @@ pub(crate) fn impl_entity(ast: &DeriveInput) -> TokenStream {
         #view_impls
         #split_impls
 
-        #slice_iter_impls
+        #iter_impls
     }
 }
