@@ -55,7 +55,7 @@ fn main() {
         },
     }));
 
-    // We can access individual element in the state through indexing using the `View` and `Get`
+    // We can access individual elements in the state through indexing using the `View` and `Get`
     // traits.
     assert_eq!(
         state.view().at(0).at(0),
@@ -78,14 +78,13 @@ fn main() {
     for _ in 0..20 {
         let dt = 0.1;
         for mut element in state.view_mut().iter_mut() {
-            for Object { prev, cur, .. } in element.iter_mut() {
-                for (prev_x, (cur_x, cur_v)) in prev
-                    .pos
-                    .iter_mut()
-                    .zip(cur.pos.iter_mut().zip(cur.vel.iter()))
-                {
-                    *cur_x += cur_v * dt;
-                    *prev_x = *cur_x;
+            for Object {
+                mut prev, mut cur, ..
+            } in element.iter_mut()
+            {
+                for (prev, cur) in prev.iter_mut().zip(cur.iter_mut()) {
+                    *cur.pos += *cur.vel * dt;
+                    *prev.pos = *cur.pos;
                 }
             }
         }
