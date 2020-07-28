@@ -30,7 +30,7 @@ fn main() {
     };
 
     let chunked = Chunked::from_sizes(vec![1, 3], Chunked3::from_flat(e));
-    let mut state = Data {
+    let mut data = Data {
         prev: chunked.clone(),
         cur: chunked.clone(),
     };
@@ -38,7 +38,7 @@ fn main() {
     // We can access individual element in the state through indexing using the `View` and `Get`
     // traits.
     assert_eq!(
-        state.prev.view().at(0).at(0),
+        data.prev.view().at(0).at(0),
         Object {
             id: 0,
             pos: &[1.0, 1.0, 1.0],
@@ -51,26 +51,22 @@ fn main() {
     // Iterate for 20 frames
     for _ in 0..20 {
         let dt = 0.1;
-        for (mut prev, mut cur) in state
+        for (mut prev, mut cur) in data
             .prev
             .view_mut()
             .iter_mut()
-            .zip(state.cur.view_mut().iter_mut())
+            .zip(data.cur.view_mut().iter_mut())
         {
             for (prev, cur) in prev.iter_mut().zip(cur.iter_mut()) {
-                for (prev_x, (cur_x, cur_v)) in prev
-                    .pos
-                    .iter_mut()
-                    .zip(cur.pos.iter_mut().zip(cur.vel.iter()))
-                {
-                    *cur_x += cur_v * dt;
-                    *prev_x = *cur_x;
+                for (prev_x, cur) in prev.pos.iter_mut().zip(cur.into_iter()) {
+                    *cur.pos += *cur.vel * dt;
+                    *prev_x = *cur.pos;
                 }
             }
         }
     }
 
-    dbg!(state);
+    dbg!(data);
 }
 
 #[cfg(not(feature = "derive"))]
