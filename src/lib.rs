@@ -31,7 +31,7 @@
 //!
 //!   let pos_data = vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0];
 //!
-//!   let pos = ChunkedN::from_flat_with_stride(pos_data, 3);
+//!   let pos = ChunkedN::from_flat_with_stride(3, pos_data);
 //!
 //!   assert_eq!(pos[0], [0.0; 3]);
 //!   assert_eq!(pos[1], [1.0; 3]);

@@ -353,14 +353,14 @@ impl<S: Set> ChunkedN<S> {
     ///
     /// ```rust
     /// use flatk::*;
-    /// let s = ChunkedN::from_flat_with_stride(vec![1,2,3,4,5,6], 3);
+    /// let s = ChunkedN::from_flat_with_stride(3, vec![1,2,3,4,5,6]);
     /// let mut iter = s.iter();
     /// assert_eq!(Some(&[1,2,3][..]), iter.next());
     /// assert_eq!(Some(&[4,5,6][..]), iter.next());
     /// assert_eq!(None, iter.next());
     /// ```
     #[inline]
-    pub fn from_flat_with_stride(data: S, n: usize) -> Self {
+    pub fn from_flat_with_stride(n: usize, data: S) -> Self {
         assert_eq!(data.len() % n, 0);
         UniChunked {
             chunk_size: n,
@@ -520,9 +520,9 @@ impl<S: Set> Set for ChunkedN<S> {
     ///
     /// ```rust
     /// use flatk::*;
-    /// let s = ChunkedN::from_flat_with_stride(vec![0,1,2,3,4,5], 2);
+    /// let s = ChunkedN::from_flat_with_stride(2, vec![0,1,2,3,4,5]);
     /// assert_eq!(s.len(), 3);
-    /// let s = ChunkedN::from_flat_with_stride(vec![0,1,2,3,4,5], 3);
+    /// let s = ChunkedN::from_flat_with_stride(3, vec![0,1,2,3,4,5]);
     /// assert_eq!(s.len(), 2);
     /// ```
     #[inline]
@@ -567,7 +567,7 @@ where
     ///
     /// ```rust
     /// use flatk::*;
-    /// let mut s = ChunkedN::from_flat_with_stride(vec![1,2,3], 3);
+    /// let mut s = ChunkedN::from_flat_with_stride(3, vec![1,2,3]);
     /// s.push(&[4,5,6]);
     /// let mut iter = s.iter();
     /// assert_eq!(Some(&[1,2,3][..]), iter.next());
@@ -633,7 +633,7 @@ where
     ///
     /// ```rust
     /// use flatk::*;
-    /// let mut s = ChunkedN::from_flat_with_stride(vec![1,2,3,4,5,6], 3);
+    /// let mut s = ChunkedN::from_flat_with_stride(3, vec![1,2,3,4,5,6]);
     /// let mut iter = s.view().into_iter();
     /// assert_eq!(Some(&[1,2,3][..]), iter.next());
     /// assert_eq!(Some(&[4,5,6][..]), iter.next());
@@ -1303,7 +1303,7 @@ impl<T> std::ops::Index<usize> for ChunkedN<Vec<T>> {
     ///
     /// ```rust
     /// use flatk::*;
-    /// let s = ChunkedN::from_flat_with_stride(vec![1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], 3);
+    /// let s = ChunkedN::from_flat_with_stride(3, vec![1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]);
     /// assert_eq!([7,8,9], s[2]);
     /// ```
     #[inline]
@@ -1327,7 +1327,7 @@ impl<T> std::ops::Index<usize> for ChunkedN<&[T]> {
     ///
     /// ```rust
     /// use flatk::*;
-    /// let s = ChunkedN::from_flat_with_stride(vec![1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], 3);
+    /// let s = ChunkedN::from_flat_with_stride(3, vec![1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]);
     /// assert_eq!([7,8,9], s.view()[2]);
     /// ```
     #[inline]
@@ -1351,7 +1351,7 @@ impl<T> std::ops::Index<usize> for ChunkedN<&mut [T]> {
     ///
     /// ```rust
     /// use flatk::*;
-    /// let mut s = ChunkedN::from_flat_with_stride(vec![1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], 3);
+    /// let mut s = ChunkedN::from_flat_with_stride(3, vec![1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]);
     /// assert_eq!([7,8,9], s.view_mut()[2]);
     /// ```
     #[inline]
@@ -1374,7 +1374,7 @@ impl<T> std::ops::IndexMut<usize> for ChunkedN<Vec<T>> {
     /// ```rust
     /// use flatk::*;
     /// let v = vec![1,2,3,4,5,6,0,0,0,10,11,12];
-    /// let mut s = ChunkedN::from_flat_with_stride(v, 3);
+    /// let mut s = ChunkedN::from_flat_with_stride(3, v);
     /// s[2].copy_from_slice(&[7,8,9]);
     /// assert_eq!(vec![1,2,3,4,5,6,7,8,9,10,11,12], s.into_storage().to_vec());
     /// ```
@@ -1398,7 +1398,7 @@ impl<T> std::ops::IndexMut<usize> for ChunkedN<&mut [T]> {
     /// ```rust
     /// use flatk::*;
     /// let mut v = vec![1,2,3,4,5,6,0,0,0,10,11,12];
-    /// let mut s = ChunkedN::from_flat_with_stride(v.as_mut_slice(), 3);
+    /// let mut s = ChunkedN::from_flat_with_stride(3, v.as_mut_slice());
     /// s[2].copy_from_slice(&[7,8,9]);
     /// assert_eq!(vec![1,2,3,4,5,6,7,8,9,10,11,12], v);
     /// ```
@@ -1594,7 +1594,7 @@ impl<S> ChunkedN<S> {
     ///
     /// ```rust
     /// use flatk::*;
-    /// let mut s = ChunkedN::from_flat_with_stride(vec![1,2,3,4,5,6], 3);
+    /// let mut s = ChunkedN::from_flat_with_stride(3, vec![1,2,3,4,5,6]);
     /// s.view_mut().isolate(1).copy_from_slice(&[0; 3]);
     /// let mut iter = s.iter();
     /// assert_eq!(Some(&[1,2,3][..]), iter.next());
@@ -1744,10 +1744,10 @@ impl<S: SplitAt + Set> SplitAt for ChunkedN<S> {
     ///
     /// ```rust
     /// use flatk::*;
-    /// let s = ChunkedN::from_flat_with_stride(vec![0,1,2,3], 2);
+    /// let s = ChunkedN::from_flat_with_stride(2, vec![0,1,2,3]);
     /// let (l, r) = s.split_at(1);
-    /// assert_eq!(l, ChunkedN::from_flat_with_stride(vec![0,1], 2));
-    /// assert_eq!(r, ChunkedN::from_flat_with_stride(vec![2,3], 2));
+    /// assert_eq!(l, ChunkedN::from_flat_with_stride(2, vec![0,1]));
+    /// assert_eq!(r, ChunkedN::from_flat_with_stride(2, vec![2,3]));
     /// ```
     #[inline]
     fn split_at(self, mid: usize) -> (Self, Self) {
@@ -1963,7 +1963,7 @@ impl<'a, S: StorageView<'a>, N> StorageView<'a> for UniChunked<S, N> {
     /// use flatk::*;
     /// let v = vec![1,2,3,4,5,6,7,8,9,10,11,12];
     /// let s0 = Chunked2::from_flat(v.clone());
-    /// let s1 = ChunkedN::from_flat_with_stride(s0.clone(), 3);
+    /// let s1 = ChunkedN::from_flat_with_stride(3, s0.clone());
     /// assert_eq!(s1.storage_view(), v.as_slice());
     /// assert_eq!(s0.storage_view(), v.as_slice());
     /// ```
@@ -1983,7 +1983,7 @@ impl<S: Storage, N> Storage for UniChunked<S, N> {
     /// use flatk::*;
     /// let v = vec![1,2,3,4,5,6,7,8,9,10,11,12];
     /// let mut s0 = Chunked2::from_flat(v.clone());
-    /// let s1 = ChunkedN::from_flat_with_stride(s0.clone(), 3);
+    /// let s1 = ChunkedN::from_flat_with_stride(3, s0.clone());
     /// assert_eq!(s1.storage(), &v);
     /// assert_eq!(s0.storage(), &v);
     /// assert_eq!(s0.view_mut().storage(), v.as_slice());
@@ -2003,7 +2003,7 @@ impl<S: StorageMut, N> StorageMut for UniChunked<S, N> {
     /// use flatk::*;
     /// let mut v = vec![1,2,3,4,5,6,7,8,9,10,11,12];
     /// let mut s0 = Chunked2::from_flat(v.clone());
-    /// let mut s1 = ChunkedN::from_flat_with_stride(s0.clone(), 3);
+    /// let mut s1 = ChunkedN::from_flat_with_stride(3, s0.clone());
     /// assert_eq!(s1.storage_mut(), &mut v);
     /// assert_eq!(s0.storage_mut(), &mut v);
     /// ```
@@ -2203,25 +2203,25 @@ mod tests {
         assert_eq!(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], v);
 
         let s = ChunkedN::from_flat_with_stride(
-            vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
             3,
+            vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
         );
         assert_eq!([7, 8, 9], s[2]);
 
         let s = ChunkedN::from_flat_with_stride(
-            vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
             3,
+            vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
         );
         assert_eq!([7, 8, 9], s.view()[2]);
 
         let mut s = ChunkedN::from_flat_with_stride(
-            vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
             3,
+            vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
         );
         assert_eq!([7, 8, 9], s.view_mut()[2]);
 
         let v = vec![1, 2, 3, 4, 5, 6, 0, 0, 0, 10, 11, 12];
-        let mut s = ChunkedN::from_flat_with_stride(v, 3);
+        let mut s = ChunkedN::from_flat_with_stride(3, v);
         s[2].copy_from_slice(&[7, 8, 9]);
         assert_eq!(
             vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
@@ -2229,7 +2229,7 @@ mod tests {
         );
 
         let mut v = vec![1, 2, 3, 4, 5, 6, 0, 0, 0, 10, 11, 12];
-        let mut s = ChunkedN::from_flat_with_stride(v.as_mut_slice(), 3);
+        let mut s = ChunkedN::from_flat_with_stride(3, v.as_mut_slice());
         s[2].copy_from_slice(&[7, 8, 9]);
         assert_eq!(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], v);
     }
