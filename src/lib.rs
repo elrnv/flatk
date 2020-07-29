@@ -264,7 +264,7 @@ pub use vec::*;
 pub use view::*;
 
 #[cfg(feature = "derive")]
-pub use flatk_derive::Entity;
+pub use flatk_derive::{Entity, U};
 
 pub use typenum::consts;
 use typenum::type_operators::PartialDiv;
