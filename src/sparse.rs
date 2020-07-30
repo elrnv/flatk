@@ -39,6 +39,7 @@ where
 {
     /// Create a sparse collection from the given set of `indices`, a
     /// `dim`ension and a set of `values`.
+    ///
     /// The corresponding sparse collection will represent a collection
     /// of size `dim` which stores only the given `values` at the specified
     /// `indices`. Note that `dim` may be smaller than `values.len()`, in
@@ -174,12 +175,15 @@ impl<S, T> Extend<(usize, <S as Set>::Elem)> for Sparse<S, T>
 where
     S: Set + Extend<<S as Set>::Elem>,
 {
+    #[inline]
     fn extend<It: IntoIterator<Item = (usize, <S as Set>::Elem)>>(&mut self, iter: It) {
         let Sparse {
             source,
             selection: Select { indices, .. },
         } = self;
-        source.extend(iter.into_iter().map(|(idx, elem)| {
+        let iter = iter.into_iter();
+        indices.reserve(iter.size_hint().0);
+        source.extend(iter.map(|(idx, elem)| {
             indices.push(idx);
             elem
         }));
