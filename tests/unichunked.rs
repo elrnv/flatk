@@ -29,3 +29,10 @@ fn array_into_arrays() {
     let c = Chunked3::from_flat(a);
     assert_eq!(&[[1, 2, 3], [4, 5, 6], [7, 8, 9]], c.view().into_arrays());
 }
+
+#[cfg(feature = "derive")]
+#[test]
+fn test_u_macro() {
+    let _ = Chunked9::from_flat(vec![1; 9]);
+    let _: UniChunked<Vec<_>, U![3 * 3]> = UniChunked::from_flat(vec![1; 9]);
+}
