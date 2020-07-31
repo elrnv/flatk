@@ -138,14 +138,14 @@ impl<S: Set + RemovePrefix, I: AsRef<[usize]>> Subset<S, I> {
     }
 }
 
-impl<S, I> Subset<S, I> {
+impl<S> Subset<S> {
     /// Create a subset with all elements from the original set.
     ///
     /// # Example
     ///
     /// ```rust
     /// use flatk::*;
-    /// let subset = Subset::<_, Vec<_>>::all(vec![1,2,3]);
+    /// let subset = Subset::all::<Box<_>>(vec![1,2,3]);
     /// let subset_view = subset.view();
     /// let mut subset_iter = subset_view.iter();
     /// assert_eq!(Some(&1), subset_iter.next());
@@ -154,11 +154,34 @@ impl<S, I> Subset<S, I> {
     /// assert_eq!(None, subset_iter.next());
     /// ```
     #[inline]
-    pub fn all(data: S) -> Self {
+    pub fn all<I>(data: S) -> Subset<S, I> {
         Subset {
             indices: None,
             data,
         }
+    }
+
+    /// Create a subset with all elements from the original set.
+    ///
+    /// This version of `all` creates the `Subset` type with the default index type, since it
+    /// cannot be determined from the function arguments. In other words this function doesn't
+    /// require an additional generic parameter to be specified when the return type is ambiguous.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use flatk::*;
+    /// let subset = Subset::all_def(vec![1,2,3]);
+    /// let subset_view = subset.view();
+    /// let mut subset_iter = subset_view.iter();
+    /// assert_eq!(Some(&1), subset_iter.next());
+    /// assert_eq!(Some(&2), subset_iter.next());
+    /// assert_eq!(Some(&3), subset_iter.next());
+    /// assert_eq!(None, subset_iter.next());
+    /// ```
+    #[inline]
+    pub fn all_def(data: S) -> Subset<S> {
+        Self::all(data)
     }
 }
 
@@ -834,6 +857,45 @@ where
     }
 }
 
+// Iterator for `Subset` indices.
+pub enum SubsetIndexIter<'a> {
+    All(std::ops::Range<usize>),
+    Sub(&'a [usize]),
+}
+
+impl<'a> Iterator for SubsetIndexIter<'a> {
+    type Item = usize;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            SubsetIndexIter::Sub(ref mut indices) => indices.split_first().map(|(first, rest)| {
+                *indices = rest;
+                *first
+            }),
+            SubsetIndexIter::All(ref mut rng) => rng.next(),
+        }
+    }
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        match self {
+            SubsetIndexIter::Sub(ref mut indices) => {
+                if n >= indices.len() {
+                    None
+                } else {
+                    // SAFETY: the bounds are checked above.
+                    unsafe {
+                        let item = *indices.get_unchecked(n);
+                        *indices = &indices.get_unchecked(n + 1..);
+                        Some(item)
+                    }
+                }
+            }
+            SubsetIndexIter::All(ref mut rng) => rng.nth(n),
+        }
+    }
+}
+
 impl<'a, S, I> Subset<S, I>
 where
     S: Set + View<'a>,
@@ -858,6 +920,43 @@ where
         SubsetIter {
             indices: self.indices.as_ref().map(|indices| indices.as_ref()),
             data: self.data.view(),
+        }
+    }
+
+    /// Immutably iterate over the indices stored by this subset.
+    ///
+    /// The returned indices point to the superset from which this subset was created.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use flatk::*;
+    /// let mut v = vec![1,2,3,4,5];
+    /// let mut subset = Subset::from_indices(vec![0,2,4], v.as_mut_slice());
+    /// let mut iter = subset.index_iter();
+    /// assert_eq!(Some(0), iter.next());
+    /// assert_eq!(Some(2), iter.next());
+    /// assert_eq!(Some(4), iter.next());
+    /// assert_eq!(None, iter.next());
+    /// ```
+    ///
+    /// This also works if the subset is entire:
+    ///
+    /// ```
+    /// use flatk::*;
+    /// let mut v = vec![1,2,3,4,5];
+    /// let mut subset = Subset::all_def(v.as_slice());
+    /// let mut iter = subset.index_iter();
+    /// assert_eq!(Some(0), iter.next());
+    /// assert_eq!(Some(3), iter.nth(2));
+    /// assert_eq!(Some(4), iter.next());
+    /// assert_eq!(None, iter.next());
+    /// ```
+    #[inline]
+    pub fn index_iter(&'a self) -> SubsetIndexIter<'a> {
+        match self.indices {
+            Some(ref indices) => SubsetIndexIter::Sub(indices.as_ref()),
+            None => SubsetIndexIter::All(0..self.data.len()),
         }
     }
 }
