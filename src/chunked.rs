@@ -503,7 +503,7 @@ impl<S: Set, O> Chunked<S, O> {
     /// let data = vec![1,2,3,4,5,6];
     /// let offsets = vec![0,3,4,6];
     /// let s = Chunked::from_offsets(offsets.clone(), data.clone());
-    /// assert_eq!(s.into_inner(), (chunked::Offsets::new(offsets), data));
+    /// assert_eq!(s.into_inner(), (Offsets::new(offsets), data));
     /// ```
     #[inline]
     pub fn into_inner(self) -> (O, S) {

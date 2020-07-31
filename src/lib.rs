@@ -235,7 +235,7 @@ mod macros;
 
 mod array;
 mod boxed;
-pub mod chunked;
+mod chunked;
 #[cfg(feature = "gpu")]
 pub mod gpu;
 mod range;

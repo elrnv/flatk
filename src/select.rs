@@ -58,6 +58,9 @@ use std::convert::{AsMut, AsRef};
 /// indices into another collection. Using `Select` instead lets the user be
 /// explicit about where these indices are pointing without having to annotate
 /// the indices themselves.
+///
+/// [`SplitAt`]: trait.SplitAt.html
+/// [`Chunked`]: struct.Chunked.html
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Select<S, I = Vec<usize>> {
     pub indices: I,

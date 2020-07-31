@@ -39,28 +39,42 @@ use std::convert::AsRef;
 /// *subset.view_mut().isolate(1) = [0; 3];
 /// assert_eq!(&[0,0,0], subset.view().at(1));
 /// ```
-// A note about translation independence:
-// ======================================
-// This struct is very similar to `Chunked`, with the main difference being that
-// each index corresponds to a single element instead of a chunk starting point.
-// To be able to split subsets, we need to make indices translation independent
-// so that we don't have to modify their values when we split the collection.
-// When the indices are owned, we simply modify the indices when we split the
-// subset, but when the indices are a borrowed slice, we always chop the part of
-// data below the first index to ensure that the first index serves as an offset
-// to the rest of the indices, making the entire index array translation
-// independent.
+///
+/// # Translation independence
+///
+/// This struct is very similar to [`Chunked`], with the main difference being that
+/// each index corresponds to a single element instead of a chunk starting point.
+///
+/// Translation independence refers to the need to ensure that indices remain valid after
+/// splitting. When the indices are owned or mutably borrowed, we could simply modify the indices
+/// when we split the subset, but when the indices are a borrowed slice, this is not possible. To
+/// resolve this, we chop the part of data below the first index to ensure that the first index
+/// serves as an offset to the rest of the indices, making the entire index array translation
+/// independent.
+///
+/// Because `Subset`s modify the underlying data storage, it can often be misleading when querying
+/// the underlying data at any given time using one of [`Storage`], [`StorageMut`] or
+/// [`StorageView`] traits.
+///
+/// For a more transparent data structure that preserves the original data set,
+/// use [`Select`]. To expose any characteristics of the contained `data` type, use a trait.
+/// See [`ChunkSize`] for an example.
+///
+/// [`Select`]: struct.Select.html
+/// [`ChunkSize`]: trait.ChunkSize.html
+/// [`Chunked`]: struct.Chunked.html
+/// [`Storage`]: trait.Storage.html
+/// [`StorageMut`]: trait.StorageMut.html
+/// [`StorageView`]: trait.StorageView.html
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Subset<S, I = Box<[usize]>> {
-    /// An optional set of indices. When this is `None`, the subset is
-    /// considered to be entire. Empty subsets are represented by a zero length
-    /// array of indices: either `Some(&[])` or `Some(Vec::new())`.
-    pub indices: Option<I>,
-    /// Because `Subset`s modify the underlying data, it is not useful to query what the data is at
-    /// any given time. For a more transparent data structure that preserves the original data set,
-    /// use `Select`. To expose any characteristics of the contained `data` type, use a trait. See
-    /// `ChunkSize` for an example.
-    pub data: S,
+    /// An optional set of indices.
+    ///
+    /// When this is `None`, the subset is considered to be entire.
+    /// Empty subsets are represented by a zero length array of indices: either `Some(&[])` or
+    /// `Some(Vec::new())`.
+    pub(crate) indices: Option<I>,
+    pub(crate) data: S,
 }
 
 /// A borrowed subset.
@@ -97,7 +111,9 @@ impl<S: Set + RemovePrefix> Subset<S, Vec<usize>> {
 }
 
 impl<S: Set + RemovePrefix, I: AsRef<[usize]>> Subset<S, I> {
-    /// Create a subset of elements from the original scollection corresponding to the given indices.
+    /// Create a subset of elements from the original collection corresponding to the given
+    /// indices.
+    ///
     /// In contrast to `Subset::from_indices`, this function expects the indices
     /// to be unique and in sorted order, instead of manully making it so.
     ///

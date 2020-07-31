@@ -17,7 +17,7 @@ pub(crate) mod par_iter;
 /// example
 ///
 /// ```
-///     use flatk::chunked::{Offsets, ClumpedOffsets};
+///     use flatk::{Offsets, ClumpedOffsets};
 ///
 ///     // with `Offsets` we might have offsets like
 ///     let off = Offsets::new(vec![0, 3, 6, 9, 12, 16, 20, 24, 27, 30, 33, 36, 39]);
@@ -171,7 +171,7 @@ impl<O: AsRef<[usize]>> ClumpedOffsets<O> {
     /// # Example
     ///
     /// ```
-    ///     use flatk::chunked::{Offsets, ClumpedOffsets};
+    ///     use flatk::{Offsets, ClumpedOffsets};
     ///
     ///     let off = Offsets::new(vec![0, 3, 6, 9, 12, 16, 20, 24, 27, 30, 33, 36, 39]);
     ///     let clumped = ClumpedOffsets::from(off);
@@ -757,7 +757,7 @@ impl<O: AsRef<[usize]> + Set> From<Offsets<O>> for ClumpedOffsets {
     /// # Example
     ///
     /// ```
-    /// use flatk::chunked::{Offsets, ClumpedOffsets};
+    /// use flatk::{Offsets, ClumpedOffsets};
     /// let offsets = Offsets::new(vec![0, 3, 6, 9, 12, 16, 20, 24, 27, 30, 33, 36, 39]);
     /// let clumped_offsets = ClumpedOffsets::new(vec![0, 4, 7, 12], vec![0, 12, 24, 39]);
     /// assert_eq!(ClumpedOffsets::from(offsets), clumped_offsets);

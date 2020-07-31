@@ -701,6 +701,26 @@ where
     /// assert_eq!(Some(&[10,11,12]), iter.next());
     /// assert_eq!(None, iter.next());
     /// ```
+    ///
+    /// We can do this with nested chunked types, although the we would need to first convert the
+    /// incoming iterator into an appropriate chunked type, in this case it is `Chunked2<[i32; 4]>`.
+    ///
+    /// ```
+    /// use flatk::*;
+    ///
+    /// let v = vec![[1i32,2],[3,4],[5,6],[7,8]];
+    /// let mut s = Chunked2::from_flat(Chunked2::from_array_vec(v));
+    ///
+    /// let more = Chunked2::from_flat(Chunked2::from_array_vec(vec![[9, 10], [11, 12]]));
+    /// s.extend(more.into_iter());
+    /// let mut iter = s.iter().map(|i| i.into_arrays());
+    /// assert_eq!(Some(&[[1,2], [3,4]]), iter.next());
+    /// assert_eq!(Some(&[[5,6], [7,8]]), iter.next());
+    /// assert_eq!(Some(&[[9,10], [11,12]]), iter.next());
+    /// assert_eq!(None, iter.next());
+    /// ```
+    ///
+    /// In the wake of const-generics, this will become a whole lot more ergonomic.
     fn extend<T>(&mut self, iter: T)
     where
         T: IntoIterator<Item = <Self as Set>::Elem>,
