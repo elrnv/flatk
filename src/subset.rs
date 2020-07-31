@@ -80,9 +80,7 @@ pub struct Subset<S, I = Box<[usize]>> {
 /// A borrowed subset.
 pub type SubsetView<'a, S> = Subset<S, &'a [usize]>;
 
-// The bound Set on S is given since the documentation refers to data.len(), which can only exist
-// for Set types.
-impl<S: Set, I> Subset<S, I> {
+impl<S, I> Subset<S, I> {
     /// Convert this subset into its internal representation.
     #[inline]
     pub fn into_raw(self) -> (Option<I>, S) {
@@ -102,7 +100,7 @@ impl<S: Set, I> Subset<S, I> {
     /// various functions (except for [`Subset::validate`]) may be unsafe.
     ///
     /// The given indices must be unique and in accending sorted order.
-    /// All indices (minus the first) must be strictly less than `data.len()`.
+    /// All indices (minus the first) must be strictly less than the number of elements in `data`.
     ///
     /// The `Subset` can be validated explicitly after creation using [`Subset::validate`].
     ///
