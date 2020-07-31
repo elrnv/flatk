@@ -405,7 +405,7 @@ where
 
 impl<'a, S, I> ViewMut<'a> for Subset<S, I>
 where
-    S: Set + ViewMut<'a>,
+    S: ViewMut<'a>,
     I: AsRef<[usize]>,
 {
     type Type = Subset<S::Type, &'a [usize]>;
