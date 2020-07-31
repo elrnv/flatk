@@ -80,6 +80,39 @@ pub struct Subset<S, I = Box<[usize]>> {
 /// A borrowed subset.
 pub type SubsetView<'a, S> = Subset<S, &'a [usize]>;
 
+// The bound Set on S is given since the documentation refers to data.len(), which can only exist
+// for Set types.
+impl<S: Set, I> Subset<S, I> {
+    /// Convert this subset into its internal representation.
+    #[inline]
+    pub fn into_raw(self) -> (Option<I>, S) {
+        (self.indices, self.data)
+    }
+
+    /// Construct a subset from a set of indices and a data set.
+    ///
+    /// Note that independent of the value of the indices, the first element in the subset will be
+    /// the first element in `data`, and all subsequent elements are taken from `data[index -
+    /// first]` for each `index` in `indices` where `first` is the first index appearing in
+    /// `indices`.
+    ///
+    /// # Safety
+    ///
+    /// Constructing an invalid subset using this function isn't itself unsafe, however calling
+    /// various functions (except for [`Subset::validate`]) may be unsafe.
+    ///
+    /// The given indices must be unique and in accending sorted order.
+    /// All indices (minus the first) must be strictly less than `data.len()`.
+    ///
+    /// The `Subset` can be validated explicitly after creation using [`Subset::validate`].
+    ///
+    /// [`Subset::validate`]: function.Subset.validate.html
+    #[inline]
+    pub unsafe fn from_raw(indices: Option<I>, data: S) -> Subset<S, I> {
+        Subset { indices, data }
+    }
+}
+
 impl<S: Set + RemovePrefix> Subset<S, Vec<usize>> {
     /// Create a subset of elements from the original set given at the specified indices.
     ///
