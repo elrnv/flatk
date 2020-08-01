@@ -807,36 +807,86 @@ impl<O> Offsets<O> {
 }
 
 impl<O: AsMut<[usize]>> Offsets<O> {
-    /// Moves an offset back by a specified amount, effectively transferring
-    /// elements from the previous chunk to the specified chunk.
+    /// Moves an offset back by a specified amount.
+    ///
+    /// This effectively transfers `by` elements to the specified `at` chunk from the preceeding chunk.
     ///
     /// # Panics
     ///
     /// This function panics if `at` is out of bounds or zero.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use flatk::Offsets;
+    /// let mut o = Offsets::new(vec![0, 4, 9]);
+    /// o.move_back(1, 2);
+    /// assert_eq!(o, vec![0, 2, 9].into());
+    /// ```
     #[inline]
-    pub(crate) fn move_back(&mut self, at: usize, by: usize) {
+    pub fn move_back(&mut self, at: usize, by: usize) {
         let offsets = self.as_mut();
         assert!(at > 0);
         offsets[at] -= by;
     }
-    /// Moves an offset forward by a specified amount, effectively transferring
-    /// elements from the previous chunk to the specified chunk.
+    /// Moves an offset forward by a specified amount.
+    ///
+    /// This effectively transfers `by` elements to the specified `at` chunk from the preceeding chunk.
     ///
     /// # Panics
     ///
     /// This function panics if `at` is out of bounds.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use flatk::Offsets;
+    /// let mut o = Offsets::new(vec![0, 4, 9]);
+    /// o.move_forward(1, 2);
+    /// assert_eq!(o, vec![0, 6, 9].into());
+    /// ```
     #[inline]
-    pub(crate) fn move_forward(&mut self, at: usize, by: usize) {
+    pub fn move_forward(&mut self, at: usize, by: usize) {
         let offsets = self.as_mut();
         offsets[at] += by;
     }
 
-    /// Extend the last offset, which effectively increases the last chunk size.
+    /// Extend the last offset.
+    ///
+    /// This effectively increases the last chunk size.
     /// This function is the same as `self.move_forward(self.len() - 1, by)`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use flatk::Offsets;
+    /// let mut o = Offsets::new(vec![0, 4, 9]);
+    /// o.extend_last(2);
+    /// assert_eq!(o, vec![0, 4, 11].into());
+    /// ```
     #[inline]
-    pub(crate) fn extend_last(&mut self, by: usize) {
+    pub fn extend_last(&mut self, by: usize) {
         let offsets = self.as_mut();
         offsets[offsets.len() - 1] += by;
+    }
+
+    /// Shrink the last offset.
+    ///
+    /// This effectively decreases the last chunk size.
+    /// This function is the same as `self.move_back(self.len() - 1, by)`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use flatk::Offsets;
+    /// let mut o = Offsets::new(vec![0, 4, 9]);
+    /// o.shrink_last(2);
+    /// assert_eq!(o, vec![0, 4, 7].into());
+    /// ```
+    #[inline]
+    pub fn shrink_last(&mut self, by: usize) {
+        let offsets = self.as_mut();
+        offsets[offsets.len() - 1] -= by;
     }
 }
 
