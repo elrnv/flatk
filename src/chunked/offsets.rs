@@ -824,7 +824,7 @@ impl<O: AsMut<[usize]>> Offsets<O> {
     /// assert_eq!(o, vec![0, 2, 9].into());
     /// ```
     #[inline]
-    pub fn move_back(&mut self, at: usize, by: usize) {
+    pub(crate) fn move_back(&mut self, at: usize, by: usize) {
         let offsets = self.as_mut();
         assert!(at > 0);
         offsets[at] -= by;
@@ -846,7 +846,7 @@ impl<O: AsMut<[usize]>> Offsets<O> {
     /// assert_eq!(o, vec![0, 6, 9].into());
     /// ```
     #[inline]
-    pub fn move_forward(&mut self, at: usize, by: usize) {
+    pub(crate) fn move_forward(&mut self, at: usize, by: usize) {
         let offsets = self.as_mut();
         offsets[at] += by;
     }
@@ -865,7 +865,7 @@ impl<O: AsMut<[usize]>> Offsets<O> {
     /// assert_eq!(o, vec![0, 4, 11].into());
     /// ```
     #[inline]
-    pub fn extend_last(&mut self, by: usize) {
+    pub(crate) fn extend_last(&mut self, by: usize) {
         let offsets = self.as_mut();
         offsets[offsets.len() - 1] += by;
     }
@@ -884,7 +884,7 @@ impl<O: AsMut<[usize]>> Offsets<O> {
     /// assert_eq!(o, vec![0, 4, 7].into());
     /// ```
     #[inline]
-    pub fn shrink_last(&mut self, by: usize) {
+    pub(crate) fn shrink_last(&mut self, by: usize) {
         let offsets = self.as_mut();
         offsets[offsets.len() - 1] -= by;
     }
