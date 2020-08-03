@@ -630,7 +630,9 @@ where
     S: RemovePrefix,
 {
     /// Move a number of elements from a chunk at the given index to the
-    /// previous chunk. If the first chunk is selected, then the transferred
+    /// previous chunk.
+    ///
+    /// If the first chunk is selected, then the transferred
     /// elements are explicitly removed, which may cause reallocation if the underlying storage
     /// type manages memory.
     ///
@@ -648,7 +650,7 @@ where
     /// assert_eq!(Some(&[4,5][..]), c_iter.next());
     /// assert_eq!(None, c_iter.next());
     ///
-    /// // Transfer 2 elements from the first chunk to the next.
+    /// // Transfer 1 element from the second chunk to the previous.
     /// c.transfer_backward(1, 1);
     /// let mut c_iter = c.iter();
     /// assert_eq!(Some(&[1,2,3,4][..]), c_iter.next());

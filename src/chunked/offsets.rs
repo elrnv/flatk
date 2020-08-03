@@ -813,7 +813,15 @@ impl<O: AsMut<[usize]>> Offsets<O> {
     ///
     /// # Panics
     ///
-    /// This function panics if `at` is out of bounds or zero.
+    /// This function panics if `at` is out of bounds.
+    ///
+    /// If `at` it zero, the beginning of the indexed range is simply extended, but an overflow
+    /// panic will be caused if the first offset is moved below zero since offsets are represented
+    /// by unsigned integers.
+    ///
+    /// It is a logic error to move an offset past its preceeding offset because this will break
+    /// the monotonicity of the offset sequence, which can cause panics from other function on the
+    /// Offsets.
     ///
     /// # Example
     ///
@@ -824,18 +832,24 @@ impl<O: AsMut<[usize]>> Offsets<O> {
     /// assert_eq!(o, vec![0, 2, 9].into());
     /// ```
     #[inline]
-    pub(crate) fn move_back(&mut self, at: usize, by: usize) {
+    pub fn move_back(&mut self, at: usize, by: usize) {
         let offsets = self.as_mut();
-        assert!(at > 0);
         offsets[at] -= by;
+        debug_assert!(at == 0 || offsets[at] >= offsets[at - 1]);
     }
     /// Moves an offset forward by a specified amount.
     ///
-    /// This effectively transfers `by` elements to the specified `at` chunk from the preceeding chunk.
+    /// This effectively transfers `by` elements to the specified `at` chunk from the succeeding chunk.
+    ///
+    /// If `at` indexes the last offset, then the indexed range is simply increased.
     ///
     /// # Panics
     ///
     /// This function panics if `at` is out of bounds.
+    ///
+    /// It is a logic error to move an offset past its succeeding offset because this will break
+    /// the monotonicity of the offset sequence, which can cause panics from other function on the
+    /// Offsets.
     ///
     /// # Example
     ///
@@ -846,9 +860,10 @@ impl<O: AsMut<[usize]>> Offsets<O> {
     /// assert_eq!(o, vec![0, 6, 9].into());
     /// ```
     #[inline]
-    pub(crate) fn move_forward(&mut self, at: usize, by: usize) {
+    pub fn move_forward(&mut self, at: usize, by: usize) {
         let offsets = self.as_mut();
         offsets[at] += by;
+        debug_assert!(at == offsets.len() - 1 || offsets[at] <= offsets[at + 1]);
     }
 
     /// Extend the last offset.
@@ -865,7 +880,7 @@ impl<O: AsMut<[usize]>> Offsets<O> {
     /// assert_eq!(o, vec![0, 4, 11].into());
     /// ```
     #[inline]
-    pub(crate) fn extend_last(&mut self, by: usize) {
+    pub fn extend_last(&mut self, by: usize) {
         let offsets = self.as_mut();
         offsets[offsets.len() - 1] += by;
     }
@@ -874,6 +889,12 @@ impl<O: AsMut<[usize]>> Offsets<O> {
     ///
     /// This effectively decreases the last chunk size.
     /// This function is the same as `self.move_back(self.len() - 1, by)`.
+    ///
+    /// # Panics
+    ///
+    /// It is a logic error to move an offset past its preceeding offset because this will break
+    /// the monotonicity of the offset sequence, which can cause panics from other function on the
+    /// Offsets.
     ///
     /// # Example
     ///
@@ -884,9 +905,12 @@ impl<O: AsMut<[usize]>> Offsets<O> {
     /// assert_eq!(o, vec![0, 4, 7].into());
     /// ```
     #[inline]
-    pub(crate) fn shrink_last(&mut self, by: usize) {
+    pub fn shrink_last(&mut self, by: usize) {
         let offsets = self.as_mut();
         offsets[offsets.len() - 1] -= by;
+        debug_assert!(
+            offsets.len() == 1 || offsets[offsets.len() - 1] >= offsets[offsets.len() - 2]
+        );
     }
 }
 
