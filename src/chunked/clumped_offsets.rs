@@ -38,6 +38,16 @@ pub struct ClumpedOffsets<O = Vec<usize>> {
     pub offsets: Offsets<O>,
 }
 
+impl<O: AsRef<[usize]>> Set for ClumpedOffsets<O> {
+    type Elem = usize;
+    type Atom = usize;
+
+    #[inline]
+    fn len(&self) -> usize {
+        self.num_offsets()
+    }
+}
+
 impl<O: AsRef<[usize]>> ClumpedOffsets<O> {
     /// Get the offset value in the clumped offsets collection at the given index of the conceptual
     /// unclumped offset collection.

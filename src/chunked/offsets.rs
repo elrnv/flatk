@@ -12,6 +12,16 @@ pub(crate) mod par_iter;
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Offsets<O = Vec<usize>>(O);
 
+impl<O: Set<Elem = usize, Atom = usize>> Set for Offsets<O> {
+    type Elem = usize;
+    type Atom = usize;
+
+    #[inline]
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
 impl<O: AsRef<[usize]> + Set> Offsets<O> {
     #[inline]
     fn offset_value_ranges(&self) -> OffsetValueRanges {
