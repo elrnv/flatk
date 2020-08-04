@@ -1028,6 +1028,14 @@ impl<'a, O: Get<'a, usize>> GetIndex<'a, Offsets<O>> for usize {
     }
 }
 
+impl<'a, O: Get<'a, usize>> GetIndex<'a, Offsets<O>> for &usize {
+    type Output = O::Output;
+    #[inline]
+    fn get(self, offsets: &Offsets<O>) -> Option<Self::Output> {
+        offsets.0.get(*self)
+    }
+}
+
 impl<'a, O: Get<'a, Range<usize>>> GetIndex<'a, Offsets<O>> for Range<usize> {
     type Output = Offsets<O::Output>;
     #[inline]

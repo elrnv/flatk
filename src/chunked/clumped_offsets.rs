@@ -871,6 +871,17 @@ where
     }
 }
 
+impl<'a, O> GetIndex<'a, ClumpedOffsets<O>> for &usize
+where
+    ClumpedOffsets<O>: GetOffset,
+{
+    type Output = usize;
+    #[inline]
+    fn get(self, clumped_offsets: &ClumpedOffsets<O>) -> Option<Self::Output> {
+        GetIndex::get(*self, clumped_offsets)
+    }
+}
+
 impl<O> IsolateIndex<ClumpedOffsets<O>> for usize
 where
     ClumpedOffsets<O>: GetOffset,
