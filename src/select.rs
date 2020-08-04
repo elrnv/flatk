@@ -364,6 +364,19 @@ where
     }
 }
 
+impl<'a, S, I> GetIndex<'a, Select<S, I>> for &usize
+where
+    I: AsRef<[usize]>,
+    S: Get<'a, usize>,
+{
+    type Output = (usize, <S as Get<'a, usize>>::Output);
+
+    #[inline]
+    fn get(self, selection: &Select<S, I>) -> Option<Self::Output> {
+        GetIndex::get(*self, selection)
+    }
+}
+
 impl<S, I> IsolateIndex<Select<S, I>> for usize
 where
     I: Isolate<usize>,

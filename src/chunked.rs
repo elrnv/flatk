@@ -1075,6 +1075,32 @@ where
     }
 }
 
+impl<'a, S, O> GetIndex<'a, Chunked<S, O>> for &usize
+where
+    S: Set + View<'a> + Get<'a, std::ops::Range<usize>, Output = <S as View<'a>>::Type>,
+    O: IndexRange,
+{
+    type Output = S::Output;
+
+    /// Get an element of the given `Chunked` collection.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use flatk::*;
+    /// let v = vec![0, 1, 4, 6];
+    /// let data = (1..=6).collect::<Vec<_>>();
+    /// let s = Chunked::from_offsets(v.as_slice(), data.view());
+    /// assert_eq!(Some(&[1][..]), s.get(&0));
+    /// assert_eq!(Some(&[2,3,4][..]), s.get(&1));
+    /// assert_eq!(Some(&[5,6][..]), s.get(&2));
+    /// ```
+    #[inline]
+    fn get(self, chunked: &Chunked<S, O>) -> Option<Self::Output> {
+        GetIndex::get(*self, chunked)
+    }
+}
+
 impl<'a, S, O> GetIndex<'a, Chunked<S, O>> for std::ops::Range<usize>
 where
     S: Set + View<'a> + Get<'a, std::ops::Range<usize>, Output = <S as View<'a>>::Type>,

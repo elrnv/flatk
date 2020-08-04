@@ -623,6 +623,19 @@ where
     }
 }
 
+impl<'a, S, O> GetIndex<'a, Subset<S, O>> for &usize
+where
+    O: AsRef<[usize]>,
+    S: Get<'a, usize>,
+{
+    type Output = <S as Get<'a, usize>>::Output;
+
+    #[inline]
+    fn get(self, subset: &Subset<S, O>) -> Option<Self::Output> {
+        GetIndex::get(*self, subset)
+    }
+}
+
 impl<S, O> IsolateIndex<Subset<S, O>> for usize
 where
     O: AsRef<[usize]>,

@@ -359,6 +359,19 @@ where
     }
 }
 
+impl<'a, S, T, I> GetIndex<'a, Sparse<S, T, I>> for &usize
+where
+    I: AsRef<[usize]>,
+    S: Get<'a, usize>,
+{
+    type Output = (usize, <S as Get<'a, usize>>::Output);
+
+    #[inline]
+    fn get(self, sparse: &Sparse<S, T, I>) -> Option<Self::Output> {
+        GetIndex::get(*self, sparse)
+    }
+}
+
 impl<S, T, I> IsolateIndex<Sparse<S, T, I>> for usize
 where
     I: Isolate<usize>,

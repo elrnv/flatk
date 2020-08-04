@@ -925,6 +925,20 @@ where
     }
 }
 
+impl<'a, S, N> GetIndex<'a, UniChunked<S, U<N>>> for &usize
+where
+    S: Set + UniChunkable<N> + Get<'a, StaticRange<N>>,
+    N: Unsigned,
+{
+    type Output = S::Output;
+
+    /// Get an element of the given `UniChunked` collection.
+    #[inline]
+    fn get(self, chunked: &UniChunked<S, U<N>>) -> Option<Self::Output> {
+        GetIndex::get(*self, chunked)
+    }
+}
+
 impl<'a, S, N> GetIndex<'a, UniChunked<S, U<N>>> for std::ops::Range<usize>
 where
     S: Set + UniChunkable<N> + Get<'a, std::ops::Range<usize>>,
