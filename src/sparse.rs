@@ -35,7 +35,7 @@ pub type SparseView<'a, S, T> = Sparse<S, T, &'a [usize]>;
 impl<S, I> Sparse<S, std::ops::RangeTo<usize>, I>
 where
     S: Set,
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
 {
     /// Create a sparse collection from the given set of `indices`, a
     /// `dim`ension and a set of `values`.
@@ -73,7 +73,7 @@ impl<S, T, I> Sparse<S, T, I>
 where
     S: Set,
     T: Set,
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
 {
     /// The most general constructor for a sparse collection taking a selection
     /// of values and their corresponding data.
@@ -119,7 +119,7 @@ impl<S, T, I> Sparse<S, T, I> {
         mut keep: impl FnMut(usize, &B::Owned) -> bool,
     ) where
         S2: IntoIterator<Item = B>,
-        I2: AsRef<[usize]>,
+        I2: AsIndexSlice,
         B: IntoOwned,
         Self: Push<(usize, B::Owned)>,
     {
@@ -268,7 +268,7 @@ impl<'a, S, T, I> View<'a> for Sparse<S, T, I>
 where
     S: View<'a>,
     T: View<'a>,
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
 {
     type Type = Sparse<S::Type, T::Type, &'a [usize]>;
     #[inline]
@@ -346,7 +346,7 @@ impl<S: RemovePrefix, T, I: RemovePrefix> RemovePrefix for Sparse<S, T, I> {
 
 impl<'a, S, T, I> GetIndex<'a, Sparse<S, T, I>> for usize
 where
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
     S: Get<'a, usize>,
 {
     type Output = (usize, <S as Get<'a, usize>>::Output);
@@ -361,7 +361,7 @@ where
 
 impl<'a, S, T, I> GetIndex<'a, Sparse<S, T, I>> for &usize
 where
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
     S: Get<'a, usize>,
 {
     type Output = (usize, <S as Get<'a, usize>>::Output);
@@ -483,7 +483,7 @@ where
     S: View<'a>,
     <S as View<'a>>::Type: Set + IntoIterator,
     T: Set + Get<'a, usize> + View<'a>,
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
 {
     #[inline]
     pub fn iter(
@@ -515,7 +515,7 @@ where
 
 impl<'a, S, T, I> Sparse<S, T, I>
 where
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
 {
     #[inline]
     pub fn index_iter(&'a self) -> std::iter::Cloned<std::slice::Iter<'a, usize>> {
@@ -527,7 +527,7 @@ impl<'a, S, T, I> Sparse<S, T, I>
 where
     S: View<'a>,
     <S as View<'a>>::Type: Set + IntoIterator,
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
 {
     #[inline]
     pub fn indexed_source_iter(
@@ -562,7 +562,7 @@ impl<'a, S, T, I> Sparse<S, T, I>
 where
     S: ViewMut<'a>,
     <S as ViewMut<'a>>::Type: Set + IntoIterator,
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
 {
     #[inline]
     pub fn indexed_source_iter_mut(

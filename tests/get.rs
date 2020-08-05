@@ -149,13 +149,13 @@ fn get_chunked() {
 #[test]
 fn get_selected() {
     let v = vec![1, 2, 3, 4, 5];
-    let selection = Select::new(vec![0, 0, 4], v.as_slice());
-    assert_eq!((0, &1), selection.get(1).unwrap());
+    let selection = Select::new(vec![0, 0, 4], v);
+    assert_eq!((0, &1), selection.view().get(1).unwrap());
 }
 
 #[test]
 fn get_subset() {
-    let mut v = vec![1, 2, 3, 4, 5];
-    let subset = Subset::from_indices(vec![0, 2, 4], v.as_mut_slice());
+    let v = vec![1, 2, 3, 4, 5];
+    let subset = Subset::from_indices(vec![0, 2, 4], v);
     assert_eq!(&3, subset.view().get(1).unwrap());
 }

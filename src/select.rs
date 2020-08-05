@@ -1,5 +1,6 @@
 use super::*;
 use std::convert::{AsMut, AsRef};
+use std::ops::Range;
 
 /// A Set that is a non-contiguous, unordered and possibly duplicated selection
 /// of some larger collection. `S` can be any borrowed collection type that
@@ -70,7 +71,24 @@ pub struct Select<S, I = Vec<usize>> {
 /// A borrowed selection.
 pub type SelectView<'a, S> = Select<S, &'a [usize]>;
 
-impl<S: Set, I: AsRef<[usize]>> Select<S, I> {
+/// A wrapper trait for sequences of immutable indices.
+pub trait AsIndexSlice: AsRef<[usize]> {}
+/// A wrapper trait for sequences of mutable indices.
+pub trait AsIndexSliceMut: AsMut<[usize]> {}
+
+impl AsIndexSlice for [usize] {}
+impl AsIndexSliceMut for [usize] {}
+impl AsIndexSlice for &[usize] {}
+impl AsIndexSlice for &mut [usize] {}
+impl AsIndexSliceMut for &mut [usize] {}
+impl AsIndexSlice for Vec<usize> {}
+impl AsIndexSliceMut for Vec<usize> {}
+
+impl<S, I> Select<S, I>
+where
+    S: Set,
+    I: AsIndexSlice,
+{
     /// Create a selection of elements from the original set from the given
     /// indices.
     ///
@@ -99,12 +117,41 @@ impl<S: Set, I: AsRef<[usize]>> Select<S, I> {
     }
 }
 
+impl<S: Set> Select<S, Range<usize>> {
+    /// Create a selection of elements from the original set from the given
+    /// indices.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use flatk::*;
+    /// let v = vec!['a', 'b', 'c'];
+    /// let selection = Select::from_range(1..3, v.as_slice());
+    /// assert_eq!('b', selection[0]);
+    /// assert_eq!('c', selection[1]);
+    /// ```
+    #[inline]
+    pub fn from_range(indices: Range<usize>, target: S) -> Self {
+        Self::validate(Select { indices, target })
+    }
+
+    /// Panics if this selection has out of bounds indices.
+    #[inline]
+    fn validate(self) -> Self {
+        assert!(
+            self.indices.end <= self.target.len(),
+            "Select index out of bounds."
+        );
+        self
+    }
+}
+
 impl<'a, S, I> Select<S, I>
 where
     S: Set + IntoOwned + Get<'a, usize>,
     <S as IntoOwned>::Owned: std::iter::FromIterator<<S as Set>::Elem>,
     <S as Get<'a, usize>>::Output: IntoOwned<Owned = <S as Set>::Elem>,
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
 {
     /// Collapse the target values pointed to by `indices` into the structure
     /// given by the indices. In other words, replace `indices` with the target
@@ -168,7 +215,7 @@ where
 // Set, Vew, ReinterpretSet (this needs to be refined)
 
 // Required for `Chunked` and `UniChunked` selections.
-impl<S: Set, I: AsRef<[usize]>> Set for Select<S, I> {
+impl<S: Set, I: AsIndexSlice> Set for Select<S, I> {
     type Elem = S::Elem;
     type Atom = S::Atom;
     /// Get the number of selected elements.
@@ -187,11 +234,30 @@ impl<S: Set, I: AsRef<[usize]>> Set for Select<S, I> {
     }
 }
 
+impl<S: Set> Set for Select<S, Range<usize>> {
+    type Elem = S::Elem;
+    type Atom = S::Atom;
+    /// Get the number of selected elements.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use flatk::*;
+    /// let v = vec![1,2,3,4,5];
+    /// let selection = Select::from_range(1..3, v.as_slice());
+    /// assert_eq!(2, selection.len());
+    /// ```
+    #[inline]
+    fn len(&self) -> usize {
+        Set::len(&self.indices)
+    }
+}
+
 // Required for `Chunked` and `UniChunked` selections.
 impl<'a, S, I> View<'a> for Select<S, I>
 where
     S: View<'a>,
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
 {
     type Type = Select<S::Type, &'a [usize]>;
     #[inline]
@@ -203,10 +269,24 @@ where
     }
 }
 
+impl<'a, S> View<'a> for Select<S, Range<usize>>
+where
+    S: View<'a>,
+{
+    type Type = Select<S::Type, Range<usize>>;
+    #[inline]
+    fn view(&'a self) -> Self::Type {
+        Select {
+            indices: self.indices.clone(),
+            target: self.target.view(),
+        }
+    }
+}
+
 impl<'a, S, I> ViewMut<'a> for Select<S, I>
 where
     S: Set + ViewMut<'a>,
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
 {
     type Type = Select<S::Type, &'a [usize]>;
     /// Create a mutable view of this selection.
@@ -246,6 +326,20 @@ where
     fn view_mut(&'a mut self) -> Self::Type {
         Select {
             indices: self.indices.as_ref(),
+            target: self.target.view_mut(),
+        }
+    }
+}
+
+impl<'a, S> ViewMut<'a> for Select<S, Range<usize>>
+where
+    S: Set + ViewMut<'a>,
+{
+    type Type = Select<S::Type, Range<usize>>;
+    #[inline]
+    fn view_mut(&'a mut self) -> Self::Type {
+        Select {
+            indices: self.indices.clone(),
             target: self.target.view_mut(),
         }
     }
@@ -304,7 +398,7 @@ impl<S, I: RemovePrefix> RemovePrefix for Select<S, I> {
 impl<'a, S, I> Select<S, I>
 where
     S: Set + Get<'a, usize, Output = &'a <S as Set>::Elem> + View<'a>,
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
     <S as View<'a>>::Type: IntoIterator<Item = S::Output>,
     <S as Set>::Elem: 'a,
 {
@@ -342,6 +436,33 @@ where
     }
 }
 
+impl<'a, S> Select<S, Range<usize>>
+where
+    S: Set + Get<'a, usize, Output = &'a <S as Set>::Elem> + View<'a>,
+    <S as View<'a>>::Type: IntoIterator<Item = S::Output>,
+    <S as Set>::Elem: 'a,
+{
+    /// The typical way to use this function is to clone from a `SelectView`
+    /// into a mutable `S` type. This function disregards indies, and simply
+    /// clones the underlying target data.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if `other` has a length unequal to `self.len()`.
+    pub fn clone_values_into<V>(&'a self, other: &'a mut V)
+    where
+        V: ViewMut<'a> + ?Sized,
+        <V as ViewMut<'a>>::Type: Set + IntoIterator<Item = &'a mut S::Elem>,
+        <S as Set>::Elem: Clone,
+    {
+        let other_view = other.view_mut();
+        assert_eq!(other_view.len(), self.len());
+        for (theirs, mine) in other_view.into_iter().zip(self.iter()) {
+            theirs.clone_from(&mine.1);
+        }
+    }
+}
+
 /*
  * Get API provides a way to access the index and its associated value for each
  * of the selected elements.
@@ -349,7 +470,7 @@ where
 
 impl<'a, S, I> GetIndex<'a, Select<S, I>> for usize
 where
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
     S: Get<'a, usize>,
 {
     type Output = (usize, <S as Get<'a, usize>>::Output);
@@ -364,15 +485,43 @@ where
     }
 }
 
+impl<'a, S> GetIndex<'a, Select<S, Range<usize>>> for usize
+where
+    S: Get<'a, usize>,
+{
+    type Output = (usize, <S as Get<'a, usize>>::Output);
+
+    #[inline]
+    fn get(self, selection: &Select<S, Range<usize>>) -> Option<Self::Output> {
+        selection
+            .indices
+            .clone()
+            .nth(self)
+            .and_then(|idx| selection.target.get(idx).map(|val| (idx, val)))
+    }
+}
+
 impl<'a, S, I> GetIndex<'a, Select<S, I>> for &usize
 where
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
     S: Get<'a, usize>,
 {
     type Output = (usize, <S as Get<'a, usize>>::Output);
 
     #[inline]
     fn get(self, selection: &Select<S, I>) -> Option<Self::Output> {
+        GetIndex::get(*self, selection)
+    }
+}
+
+impl<'a, S> GetIndex<'a, Select<S, Range<usize>>> for &usize
+where
+    S: Get<'a, usize>,
+{
+    type Output = (usize, <S as Get<'a, usize>>::Output);
+
+    #[inline]
+    fn get(self, selection: &Select<S, Range<usize>>) -> Option<Self::Output> {
         GetIndex::get(*self, selection)
     }
 }
@@ -454,10 +603,10 @@ where
  * used instead.
  */
 
-impl<'a, S, I> std::ops::Index<usize> for Select<S, I>
+impl<S, I> std::ops::Index<usize> for Select<S, I>
 where
     S: std::ops::Index<usize> + Set + ValueType,
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
 {
     type Output = S::Output;
 
@@ -483,10 +632,28 @@ where
     }
 }
 
-impl<'a, S, I> std::ops::IndexMut<usize> for Select<S, I>
+impl<S> std::ops::Index<usize> for Select<S, Range<usize>>
+where
+    S: std::ops::Index<usize> + Set + ValueType,
+{
+    type Output = S::Output;
+
+    /// Immutably index the selection.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the index is out of bounds or if the selection is empty.
+    #[inline]
+    fn index(&self, idx: usize) -> &Self::Output {
+        self.target
+            .index(self.indices.clone().nth(idx).expect("Index out of bounds"))
+    }
+}
+
+impl<S, I> std::ops::IndexMut<usize> for Select<S, I>
 where
     S: std::ops::IndexMut<usize> + Set + ValueType,
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
 {
     /// Mutably index the selection.
     ///
@@ -516,9 +683,25 @@ where
     }
 }
 
+impl<S> std::ops::IndexMut<usize> for Select<S, Range<usize>>
+where
+    S: std::ops::IndexMut<usize> + Set + ValueType,
+{
+    /// Mutably index the selection.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the index is out of bounds or if the selection is empty.
+    #[inline]
+    fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
+        self.target
+            .index_mut(self.indices.clone().nth(idx).expect("Index out of bounds"))
+    }
+}
+
 impl<'a, T, I> std::ops::Index<usize> for Select<&'a [T], I>
 where
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
 {
     type Output = T;
     /// Immutably index the selection of elements from a borrowed slice.
@@ -542,9 +725,23 @@ where
     }
 }
 
+impl<'a, T> std::ops::Index<usize> for Select<&'a [T], Range<usize>> {
+    type Output = T;
+    /// Immutably index the selection of elements from a borrowed slice.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the index is out of bounds or if the selection is empty.
+    #[inline]
+    fn index(&self, idx: usize) -> &Self::Output {
+        self.target
+            .index(self.indices.clone().nth(idx).expect("Index out of bounds"))
+    }
+}
+
 impl<'a, T, I> std::ops::Index<usize> for Select<&'a mut [T], I>
 where
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
 {
     type Output = T;
     /// Immutably index a selection of elements from a mutably borrowed slice.
@@ -558,8 +755,8 @@ where
     /// ```
     /// use flatk::*;
     /// let mut v = vec![1,2,3,4,5];
-    /// let mut subset = Subset::from_indices(vec![3,2,0,4], v.as_mut_slice());
-    /// assert_eq!(3, subset[1]);
+    /// let mut selection = Select::new(vec![3,2,0,4], v.as_mut_slice());
+    /// assert_eq!(3, selection[1]);
     /// ```
     #[inline]
     fn index(&self, idx: usize) -> &Self::Output {
@@ -567,9 +764,23 @@ where
     }
 }
 
+impl<'a, T> std::ops::Index<usize> for Select<&'a mut [T], Range<usize>> {
+    type Output = T;
+    /// Immutably index a selection of elements from a mutably borrowed slice.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the index is out of bounds or if the selection is empty.
+    #[inline]
+    fn index(&self, idx: usize) -> &Self::Output {
+        self.target
+            .index(self.indices.clone().nth(idx).expect("Index out of bounds"))
+    }
+}
+
 impl<'a, T, I> std::ops::IndexMut<usize> for Select<&'a mut [T], I>
 where
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
 {
     /// Mutably index a selection of elements from a mutably borrowed slice.
     ///
@@ -596,6 +807,19 @@ where
     }
 }
 
+impl<'a, T> std::ops::IndexMut<usize> for Select<&'a mut [T], Range<usize>> {
+    /// Mutably index a selection of elements from a mutably borrowed slice.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the index is out of bounds or if the selection is empty.
+    #[inline]
+    fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
+        self.target
+            .index_mut(self.indices.clone().nth(idx).expect("Index out of bounds"))
+    }
+}
+
 /*
  * Iteration
  */
@@ -603,7 +827,7 @@ where
 impl<'a, S, I> Select<S, I>
 where
     S: Set + Get<'a, usize> + View<'a>,
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
 {
     #[inline]
     pub fn iter(&'a self) -> impl Iterator<Item = (usize, <S as Get<'a, usize>>::Output)> + Clone {
@@ -614,10 +838,21 @@ where
             .filter_map(move |idx| self.target.get(idx).map(|val| (idx, val)))
     }
 }
+impl<'a, S> Select<S, Range<usize>>
+where
+    S: Set + Get<'a, usize> + View<'a>,
+{
+    #[inline]
+    pub fn iter(&'a self) -> impl Iterator<Item = (usize, <S as Get<'a, usize>>::Output)> + Clone {
+        self.indices
+            .clone()
+            .filter_map(move |idx| self.target.get(idx).map(|val| (idx, val)))
+    }
+}
 
 impl<S, I> Select<S, I>
 where
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
 {
     #[inline]
     pub fn index_iter(&self) -> std::slice::Iter<'_, usize> {

@@ -1,10 +1,11 @@
 //! This module defines functions specific to `Chunked<Sparse<_>>` types
 use super::*;
+use crate::select::{AsIndexSlice, AsIndexSliceMut};
 use crate::Sparse;
 
 impl<'a, S, T, I, O> Chunked<Sparse<S, T, I>, Offsets<O>>
 where
-    I: Dummy + AsMut<[usize]>,
+    I: Dummy + AsIndexSliceMut,
     T: Dummy + Set + View<'a>,
     <T as View<'a>>::Type: Set + Clone + Dummy,
     S: Dummy + Set + ViewMut<'a>,
@@ -53,7 +54,7 @@ where
     <S as View<'a>>::Type: SplitAt + Dummy + Set,
     T: View<'a> + Set + Clone,
     <T as View<'a>>::Type: Set + Dummy + Clone,
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
     O: Set + AsRef<[usize]>,
 {
     /// Combine elements in each sorted chunk with the same index using the given function.
@@ -93,7 +94,7 @@ where
     <S as View<'a>>::Type: SplitAt + Dummy + Set,
     T: View<'a> + Set + Clone,
     <T as View<'a>>::Type: Set + Dummy + Clone,
-    I: AsRef<[usize]>,
+    I: AsIndexSlice,
     O: Set + AsRef<[usize]>,
 {
     pub fn pruned<E>(
