@@ -1,6 +1,6 @@
 [package]
 name = "flatk"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["Egor Larionov <egor.larionov@gmail.com>"]
 edition = "2018"
 
@@ -16,8 +16,8 @@ keywords = ["chunked", "sparse", "entity", "structure", "layout"]
 [dependencies]
 typenum = "1.12.0"
 reinterpret = "0.2"
-bytemuck = { version = "1.2.0", features = ["extern_crate_alloc"] }
-rayon = { version = "1.3.1", optional = true }
+bytemuck = { version = "1.5", features = ["extern_crate_alloc"] }
+rayon = { version = "1.5", optional = true }
 #wgpu = { git = "https://github.com/gfx-rs/wgpu-rs.git", optional = true }
 #futures = { version = "0.3", optional = true }
 #shaderc = { version = "0.6", optional = true }
@@ -26,7 +26,7 @@ packed_simd = { version = "0.3", optional = true }
 flatk-derive = { path = "flatk-derive", version = "0.2", optional = true }
 
 [dev-dependencies]
-rand = "0.7"
+rand = "0.8"
 criterion = "0.3"
 
 [features]
