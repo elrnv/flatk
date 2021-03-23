@@ -264,7 +264,7 @@ pub use vec::*;
 pub use view::*;
 
 #[cfg(feature = "derive")]
-pub use flatk_derive::{Entity, U};
+pub use flatk_derive::{Component, U};
 
 pub use typenum::consts;
 use typenum::type_operators::PartialDiv;
@@ -1397,16 +1397,16 @@ mod tests {
     #[cfg(feature = "derive")]
     mod derive_tests {
         /*
-         * Test the use of the `Entity` derive macro
+         * Test the use of the `Component` derive macro
          */
 
         // Needed to make the derive macro work in the test context.
         use super::*;
         use crate as flatk;
-        use flatk::Entity;
+        use flatk::Component;
 
-        #[derive(Copy, Clone, Debug, PartialEq, Entity)]
-        struct MyEntity<X, V> {
+        #[derive(Copy, Clone, Debug, PartialEq, Component)]
+        struct MyComponent<X, V> {
             // Unused parameter, that is simply copied through to views and items.
             id: usize,
             x: X,
@@ -1414,20 +1414,20 @@ mod tests {
         }
 
         #[test]
-        fn entity_derive_test() {
-            let mut e = MyEntity {
+        fn component_derive_test() {
+            let mut e = MyComponent {
                 id: 0,
                 x: vec![1.0; 12],
                 v: vec![7.0; 12],
             };
 
-            // Get the size of the entity set
+            // Get the size of the component set
             assert_eq!(e.len(), 12);
 
-            // Construct a View and Get a single element from MyEntity.
+            // Construct a View and Get a single element from MyComponent.
             assert_eq!(
                 e.view().at(0),
-                MyEntity {
+                MyComponent {
                     id: 0,
                     x: &1.0,
                     v: &7.0
@@ -1440,7 +1440,7 @@ mod tests {
             *entry_mut.v = 14.0;
             assert_eq!(
                 e.view().at(0),
-                MyEntity {
+                MyComponent {
                     id: 0,
                     x: &13.0,
                     v: &14.0
@@ -1450,7 +1450,7 @@ mod tests {
             let chunked3 = Chunked3::from_flat(e.clone());
             assert_eq!(
                 chunked3.view().at(0),
-                MyEntity {
+                MyComponent {
                     id: 0,
                     x: &[13.0, 1.0, 1.0],
                     v: &[14.0, 7.0, 7.0]
@@ -1461,7 +1461,7 @@ mod tests {
 
             assert_eq!(
                 chunked.view().at(0).at(0),
-                MyEntity {
+                MyComponent {
                     id: 0,
                     x: &[13.0, 1.0, 1.0],
                     v: &[14.0, 7.0, 7.0]

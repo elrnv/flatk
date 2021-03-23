@@ -1,25 +1,25 @@
-//! This example demonstrates how to compose two entities together to form a single entity, with a
+//! This example demonstrates how to compose two components together to form a single component, with a
 //! unique structure shared by all the fields.
 //!
-//! This improves on the `entity` example by sharing the structure between `cur` and `prev` fields.
+//! This improves on the `component` example by sharing the structure between `cur` and `prev` fields.
 
 #[cfg(feature = "derive")]
-use flatk::{Chunked, Chunked3, Entity, Get, MapStorage, View, ViewMut};
+use flatk::{Chunked, Chunked3, Component, Get, MapStorage, View, ViewMut};
 
 #[cfg(feature = "derive")]
-#[derive(Copy, Clone, Debug, PartialEq, Entity)]
+#[derive(Copy, Clone, Debug, PartialEq, Component)]
 struct State<X, V> {
     pos: X,
     vel: V,
 }
 
 #[cfg(feature = "derive")]
-#[derive(Copy, Clone, Debug, PartialEq, Entity)]
+#[derive(Copy, Clone, Debug, PartialEq, Component)]
 struct Object<X, V> {
     id: usize,
-    #[entity]
+    #[component]
     prev: State<X, V>,
-    #[entity]
+    #[component]
     cur: State<X, V>,
 }
 
@@ -108,5 +108,5 @@ fn main() {
 
 #[cfg(not(feature = "derive"))]
 fn main() {
-    eprintln!("The `composite_entity` example requires the \"derive\" feature flat");
+    eprintln!("The `composite_component` example requires the \"derive\" feature flat");
 }

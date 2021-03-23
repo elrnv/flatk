@@ -1,8 +1,8 @@
 #[cfg(feature = "derive")]
-use flatk::{Chunked, Chunked3, Entity, Get, View, ViewMut};
+use flatk::{Chunked, Chunked3, Component, Get, View, ViewMut};
 
 #[cfg(feature = "derive")]
-#[derive(Copy, Clone, Debug, PartialEq, Entity)]
+#[derive(Copy, Clone, Debug, PartialEq, Component)]
 struct Object<X, V> {
     // Unused parameter, that is simply cloned through to views and items.
     // Thus it is not a good idea to put large types here.
@@ -71,5 +71,5 @@ fn main() {
 
 #[cfg(not(feature = "derive"))]
 fn main() {
-    eprintln!("The `entity` example requires the \"derive\" feature flat");
+    eprintln!("The `component` example requires the \"derive\" feature flat");
 }

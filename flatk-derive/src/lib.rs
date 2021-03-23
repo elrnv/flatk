@@ -1,15 +1,15 @@
 extern crate proc_macro;
 use proc_macro::TokenStream;
 
-mod entity;
+mod component;
 
 use syn::{DeriveInput, Expr};
 
-#[proc_macro_derive(Entity, attributes(entity))]
-pub fn entity(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(Component, attributes(component))]
+pub fn component(input: TokenStream) -> TokenStream {
     let input: DeriveInput = syn::parse(input).unwrap();
 
-    let gen = entity::impl_entity(&input);
+    let gen = component::impl_component(&input);
 
     gen.into()
 }
