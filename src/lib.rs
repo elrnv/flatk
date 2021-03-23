@@ -339,15 +339,8 @@ impl<S: Set + ?Sized> Set for std::cell::RefMut<'_, S> {
  * Array manipulation
  */
 
-pub trait AsSlice<T> {
-    fn as_slice(&self) -> &[T];
-}
-
-impl<T> AsSlice<T> for T {
-    #[inline]
-    fn as_slice(&self) -> &[T] {
-        unsafe { std::slice::from_raw_parts(self as *const _, 1) }
-    }
+pub trait AsFlatSlice<T> {
+    fn as_flat_slice(&self) -> &[T];
 }
 
 pub trait Array<T> {

@@ -32,9 +32,9 @@ macro_rules! impl_array_for_typenum {
                 $n
             }
         }
-        impl<T> AsSlice<T> for [T; $n] {
+        impl<T> AsFlatSlice<T> for [T; $n] {
             #[inline]
-            fn as_slice(&self) -> &[T] {
+            fn as_flat_slice(&self) -> &[T] {
                 &self[..]
             }
         }
@@ -283,9 +283,9 @@ impl_array_for_typenum!(U16, 16);
 
 macro_rules! impl_as_slice_for_2d_array {
     ($r:expr, $c:expr) => {
-        impl<T: bytemuck::Pod> AsSlice<T> for [[T; $c]; $r] {
+        impl<T: bytemuck::Pod> AsFlatSlice<T> for [[T; $c]; $r] {
             #[inline]
-            fn as_slice(&self) -> &[T] {
+            fn as_flat_slice(&self) -> &[T] {
                 //unsafe { reinterpret::reinterpret_slice(&self[..]) }
                 bytemuck::cast_slice(self)
             }
