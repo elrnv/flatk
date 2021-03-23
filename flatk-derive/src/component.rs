@@ -2,17 +2,20 @@ use std::collections::{BTreeSet, HashSet};
 
 use lazy_static::lazy_static;
 use proc_macro2::{Span, TokenStream};
-use proc_macro_crate::crate_name;
+use proc_macro_crate::*;
 use quote::quote;
 use syn::*;
 
 //TODO: Add another impl trait for CloneWithStorage
 
 lazy_static! {
-    static ref CRATE_NAME: String= {
+    static ref CRATE_NAME: String = {
         // Try to find the crate name in Cargo.toml
-        if let Ok(crate_name_str) = crate_name("flatk") {
-            crate_name_str
+        if let Ok(found_name) = crate_name("flatk") {
+            match found_name {
+                FoundCrate::Itself => String::from("crate"),
+                FoundCrate::Name(name) => name
+            }
         } else {
             // If we couldn't find it, it could mean either that that flatk-derive was imported without
             // flatk, or that the code is a flatk example. Assume it's an example.

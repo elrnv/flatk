@@ -1,6 +1,6 @@
 [package]
 name = "flatk-derive"
-version = "0.2.3"
+version = "0.3.0"
 authors = ["Egor Larionov <egor.larionov@gmail.com>"]
 edition = "2018"
 
@@ -18,5 +18,5 @@ proc-macro = true
 syn = { version = "1.0", features = ["full", "extra-traits"] }
 quote = "1.0"
 proc-macro2 = "1.0"
-proc-macro-crate = "0.1.4"
+proc-macro-crate = "1.0"
 lazy_static = "1"
