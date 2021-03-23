@@ -1,6 +1,6 @@
 [package]
 name = "flatk"
-version = "0.3.2"
+version = "0.4.0"
 authors = ["Egor Larionov <egor.larionov@gmail.com>"]
 edition = "2018"
 
@@ -11,7 +11,7 @@ readme = "README.md"
 homepage = "https://github.com/elrnv/flatk"
 repository = "https://github.com/elrnv/flatk"
 documentation = "https://docs.rs/flatk"
-keywords = ["chunked", "sparse", "entity", "structure", "layout"]
+keywords = ["chunked", "sparse", "component", "structure", "layout"]
 
 [dependencies]
 typenum = "1.12.0"
