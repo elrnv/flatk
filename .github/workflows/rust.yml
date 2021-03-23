@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        rust: [stable, nightly]
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/tookchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          profile: minimal
+          override: true
+      - name: Build
+        run: cargo build --verbose
+      - name: Test
+        run: cargo test --verbose
+      
+  test_all_features:
+    name: Build and Test all features
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/tookchain@v1
+        with:
+          toolchain: nightly
+          profile: minimal
+          override: true
+      - name: Build all features
+        run: cargo build --verbose --all-features
+      - name: Test all features
+        run: cargo test --verbose --all-features
