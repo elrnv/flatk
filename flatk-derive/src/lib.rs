@@ -34,20 +34,20 @@ fn eval_expr(expr: Expr) -> u64 {
                 BinOp::BitOr(_) => l | r,
                 BinOp::Shl(_) => l << r,
                 BinOp::Shr(_) => l >> r,
-                op => panic!("Unsuported operator type: {:?}", op),
+                op => panic!("Unsupported operator type: {:?}", op),
             }
         }
         Expr::Unary(ExprUnary { op, expr, .. }) => {
             let a = eval_expr(*expr);
             match op {
                 UnOp::Not(_) => !a,
-                op => panic!("Unsuported operator type: {:?}", op),
+                op => panic!("Unsupported operator type: {:?}", op),
             }
         }
         Expr::Lit(ExprLit {
             lit: Lit::Int(i), ..
         }) => i.base10_parse::<u64>().expect("Invalid integer literal"),
-        _ => panic!("Unsuported expression type"),
+        _ => panic!("Unsupported expression type"),
     }
 }
 

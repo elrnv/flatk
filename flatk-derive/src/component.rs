@@ -13,7 +13,7 @@ lazy_static! {
         // Try to find the crate name in Cargo.toml
         if let Ok(found_name) = crate_name("flatk") {
             match found_name {
-                FoundCrate::Itself => String::from("crate"),
+                FoundCrate::Itself => String::from("flatk"),
                 FoundCrate::Name(name) => name
             }
         } else {
