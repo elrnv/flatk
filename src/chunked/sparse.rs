@@ -76,14 +76,14 @@ where
     /// ```
     pub fn compressed<E>(
         &'a self,
-        combine: impl FnMut(&mut E::Owned, E),
+        mut combine: impl FnMut(&mut E::Owned, E),
     ) -> Chunked<Sparse<S::Owned, T>, Offsets>
     where
         <S as View<'a>>::Type: IntoIterator<Item = E>,
         E: IntoOwned,
         S::Owned: Set<Elem = E::Owned> + Default + Reserve + Push<E::Owned>,
     {
-        self.pruned(combine, |_, _, _| true)
+        self.pruned(&mut combine, |_, _, _| true, |_, _| {})
     }
 }
 
@@ -97,10 +97,59 @@ where
     I: AsIndexSlice,
     O: Set + AsRef<[usize]>,
 {
+    /// Prune elements according to a given predicate and combine them in each
+    /// sorted chunk with the same index.
+    ///
+    /// Assuming that the chunks are sorted by index, this function will combine adjacent
+    /// elements with the same index into one element.
+    ///
+    /// This is a more general version of `compressed` that allows you to prune unwanted elements.
+    /// In addition the `combine` and `keep` functions get an additional target
+    /// index where each element will be written to.
+    ///
+    /// # Examples
+    ///
+    /// A simple example.
+    ///
+    /// ```
+    /// use flatk::*;
+    /// let sparse = Sparse::from_dim(vec![0,2,1,1,2,0,2], 4, vec![1.0, 2.0, 0.1, 0.01, 5.0, 0.001, 7.0]);
+    /// let mut chunked = Chunked::from_sizes(vec![4,3], sparse);
+    /// chunked.sort_chunks_by_index();
+    /// let pruned = chunked.pruned(|a, b| *a += *b, |_, _, &val| val > 0.01, |_,_| {});
+    /// assert_eq!(pruned.view().offsets().into_inner(), &[0,3,4]);
+    /// assert_eq!(pruned.view().storage(), &[1.0, 0.11, 2.0, 12.0]); // 0.001 is pruned.
+    /// assert_eq!(pruned.view().data().indices(), &[0,1,2,2]);
+    /// ```
+    ///
+    /// The following example extends on the previous example but shows how one
+    /// may construct a mapping from original elements to the pruned output.
+    ///
+    /// ```
+    /// use flatk::*;
+    /// let indices = vec![0, 2, 1, 1, 2, 0, 2];
+    /// let num_indices = indices.len();
+    /// let sparse = Sparse::from_dim(indices, 4, vec![1.0, 2.0, 0.1, 0.01, 5.0, 0.001, 7.0]);
+    /// let mut chunked = Chunked::from_sizes(vec![4,3], sparse);
+    /// chunked.sort_chunks_by_index();
+    /// let mut mapping = vec![None; num_indices];
+    /// let pruned = chunked.pruned(|a, b| {
+    ///     *a += *b
+    /// }, |_, _, &val| {
+    ///     val > 0.01
+    /// }, |src, dst| mapping[src] = Some(dst));
+    ///
+    /// // As before, the resulting structure is pruned.
+    /// assert_eq!(pruned.view().offsets().into_inner(), &[0,3,4]);
+    /// assert_eq!(pruned.view().storage(), &[1.0, 0.11, 2.0, 12.0]); // 0.001 is pruned.
+    /// assert_eq!(pruned.view().data().indices(), &[0,1,2,2]);
+    /// assert_eq!(mapping, vec![Some(0), Some(1), Some(1), Some(2), None, Some(3), Some(3)]);
+    /// ```
     pub fn pruned<E>(
         &'a self,
         mut combine: impl FnMut(&mut E::Owned, E),
         mut keep: impl FnMut(usize, usize, &E::Owned) -> bool,
+        mut map: impl FnMut(usize, usize),
     ) -> Chunked<Sparse<S::Owned, T>, Offsets>
     where
         <S as View<'a>>::Type: IntoIterator<Item = E>,
@@ -121,7 +170,12 @@ where
         offsets.push(0);
 
         for (i, sparse_chunk) in self.iter().enumerate() {
-            sparse.extend_pruned(sparse_chunk, &mut combine, |j, e| keep(i, j, e));
+            sparse.extend_pruned(
+                sparse_chunk,
+                |_pos, a, b| combine(a, b),
+                |j, e| keep(i, j, e),
+                |src, dst| map(src + self.offset(i), dst),
+            );
             offsets.push(sparse.len());
         }
 

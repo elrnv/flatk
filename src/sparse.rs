@@ -93,30 +93,56 @@ where
     }
 }
 
-impl<S, T, I> Sparse<S, T, I> {
+impl<S: Set, T, I> Sparse<S, T, I> {
     /// Extend the current sparse collection with a pruned and compressed version of the given
     /// sparse collection, `other`.
+    ///
+    /// Each element is in the original sparse collection is guaranteed to be
+    /// passed to exactly one of `keep` or `combine`.
+    ///
+    /// The `keep` function will get the combined value of all consecutively
+    /// overlapping elements, and the source index of the first element in the
+    /// consecutive group.
+    ///
+    /// The `map` function allows the caller to map between original `other`
+    /// sparse collection and the newly populated collection `self`. The first
+    /// parameter passed into `map` is the index in the output sparse array where
+    /// each element is being considered for insertion. The second parameter is
+    /// the position of each element in the output sparse structure. Note that `map`
+    /// is not called on pruned elements.
     ///
     /// # Example
     ///
     /// ```
     /// use flatk::*;
     /// let v = vec![1,2,3,4,5,6];
+    ///
+    /// // Create a sparse vector with overlapping elements:
+    /// // [0] -> 1            [0] -> 5
+    /// // [1] ->              [1] ->
+    /// // [2] -> 2 + 3 + 4    [2] ->
+    /// // [3] ->              [3] -> 6
     /// let sparse = Sparse::from_dim(vec![0,2,2,2,0,3], 4, v.as_slice());
+    ///
+    /// // Create an empty sparse vector.
     /// let mut compressed = Sparse::from_dim(Vec::new(), 4, Vec::new());
-    /// compressed.extend_pruned(sparse, |a, b| *a += *b, |_, _| true);
-    /// let mut iter = compressed.iter(); // Returns (position, source, target) pairs
+    ///
+    /// // Transfer the elements from `sparse` into `compressed` while resolving the consecutive overlaps:
+    /// compressed.extend_pruned(sparse, |_pos, a, b| *a += *b, |_pos, _val| true, |_src_idx, _dst_idx, | {});
+    /// let mut iter = compressed.iter(); // Returns (position, source, target) triplets.
     /// assert_eq!(Some((0, &1, 0)), iter.next());
     /// assert_eq!(Some((2, &9, 2)), iter.next());
     /// assert_eq!(Some((0, &5, 0)), iter.next());
     /// assert_eq!(Some((3, &6, 3)), iter.next());
     /// assert_eq!(None, iter.next());
+    /// // Note: 1 and 5 are not merged because they are not consecutive.
     /// ```
-    pub fn extend_pruned<S2, T2, I2, B>(
+    pub fn extend_pruned<'a, S2, T2, I2, B>(
         &mut self,
         other: Sparse<S2, T2, I2>,
-        mut combine: impl FnMut(&mut B::Owned, B),
+        mut combine: impl FnMut(usize, &mut B::Owned, B),
         mut keep: impl FnMut(usize, &B::Owned) -> bool,
+        mut map: impl FnMut(usize, usize),
     ) where
         S2: IntoIterator<Item = B>,
         I2: AsIndexSlice,
@@ -127,23 +153,28 @@ impl<S, T, I> Sparse<S, T, I> {
             .selection
             .index_iter()
             .cloned()
-            .zip(other.source.into_iter());
-        if let Some((mut prev_idx, prev)) = it.next() {
+            .zip(other.source.into_iter())
+            .enumerate();
+        if let Some((mut prev_src_idx, (mut prev_idx, prev))) = it.next() {
             let mut elem = prev.into_owned();
 
-            while let Some((idx, cur)) = it.next() {
+            while let Some((src_idx, (idx, cur))) = it.next() {
                 if prev_idx != idx {
                     if keep(prev_idx, &elem) {
+                        map(prev_src_idx, self.len());
                         self.push((prev_idx, elem));
                     }
                     elem = cur.into_owned();
                     prev_idx = idx;
+                    prev_src_idx = src_idx;
                 } else {
-                    combine(&mut elem, cur);
+                    map(src_idx, self.len());
+                    combine(idx, &mut elem, cur);
                 }
             }
             if keep(prev_idx, &elem) {
-                self.push((prev_idx, elem)); // Push the last element
+                map(prev_src_idx, self.len()); // Map the last element.
+                self.push((prev_idx, elem)); // Push the last element.
             }
         }
     }
@@ -892,14 +923,14 @@ mod tests {
         // Empty test
         let empty = Sparse::from_dim(Vec::new(), 4, Vec::new());
         let mut compressed = empty.clone();
-        compressed.extend_pruned(empty.view(), |a, b| *a += *b, |_, _| true);
+        compressed.extend_pruned(empty.view(), |_, a, b| *a += *b, |_, _| true, |_, _| {});
         assert!(compressed.is_empty());
 
         // The basic tests from the example
         let v = vec![1, 2, 3, 4, 5, 6];
         let sparse = Sparse::from_dim(vec![0, 2, 2, 2, 0, 3], 4, v.as_slice());
         let mut compressed = empty.clone();
-        compressed.extend_pruned(sparse.view(), |a, b| *a += *b, |_, _| true);
+        compressed.extend_pruned(sparse.view(), |_, a, b| *a += *b, |__, _| true, |_, _| {});
         let mut iter = compressed.iter(); // Returns (position, source, target) pairs
         assert_eq!(Some((0, &1, 0)), iter.next());
         assert_eq!(Some((2, &9, 2)), iter.next());
