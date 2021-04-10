@@ -1,3 +1,6 @@
+#[cfg(feature = "rayon")]
+use rayon::prelude::*;
+
 use super::*;
 use std::convert::{AsMut, AsRef};
 use std::ops::Range;
@@ -838,6 +841,26 @@ where
             .filter_map(move |idx| self.target.get(idx).map(|val| (idx, val)))
     }
 }
+
+impl<'a, S, I> Select<S, I>
+where
+    S: Set + Get<'a, usize> + View<'a> + Sync,
+    <S as Get<'a, usize>>::Output: Send,
+    I: AsIndexSlice + Sync,
+{
+    #[cfg(feature = "rayon")]
+    #[inline]
+    pub fn par_iter(
+        &'a self,
+    ) -> impl IndexedParallelIterator<Item = (usize, <S as Get<'a, usize>>::Output)> + Clone {
+        self.indices
+            .as_ref()
+            .par_iter()
+            .cloned()
+            .map(move |idx| (idx, unsafe { self.target.at_unchecked(idx) }))
+    }
+}
+
 impl<'a, S> Select<S, Range<usize>>
 where
     S: Set + Get<'a, usize> + View<'a>,
@@ -850,6 +873,23 @@ where
     }
 }
 
+impl<'a, S> Select<S, Range<usize>>
+where
+    S: Set + Get<'a, usize> + View<'a> + Sync,
+    <S as Get<'a, usize>>::Output: Send,
+{
+    #[cfg(feature = "rayon")]
+    #[inline]
+    pub fn par_iter(
+        &'a self,
+    ) -> impl IndexedParallelIterator<Item = (usize, <S as Get<'a, usize>>::Output)> + Clone {
+        self.indices
+            .clone()
+            .into_par_iter()
+            .map(move |idx| (idx, unsafe { self.target.at_unchecked(idx) }))
+    }
+}
+
 impl<S, I> Select<S, I>
 where
     I: AsIndexSlice,
@@ -857,6 +897,12 @@ where
     #[inline]
     pub fn index_iter(&self) -> std::slice::Iter<'_, usize> {
         self.indices.as_ref().iter()
+    }
+
+    #[cfg(feature = "rayon")]
+    #[inline]
+    pub fn index_par_iter(&self) -> rayon::slice::Iter<'_, usize> {
+        self.indices.as_ref().par_iter()
     }
 }
 
@@ -867,6 +913,12 @@ where
     #[inline]
     pub fn index_iter_mut(&mut self) -> std::slice::IterMut<'_, usize> {
         self.indices.as_mut().iter_mut()
+    }
+
+    #[cfg(feature = "rayon")]
+    #[inline]
+    pub fn index_par_iter_mut(&mut self) -> rayon::slice::IterMut<'_, usize> {
+        self.indices.as_mut().par_iter_mut()
     }
 }
 

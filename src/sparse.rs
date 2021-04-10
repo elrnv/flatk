@@ -1,3 +1,6 @@
+#[cfg(feature = "rayon")]
+mod par_iter;
+
 use super::*;
 use std::convert::{AsMut, AsRef};
 
@@ -471,41 +474,69 @@ where
 
 impl<'a, S, T> IntoIterator for SparseView<'a, S, T>
 where
-    S: SplitFirst + Dummy,
+    S: SplitFirst + SplitAt + Dummy + Set,
 {
     type Item = (usize, S::First);
-    type IntoIter = SparseIter<'a, S>;
+    type IntoIter = SparseIter<std::iter::Cloned<std::slice::Iter<'a, usize>>, S>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
         SparseIter {
-            indices: self.selection.indices,
+            indices: self.selection.indices.into_iter().cloned(),
             source: self.source,
         }
     }
 }
 
-pub struct SparseIter<'a, S> {
-    indices: &'a [usize],
+pub struct SparseIter<I, S> {
+    indices: I,
     source: S,
 }
 
-impl<'a, S> Iterator for SparseIter<'a, S>
+impl<I, S> Iterator for SparseIter<I, S>
 where
-    S: SplitFirst + Dummy,
+    S: SplitFirst + SplitAt + Dummy + Set,
+    I: ExactSizeIterator<Item = usize>,
 {
     type Item = (usize, S::First);
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let source_slice = std::mem::replace(&mut self.source, unsafe { Dummy::dummy() });
-        source_slice.split_first().map(|(first, rest)| {
-            self.source = rest;
-            // We know that sparse has at least one element, no need to check again.
-            let first_idx = unsafe { self.indices.get_unchecked(0) };
-            self.indices = &self.indices[1..];
-            (*first_idx, first)
-        })
+        if source_slice.len() < 1 {
+            return None;
+        }
+        let (beginning, rest) = source_slice.split_at(1);
+        self.source = rest;
+        // We know that sparse has at least one element, no need to check again.
+        let first_idx = self.indices.next().unwrap();
+        // SAFETY: We know there is at least one element in beginning.
+        Some((first_idx, unsafe { beginning.split_first_unchecked().0 }))
+    }
+}
+
+impl<I, S> ExactSizeIterator for SparseIter<I, S> where Self: Iterator {}
+
+impl<I, S> DoubleEndedIterator for SparseIter<I, S>
+where
+    S: SplitFirst + SplitAt + Dummy + Set,
+    I: ExactSizeIterator + DoubleEndedIterator<Item = usize>,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let source_slice = std::mem::replace(&mut self.source, unsafe { Dummy::dummy() });
+        let len = source_slice.len();
+        if len < 1 {
+            return None;
+        }
+
+        let (prefix, end) = source_slice.split_at(len - 1);
+
+        self.source = prefix;
+        // We know that sparse has at least one element, no need to check again.
+        let last_idx = self.indices.next_back().unwrap();
+        // SAFETY: We know there is at least one element in end.
+        Some((last_idx, unsafe { end.split_first_unchecked().0 }))
     }
 }
 

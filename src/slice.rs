@@ -9,11 +9,14 @@ where
     #[inline]
     fn get(self, set: &&'a [T]) -> Option<Self::Output> {
         if self.end() <= set.len() {
-            let slice = *set;
-            Some(unsafe { &*(slice.as_ptr().add(self.start()) as *const N::Array) })
+            Some(unsafe { GetIndex::at_unchecked(self, set) })
         } else {
             None
         }
+    }
+    #[inline]
+    unsafe fn at_unchecked(self, set: &&'a [T]) -> Self::Output {
+        &*((*set).as_ptr().add(self.start()) as *const N::Array)
     }
 }
 
@@ -66,6 +69,10 @@ where
     #[inline]
     fn get(self, set: &&'a [T]) -> Option<Self::Output> {
         Some(std::ops::Index::<I>::index(*set, self))
+    }
+    #[inline]
+    unsafe fn at_unchecked(self, set: &&'a [T]) -> Self::Output {
+        <[T]>::get_unchecked(*set, self)
     }
 }
 
@@ -285,6 +292,10 @@ impl<'a, T> SplitFirst for &'a [T] {
     fn split_first(self) -> Option<(Self::First, Self)> {
         self.split_first()
     }
+    #[inline]
+    unsafe fn split_first_unchecked(self) -> (Self::First, Self) {
+        (self.get_unchecked(0), &self[1..])
+    }
 }
 
 impl<'a, T> SplitFirst for &'a mut [T] {
@@ -293,6 +304,20 @@ impl<'a, T> SplitFirst for &'a mut [T] {
     #[inline]
     fn split_first(self) -> Option<(Self::First, Self)> {
         self.split_first_mut()
+    }
+    #[inline]
+    unsafe fn split_first_unchecked(self) -> (Self::First, Self) {
+        let len = self.len();
+        let ptr = self.as_mut_ptr();
+
+        // SAFETY: Caller has to check that `0 <= mid <= self.len()`.
+        //
+        // `[ptr; mid]` and `[mid; len]` are not overlapping, so returning a mutable reference
+        // is fine.
+        (
+            &mut *ptr,
+            std::slice::from_raw_parts_mut(ptr.add(1), len - 1),
+        )
     }
 }
 

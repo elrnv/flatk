@@ -726,7 +726,12 @@ where
 {
     type Output;
     fn get(self, set: &S) -> Option<Self::Output>;
-    //unsafe fn get_unchecked(self, set: &'i S) -> Self::Output;
+    unsafe fn at_unchecked(self, set: &S) -> Self::Output
+    where
+        Self: Sized,
+    {
+        self.get(set).expect("Index out of bounds")
+    }
 }
 
 /// A helper trait like `GetIndex` but for `Isolate` types.
@@ -741,7 +746,6 @@ pub trait IsolateIndex<S> {
 /// the output.
 pub trait Get<'a, I> {
     type Output;
-    //unsafe fn get_unchecked(&'i self, idx: I) -> Self::Output;
     fn get(&self, idx: I) -> Option<Self::Output>;
     /// Return a value at the given index. This is provided as the checked
     /// version of `get` that will panic if the equivalent `get` call is `None`,
@@ -753,6 +757,15 @@ pub trait Get<'a, I> {
     #[inline]
     fn at(&self, idx: I) -> Self::Output {
         self.get(idx).expect("Index out of bounds")
+    }
+    /// Return a value at the given index. This is provided as the unchecked
+    /// version of `get` that has undefined behavior when the index is out of bounds.
+    ///
+    /// The default implementation simply calls `at` which will panic, but custom
+    /// implementors may omit bounds checks entirely.
+    #[inline]
+    unsafe fn at_unchecked(&self, idx: I) -> Self::Output {
+        self.at(idx)
     }
 }
 
@@ -1044,6 +1057,13 @@ where
 {
     type First;
     fn split_first(self) -> Option<(Self::First, Self)>;
+
+    /// Split off the first element without checking if one exists.
+    ///
+    /// The default implementation simply calls unwrap on `split_first`.
+    unsafe fn split_first_unchecked(self) -> (Self::First, Self) {
+        self.split_first().unwrap()
+    }
 }
 
 /// Get an immutable reference to the underlying storage type.
