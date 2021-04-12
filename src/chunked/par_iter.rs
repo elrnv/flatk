@@ -18,6 +18,7 @@ where
 {
     type Item = S;
 
+    #[inline]
     fn drive_unindexed<C>(self, consumer: C) -> C::Result
     where
         C: UnindexedConsumer<Self::Item>,
@@ -25,6 +26,7 @@ where
         bridge(self, consumer)
     }
 
+    #[inline]
     fn opt_len(&self) -> Option<usize> {
         Some(self.len())
     }
@@ -36,6 +38,7 @@ where
     I: Send + GetOffset + IndexedParallelIterator + Producer<Item = (usize, usize)>,
     I::IntoIter: ExactSizeIterator<Item = (usize, usize)> + GetOffset,
 {
+    #[inline]
     fn drive<C>(self, consumer: C) -> C::Result
     where
         C: Consumer<Self::Item>,
@@ -43,10 +46,12 @@ where
         bridge(self, consumer)
     }
 
+    #[inline]
     fn len(&self) -> usize {
         self.offset_values_and_sizes.len()
     }
 
+    #[inline]
     fn with_producer<CB>(self, callback: CB) -> CB::Output
     where
         CB: ProducerCallback<Self::Item>,
@@ -74,6 +79,7 @@ where
     type Item = S;
     type IntoIter = ChunkedIter<I::IntoIter, S>;
 
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         ChunkedIter {
             first_offset_value: self.first_offset_value,
@@ -82,6 +88,7 @@ where
         }
     }
 
+    #[inline]
     fn split_at(self, index: usize) -> (Self, Self) {
         let off = self.offset_values_and_sizes_producer.offset_value(index);
         let (ls, rs) = self.offset_values_and_sizes_producer.split_at(index);

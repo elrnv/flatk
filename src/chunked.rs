@@ -311,10 +311,12 @@ impl<S: Set> Chunked<S> {
 }
 
 impl<S: Set> Clumped<S> {
-    /// Construct a `Clumped` collection of elements from a set of `sizes` and `counts` that
-    /// determine the number of elements in each chunk. The length of `sizes` must be equal to the
-    /// the length of `counts`. Each element in `sizes` corresponds to chunk size, while the
-    /// corresponding element in `counts` tells how many times this chunk size is repeated.
+    /// Constructs a `Clumped` collection of elements from a set of `sizes` and `counts`
+    ///
+    /// `sizes` and `counts` determine the number of elements in each chunk. The
+    /// length of `sizes` must be equal to the the length of `counts`. Each
+    /// element in `sizes` corresponds to chunk size, while the corresponding
+    /// element in `counts` tells how many times this chunk size is repeated.
     ///
     /// The dot product between `sizes` and `counts` must be equal to the length of the given
     /// `data`.

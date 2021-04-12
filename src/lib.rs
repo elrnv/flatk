@@ -726,6 +726,7 @@ where
 {
     type Output;
     fn get(self, set: &S) -> Option<Self::Output>;
+    #[inline]
     unsafe fn at_unchecked(self, set: &S) -> Self::Output
     where
         Self: Sized,
@@ -1061,6 +1062,7 @@ where
     /// Split off the first element without checking if one exists.
     ///
     /// The default implementation simply calls unwrap on `split_first`.
+    #[inline]
     unsafe fn split_first_unchecked(self) -> (Self::First, Self) {
         self.split_first().unwrap()
     }
@@ -1074,6 +1076,7 @@ pub trait Storage {
 
 impl<S: Storage + ?Sized> Storage for &S {
     type Storage = S::Storage;
+    #[inline]
     fn storage(&self) -> &Self::Storage {
         S::storage(*self)
     }
@@ -1081,6 +1084,7 @@ impl<S: Storage + ?Sized> Storage for &S {
 
 impl<S: Storage + ?Sized> Storage for &mut S {
     type Storage = S::Storage;
+    #[inline]
     fn storage(&self) -> &Self::Storage {
         S::storage(*self)
     }
@@ -1097,6 +1101,7 @@ pub trait StorageMut: Storage {
 }
 
 impl<S: StorageMut + ?Sized> StorageMut for &mut S {
+    #[inline]
     fn storage_mut(&mut self) -> &mut Self::Storage {
         S::storage_mut(*self)
     }
@@ -1354,6 +1359,7 @@ pub unsafe trait TrustedRandomAccess: ExactSizeIterator {
     unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item;
     /// Returns `true` if getting an iterator element may have
     /// side effects. Remember to take inner iterators into account.
+    #[inline]
     fn may_have_side_effect() -> bool {
         false
     }

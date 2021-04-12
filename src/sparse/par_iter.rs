@@ -18,6 +18,7 @@ where
 {
     type Item = (usize, S::First);
 
+    #[inline]
     fn drive_unindexed<C>(self, consumer: C) -> C::Result
     where
         C: UnindexedConsumer<Self::Item>,
@@ -25,6 +26,7 @@ where
         bridge(self, consumer)
     }
 
+    #[inline]
     fn opt_len(&self) -> Option<usize> {
         Some(self.len())
     }
@@ -37,6 +39,7 @@ where
     I: Send + IndexedParallelIterator + Producer<Item = usize>,
     I::IntoIter: ExactSizeIterator<Item = usize>,
 {
+    #[inline]
     fn drive<C>(self, consumer: C) -> C::Result
     where
         C: Consumer<Self::Item>,
@@ -44,10 +47,12 @@ where
         bridge(self, consumer)
     }
 
+    #[inline]
     fn len(&self) -> usize {
         self.indices.len()
     }
 
+    #[inline]
     fn with_producer<CB>(self, callback: CB) -> CB::Output
     where
         CB: ProducerCallback<Self::Item>,
@@ -74,6 +79,7 @@ where
     type Item = (usize, S::First);
     type IntoIter = SparseIter<I::IntoIter, S>;
 
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         SparseIter {
             indices: self.indices.into_iter(),
@@ -81,6 +87,7 @@ where
         }
     }
 
+    #[inline]
     fn split_at(self, index: usize) -> (Self, Self) {
         let (li, ri) = self.indices.split_at(index);
         let (ls, rs) = self.source.split_at(index);

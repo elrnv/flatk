@@ -374,6 +374,8 @@ impl<'a> Iterator for UnclumpedOffsetValuesAndSizes<'a> {
     }
 }
 
+// TODO: Extend UnclumpedOffsetValuesAndSizes to be double ended or implement a reverse iterator.
+
 /// Iterator over offsets and size pairs representing unclumped chunks.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct UnclumpedOffsetsAndSizes<'a> {
@@ -1107,5 +1109,8 @@ mod tests {
         assert_eq!(iter.next().unwrap(), 3);
         assert_eq!(iter.next(), None);
         assert_eq!(iter.nth(0), None);
+
+        let mut iter = clumped_offsets.sizes();
+        assert_eq!(iter.nth(5).unwrap(), 4); // Start with nth skipping first clump
     }
 }

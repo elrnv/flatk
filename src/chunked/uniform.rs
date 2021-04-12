@@ -1451,7 +1451,7 @@ impl<S, N> UniChunked<S, U<N>>
 where
     N: Unsigned,
 {
-    /// Produce an iterator over borrowed grouped elements of the `UniChunked`.
+    /// Produces an iterator over borrowed grouped elements of `UniChunked`.
     ///
     /// # Examples
     ///
@@ -1495,7 +1495,7 @@ where
         self.data.view().into_static_chunk_iter()
     }
 
-    /// Produce an iterator over mutably borrowed grouped elements of `UniChunked`.
+    /// Produces an iterator over mutably borrowed grouped elements of `UniChunked`.
     ///
     /// # Examples
     ///

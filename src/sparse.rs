@@ -502,16 +502,27 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
+        // SAFETY: A sparse dummy is a valid sparse set.
         let source_slice = std::mem::replace(&mut self.source, unsafe { Dummy::dummy() });
-        if source_slice.len() < 1 {
-            return None;
-        }
-        let (beginning, rest) = source_slice.split_at(1);
-        self.source = rest;
-        // We know that sparse has at least one element, no need to check again.
-        let first_idx = self.indices.next().unwrap();
-        // SAFETY: We know there is at least one element in beginning.
-        Some((first_idx, unsafe { beginning.split_first_unchecked().0 }))
+        source_slice.split_first().map(|(first, rest)| {
+            self.source = rest;
+            // We know that sparse has at least one element, no need to check again.
+            let first_idx = self.indices.next().unwrap();
+            // SAFETY: We know there is at least one element in beginning.
+            (first_idx, first)
+        })
+    }
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        // SAFETY: A sparse dummy is a valid sparse set.
+        let source_slice = std::mem::replace(&mut self.source, unsafe { Dummy::dummy() });
+        self.indices.nth(n).map(|nth_idx| {
+            let (_, rest) = source_slice.split_at(n);
+            // SAFETY: source_slice is known to have at least n elements since indices does.
+            let (nth, rest) = unsafe { rest.split_first_unchecked() };
+            self.source = rest;
+            (nth_idx, nth)
+        })
     }
 }
 
@@ -537,6 +548,18 @@ where
         let last_idx = self.indices.next_back().unwrap();
         // SAFETY: We know there is at least one element in end.
         Some((last_idx, unsafe { end.split_first_unchecked().0 }))
+    }
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        // SAFETY: A sparse dummy is a valid sparse set.
+        let source_slice = std::mem::replace(&mut self.source, unsafe { Dummy::dummy() });
+        self.indices.nth_back(n).map(|nth_idx| {
+            let (beginning, end) = source_slice.split_at(n);
+            // SAFETY: source_slice is known to have at least n elements since indices does.
+            let (nth, _) = unsafe { end.split_first_unchecked() };
+            self.source = beginning;
+            (nth_idx, nth)
+        })
     }
 }
 
