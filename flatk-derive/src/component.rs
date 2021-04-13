@@ -6,8 +6,6 @@ use proc_macro_crate::*;
 use quote::quote;
 use syn::*;
 
-//TODO: Add another impl trait for CloneWithStorage
-
 lazy_static! {
     static ref CRATE_NAME: String = {
         // Try to find the crate name in Cargo.toml
@@ -394,12 +392,40 @@ fn impl_storage(ast: &DeriveInput) -> TokenStream {
         },
     );
 
+    let clone_with_storage_impl = impl_simple_trait(
+        ast,
+        |ty_ident| quote! { #ty_ident: #crate_name::Set},
+        |mut generics, _| {
+            generics
+                .make_where_clause()
+                .predicates
+                .push(parse_quote! { _FlatkS: #crate_name::Set });
+            let mut extended_generics = generics.clone();
+            extended_generics.params.push(parse_quote! { _FlatkS });
+
+            let (impl_generics, _, _) = extended_generics.split_for_impl();
+            let (_, ty_generics, where_clause) = generics.split_for_impl();
+
+            quote! {
+                impl #impl_generics #crate_name::CloneWithStorage<_FlatkS> for #name #ty_generics #where_clause {
+                    type CloneType = _FlatkS;
+                    #[inline]
+                    fn clone_with_storage(&self, storage: _FlatkS) -> Self::CloneType {
+                        assert_eq!(#crate_name::Set::len(self), #crate_name::Set::len(&storage));
+                        storage
+                    }
+                }
+            }
+        },
+    );
+
     quote! {
         #into_storage_impl
         #storage_into_impl
         #storage_impl
         #storage_mut_impl
         #map_storage_impl
+        #clone_with_storage_impl
     }
 }
 
