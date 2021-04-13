@@ -180,12 +180,12 @@ impl<T> StorageMut for Vec<T> {
     }
 }
 
-impl<T> CloneWithStorage<Vec<T>> for Vec<T> {
-    type CloneType = Vec<T>;
+impl<T, U> CloneWithStorage<Vec<U>> for Vec<T> {
+    type CloneType = Vec<U>;
     /// This function simply ignores self and returns storage since self is already
     /// a storage type.
     #[inline]
-    fn clone_with_storage(&self, storage: Vec<T>) -> Self::CloneType {
+    fn clone_with_storage(&self, storage: Vec<U>) -> Self::CloneType {
         assert_eq!(self.len(), storage.len());
         storage
     }

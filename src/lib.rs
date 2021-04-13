@@ -576,6 +576,7 @@ pub trait MapStorage<Out> {
     fn map_storage<F: FnOnce(Self::Input) -> Out>(self, f: F) -> Self::Output;
 }
 
+/// Clone the structure of a set replacing its storage with a new one.
 pub trait CloneWithStorage<S> {
     type CloneType;
     fn clone_with_storage(&self, storage: S) -> Self::CloneType;
