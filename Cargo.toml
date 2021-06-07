@@ -59,3 +59,7 @@ harness = false
 [[bench]]
 name = "gpu"
 harness = false
+
+[[bench]]
+name = "write"
+harness = false
