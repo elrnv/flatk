@@ -1,4 +1,22 @@
+use std::borrow::Cow;
 use std::convert::TryInto;
+
+use wgpu::util::DeviceExt;
+
+#[derive(Clone, Debug)]
+pub enum Error {
+    WGSLProgramSyntax(String),
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match self {
+            Error::WGSLProgramSyntax(src) => write!(f, "WGSL Program Syntax Error: {}", src),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
 
 /// Construct a gpu program taking self as the input.
 pub trait IntoGpu {
@@ -14,10 +32,13 @@ impl<'d, T: bytemuck::Pod + Primitive> IntoGpu for &'d [T] {
         // Allocate space on the GPU
 
         // Allocate the input buffer used to update slice values.
-        let input_buffer = gpu.device.create_buffer_with_data(
-            bytemuck::cast_slice(self),
-            wgpu::BufferUsage::MAP_WRITE | wgpu::BufferUsage::COPY_SRC,
-        );
+        let input_buffer = gpu
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Input Buffer"),
+                contents: bytemuck::cast_slice(self),
+                usage: wgpu::BufferUsage::MAP_WRITE | wgpu::BufferUsage::COPY_SRC,
+            });
 
         // Allocate the buffer used for GPU processing.
         let storage_buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
@@ -47,6 +68,7 @@ impl<'d, T: bytemuck::Pod + Primitive> IntoGpu for &'d [T] {
 
 /// A wrapper for a `wgpu` GPU device and command queue.
 pub struct Gpu {
+    adapter: wgpu::Adapter,
     device: wgpu::Device,
     queue: wgpu::Queue,
 }
@@ -62,7 +84,7 @@ impl Gpu {
         let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::Default,
+                power_preference: wgpu::PowerPreference::default(),
                 compatible_surface: None,
             })
             .await
@@ -72,13 +94,17 @@ impl Gpu {
                 &wgpu::DeviceDescriptor {
                     features: wgpu::Features::empty(),
                     limits: wgpu::Limits::default(),
-                    shader_validation: true,
+                    label: None,
                 },
-                None,
+                None, // Trace path
             )
             .await
             .unwrap();
-        Gpu { device, queue }
+        Gpu {
+            adapter,
+            device,
+            queue,
+        }
     }
 }
 
@@ -95,26 +121,26 @@ impl<T: Primitive> GpuData<Slice<T>> {
     }
 }
 
-// TODO: In addition to this way of compiling shaders add a derive macro to compile shaders at compile time.
-fn compile_shader(source: &str) -> shaderc::CompilationArtifact {
-    let mut compiler = shaderc::Compiler::new().unwrap();
-    let binary_result = compiler
-        .compile_into_spirv(
-            source,
-            shaderc::ShaderKind::Compute,
-            "flatk.comp",
-            "main",
-            None,
-        )
-        .unwrap();
-
-    wgpu::util::WordAligned(binary_result).0
-}
+//// TODO: In addition to this way of compiling shaders add a derive macro to compile shaders at compile time.
+//fn compile_shader(source: &str) -> shaderc::CompilationArtifact {
+//    let mut compiler = shaderc::Compiler::new().unwrap();
+//    let binary_result = compiler
+//        .compile_into_spirv(
+//            source,
+//            shaderc::ShaderKind::Compute,
+//            "flatk.comp",
+//            "main",
+//            None,
+//        )
+//        .unwrap();
+//
+//    wgpu::util::WordAligned(binary_result).0
+//}
 
 /// Scalar types supported by GPU buffers.
 pub trait Primitive: Send + Sync + Copy {
-    /// Corresponding GLSL type name.
-    const GLSL: &'static str;
+    /// Corresponding WGSL type name.
+    const WGSL: &'static str;
 
     /// Size of the type in bytes on GPU.
     const SIZE: usize;
@@ -130,7 +156,7 @@ pub trait Primitive: Send + Sync + Copy {
 }
 
 impl Primitive for bool {
-    const GLSL: &'static str = "bool";
+    const WGSL: &'static str = "bool";
     const SIZE: usize = 1;
     #[inline]
     fn from_ne_byte_slice(bytes: &[u8]) -> Self {
@@ -146,7 +172,7 @@ impl Primitive for bool {
     }
 }
 impl Primitive for i32 {
-    const GLSL: &'static str = "int";
+    const WGSL: &'static str = "i32";
     const SIZE: usize = 4;
     #[inline]
     fn from_ne_byte_slice(bytes: &[u8]) -> Self {
@@ -160,7 +186,7 @@ impl Primitive for i32 {
     }
 }
 impl Primitive for u32 {
-    const GLSL: &'static str = "uint";
+    const WGSL: &'static str = "u32";
     const SIZE: usize = 4;
     #[inline]
     fn from_ne_byte_slice(bytes: &[u8]) -> Self {
@@ -174,22 +200,8 @@ impl Primitive for u32 {
     }
 }
 impl Primitive for f32 {
-    const GLSL: &'static str = "float";
+    const WGSL: &'static str = "f32";
     const SIZE: usize = 4;
-    #[inline]
-    fn from_ne_byte_slice(bytes: &[u8]) -> Self {
-        debug_assert_eq!(bytes.len(), Self::SIZE);
-        Self::from_ne_bytes(bytes.try_into().unwrap())
-    }
-    #[inline]
-    unsafe fn cast_from_ne_byte_slice_mut(bytes: &mut [u8]) -> &mut Self {
-        debug_assert_eq!(bytes.len(), Self::SIZE);
-        &mut *(bytes as *mut [u8] as *mut Self)
-    }
-}
-impl Primitive for f64 {
-    const GLSL: &'static str = "double";
-    const SIZE: usize = 8;
     #[inline]
     fn from_ne_byte_slice(bytes: &[u8]) -> Self {
         debug_assert_eq!(bytes.len(), Self::SIZE);
@@ -323,12 +335,16 @@ impl<T: Primitive> OutputBuffer<T> {
     }
 }
 
-/// A compute shader program in GLSL with an associated data structure.
+/// A compute shader program in WGSL with an associated data structure.
 pub struct Program<S> {
     data: GpuData<S>,
     workgroup_size: u32,
     program: String,
     main: String,
+    /// The status of this program
+    ///
+    /// This is used for early exists when it is determined that the program is not well formed.
+    status: Result<(), Error>,
 }
 
 impl<S> Program<S> {
@@ -338,40 +354,60 @@ impl<S> Program<S> {
             workgroup_size: 64,
             program: String::new(),
             main: String::new(),
+            status: Ok(()),
         }
     }
 }
 
 impl<T: Primitive> Program<Slice<T>> {
-    pub(crate) fn shader_header(workgroup_size: u32) -> String {
+    pub(crate) fn shader_header() -> String {
         format!(
-            "
-            #version 450
-            layout(local_size_x = {}) in;
+            //"
+            //#version 450
+            //layout(local_size_x = {}) in;
 
-            layout(set = 0, binding = 0) buffer Data {{
-                uint[] slice;
-            }};",
-            workgroup_size
+            //layout(set = 0, binding = 0) buffer Data {{
+            //    uint[] slice;
+            //}};", workgroup_size
+            "
+            [[block]]
+            struct Data {{
+                data: [[stride(4)]] array<{}>;
+            }};
+            [[group(0), binding(0)]]
+            var<storage> v_indices: [[access(read_write)]] Data;
+            ",
+            T::WGSL
         )
     }
 
     pub(crate) fn map_program(name: &str) -> String {
         format!(
+            //"{{
+            //    uint index = gl_GlobalInvocationID.x;
+            //    slice[index] = {name}(slice[index]);
+            //}}",
             "{{
-                uint index = gl_GlobalInvocationID.x;
-                slice[index] = {name}(slice[index]);
-        }}",
+                v_indices.data[global_id.x] = {name}(v_indices.data[global_id.x]);
+            }}",
             name = name
         )
     }
 
     fn assemble(program: &str, main: &str, workgroup_size: u32) -> String {
         format!(
-            "{} {} void main() {{ {} }}",
-            Self::shader_header(workgroup_size),
-            program,
-            main
+            "
+            {header}
+            {program}
+            [[stage(compute), workgroup_size({wg_size})]]
+            fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
+                 {body}
+            }}
+            ",
+            header = Self::shader_header(),
+            program = program,
+            wg_size = workgroup_size,
+            body = main
         )
     }
 
@@ -380,90 +416,108 @@ impl<T: Primitive> Program<Slice<T>> {
         self
     }
 
-    pub fn compile(self) -> CompiledProgram<Slice<T>, OutputBuffer<T>> {
+    pub fn compile(self) -> Result<CompiledProgram<Slice<T>, OutputBuffer<T>>, Error> {
         let Program {
             data: GpuData { storage, gpu },
             workgroup_size,
             program,
             main,
+            status,
         } = self;
 
-        let bind_group_layout =
+        // Exit pre-emptively if the program is already known to be ill-formed.
+        if let Some(err) = status.err() {
+            return Err(err);
+        }
+
+        // Assemble the complete shader program.
+        let shader_program = Self::assemble(program.as_str(), main.as_str(), workgroup_size);
+
+        //std::eprintln!("{}", &shader_program);
+
+        let mut flags = wgpu::ShaderFlags::VALIDATION;
+        match gpu.adapter.get_info().backend {
+            wgpu::Backend::Vulkan | wgpu::Backend::Metal | wgpu::Backend::Gl => {
+                flags |= wgpu::ShaderFlags::EXPERIMENTAL_TRANSLATION;
+            }
+            _ => {}
+        }
+
+        let shader_module = gpu
+            .device
+            .create_shader_module(&wgpu::ShaderModuleDescriptor {
+                label: None,
+                source: wgpu::ShaderSource::Wgsl(Cow::Owned(shader_program)),
+                flags,
+            });
+
+        // Instantiate the pipeline.
+        let compute_pipeline =
             gpu.device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                     label: None,
-                    entries: &[wgpu::BindGroupLayoutEntry::new(
-                        0,
-                        wgpu::ShaderStage::COMPUTE,
-                        wgpu::BindingType::StorageBuffer {
-                            dynamic: false,
-                            readonly: false,
-                            min_binding_size: wgpu::BufferSize::new(T::SIZE.try_into().unwrap()),
-                        },
-                    )],
+                    layout: None,
+                    module: &shader_module,
+                    entry_point: "main",
                 });
+
+        let bind_group_layout = compute_pipeline.get_bind_group_layout(0);
 
         let bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
             layout: &bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: wgpu::BindingResource::Buffer(storage.storage_buffer.slice(..)),
+                resource: storage.storage_buffer.as_entire_binding(),
             }],
         });
 
-        let shader_program = Self::assemble(program.as_str(), main.as_str(), workgroup_size);
-        let compiled_shader = compile_shader(&shader_program);
-        let spirv = wgpu::ShaderModuleSource::SpirV(compiled_shader.as_binary());
-
-        let pipeline_layout = gpu
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                bind_group_layouts: &[&bind_group_layout],
-                push_constant_ranges: &[],
-            });
-
-        let shader_module = gpu.device.create_shader_module(spirv);
-
-        let compute_pipeline =
-            gpu.device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    layout: &pipeline_layout,
-                    compute_stage: wgpu::ProgrammableStageDescriptor {
-                        module: &shader_module,
-                        entry_point: "main",
-                    },
-                });
+        //let pipeline_layout = gpu
+        //    .device
+        //    .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        //        bind_group_layouts: &[&bind_group_layout],
+        //        push_constant_ranges: &[],
+        //    });
 
         let output_buffer = OutputBuffer::new(storage.len, &gpu);
 
-        CompiledProgram {
+        Ok(CompiledProgram {
             input: storage,
             output: output_buffer,
             gpu,
             workgroup_size,
             compute_pipeline,
             bind_group,
-        }
+        })
     }
 
     /// Append a map pass.
     pub fn map<P: AsRef<str>>(mut self, program: P) -> Program<Slice<T>> {
-        use glsl::parser::Parse;
         let program = program.as_ref();
+        if !program.starts_with("fn ") {
+            return Program {
+                status: Err(Error::WGSLProgramSyntax(
+                    "WGSL Program must always start with the string \"fn \"".to_string(),
+                )),
+                ..self
+            };
+        }
+
         // Parse the function signature to extract the name.
-        let glsl_fn = glsl::syntax::FunctionPrototype::parse(
-            program
-                .split("{")
-                .next()
-                .expect("Failed to find the function body surrounded by braces")
-                .trim(),
-        )
-        .expect("Invalid glsl function definition");
-        self.program.push_str(program);
-        self.main
-            .push_str(&Self::map_program(glsl_fn.name.as_str()));
-        self
+
+        let (_, rest) = program.split_at(3); // Skip "fn " (above check makes sure this does not panic)
+        if let Some(program_name) = rest.split("(").next().map(|name| name.trim()) {
+            self.program.push_str(program);
+            self.main.push_str(&Self::map_program(program_name));
+            self
+        } else {
+            Program {
+                status: Err(Error::WGSLProgramSyntax(
+                    "Failed to find the function parameters surrounded by parentheses".to_string(),
+                )),
+                ..self
+            }
+        }
     }
 }
 
@@ -508,7 +562,7 @@ impl<T: Primitive> CompiledProgram<Slice<T>, OutputBuffer<T>> {
                     len,
                     ..
                 },
-            gpu: Gpu { device, queue },
+            gpu: Gpu { device, queue, .. },
             workgroup_size,
             compute_pipeline,
             bind_group,
@@ -519,7 +573,8 @@ impl<T: Primitive> CompiledProgram<Slice<T>, OutputBuffer<T>> {
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         encoder.copy_buffer_to_buffer(&input_buffer, 0, &storage_buffer, 0, buffer_size::<T>(*len));
         {
-            let mut cpass = encoder.begin_compute_pass();
+            let mut cpass =
+                encoder.begin_compute_pass(&wgpu::ComputePassDescriptor { label: None });
             cpass.set_pipeline(compute_pipeline);
             cpass.set_bind_group(0, bind_group, &[]);
             cpass.dispatch(
@@ -583,20 +638,12 @@ impl<T: Primitive> CompiledProgram<Slice<T>, OutputBuffer<T>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
-    fn collatz() {
-        let collatz: &str = stringify! {
-            uint program(uint n) {
-                uint i = 0;
-                while(n > 1) {
-                    if (mod(n, 2) == 0) {
-                        n = n / 2;
-                    } else {
-                        n = (3 * n) + 1;
-                    }
-                    i += 1;
-                }
-                return i;
+    fn add1() {
+        let add1: &str = stringify! {
+            fn program(x: i32) -> i32 {
+                return x + 1i;
             }
         };
 
@@ -606,7 +653,55 @@ mod tests {
         let gpu_slice = numbers.as_slice().into_gpu();
 
         // Compile the map program to the gpu
-        let map_gpu_slice = gpu_slice.map(collatz).compile();
+        let map_gpu_slice = gpu_slice.map(add1).compile().unwrap();
+
+        // Execute the gpu program and collect the results.
+        let result = map_gpu_slice.run().collect();
+        assert_eq!(vec![2, 3, 4, 5, 6, 7, 8, 9, 10], result);
+
+        // Run again to make sure that the input hasn't changed
+        let result = map_gpu_slice.run().collect();
+        assert_eq!(vec![2, 3, 4, 5, 6, 7, 8, 9, 10], result);
+
+        // Update the input and run again
+        let rev_numbers: Vec<_> = numbers.iter().cloned().rev().collect();
+        map_gpu_slice.update_data(rev_numbers.as_slice());
+        let result = map_gpu_slice.run().collect();
+        assert_eq!(vec![10, 9, 8, 7, 6, 5, 4, 3, 2], result);
+    }
+    #[test]
+    fn collatz() {
+        let collatz: &str = stringify! {
+            fn program(n_base: u32) -> u32 {
+                var n: u32 = n_base;
+                var i: u32 = 0u;
+                loop {
+                    if (n <= 1u) {
+                        break;
+                    }
+                    if (n % 2u == 0u) {
+                        n = n / 2u;
+                    } else {
+                        // Overflow? (i.e. 3*n + 1 > 0xffffffffu?)
+                        if (n >= 1431655765u) {   // 0x55555555u
+                            return 4294967295u;   // 0xffffffffu
+                        }
+
+                        n = 3u * n + 1u;
+                    }
+                    i = i + 1u;
+                }
+                return i;
+            }
+        };
+
+        let numbers = (1u32..10).collect::<Vec<_>>();
+
+        // Prepare the slice on the gpu
+        let gpu_slice = numbers.as_slice().into_gpu();
+
+        // Compile the map program to the gpu
+        let map_gpu_slice = gpu_slice.map(collatz).compile().unwrap();
 
         // Execute the gpu program and collect the results.
         let result = map_gpu_slice.run().collect();

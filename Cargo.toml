@@ -18,6 +18,8 @@ typenum = "1.12.0"
 reinterpret = "0.2"
 bytemuck = { version = "1.5", features = ["extern_crate_alloc"] }
 rayon = { version = "1.5", optional = true }
+wgpu = { git = "https://github.com/gfx-rs/wgpu-rs.git", optional = true }
+futures = { version = "0.3", optional = true }
 flatk-derive = { path = "flatk-derive", version = "0.3", optional = true }
 
 [dev-dependencies]
@@ -25,11 +27,12 @@ rand = "0.8"
 criterion = "0.3"
 
 [features]
-default = ["derive", "sparse", "rayon"]
+default = ["derive", "sparse", "rayon", "gpu"]
 unstable = ["criterion/real_blackbox"]
 derive = ["flatk-derive"]
 sorted_chunks = []
 sparse = []
+gpu = ["wgpu", "futures"]
 
 [[bench]]
 name = "storage"
@@ -45,6 +48,10 @@ harness = false
 
 [[bench]]
 name = "chunks_iter"
+harness = false
+
+[[bench]]
+name = "gpu"
 harness = false
 
 [[bench]]

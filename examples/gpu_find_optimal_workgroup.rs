@@ -8,15 +8,25 @@ fn main() {
     use std::time::Instant;
 
     let collatz: &str = stringify! {
-        uint program(uint n) {
-            uint i = 0;
-            while(n > 1) {
-                if (mod(n, 2) == 0) {
-                    n = n / 2;
-                } else {
-                    n = (3 * n) + 1;
+        fn program(n_base: u32) -> u32 {
+            var n: u32 = n_base;
+            var i: u32 = 0u;
+            loop {
+                if (n <= 1u) {
+                    break;
                 }
-                i += 1;
+                if (n % 2u == 0u) {
+                    n = n / 2u;
+                }
+                else {
+                    // Overflow? (i.e. 3*n + 1 > 0xffffffffu?)
+                    if (n >= 1431655765u) {   // 0x55555555u
+                        return 4294967295u;   // 0xffffffffu
+                    }
+
+                    n = 3u * n + 1u;
+                }
+                i = i + 1u;
             }
             return i;
         }
@@ -31,7 +41,11 @@ fn main() {
         // Prepare the slice on the gpu
         let gpu_slice = numbers.as_slice().into_gpu();
         // Compile the map program to the gpu
-        let map_gpu_slice = gpu_slice.map(collatz).with_workgroup_size(wgs).compile();
+        let map_gpu_slice = gpu_slice
+            .map(collatz)
+            .with_workgroup_size(wgs)
+            .compile()
+            .unwrap();
 
         let now = Instant::now();
         // Execute the gpu program and collect the results.
