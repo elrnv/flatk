@@ -18,10 +18,6 @@ typenum = "1.12.0"
 reinterpret = "0.2"
 bytemuck = { version = "1.5", features = ["extern_crate_alloc"] }
 rayon = { version = "1.5", optional = true }
-#wgpu = { git = "https://github.com/gfx-rs/wgpu-rs.git", optional = true }
-#futures = { version = "0.3", optional = true }
-#shaderc = { version = "0.6", optional = true }
-#glsl = { version = "4.1", optional = true }
 flatk-derive = { path = "flatk-derive", version = "0.3", optional = true }
 
 [dev-dependencies]
@@ -34,7 +30,6 @@ unstable = ["criterion/real_blackbox"]
 derive = ["flatk-derive"]
 sorted_chunks = []
 sparse = []
-#gpu = ["wgpu", "futures", "shaderc", "glsl"]
 
 [[bench]]
 name = "storage"
@@ -54,10 +49,6 @@ harness = false
 
 [[bench]]
 name = "zip"
-harness = false
-
-[[bench]]
-name = "gpu"
 harness = false
 
 [[bench]]
