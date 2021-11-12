@@ -30,7 +30,7 @@ where
 }
 
 #[inline]
-fn make_random_chunked<T>(buf_size: usize) -> Chunked<Chunked3<Vec<T>>>
+fn make_random_chunked<T: bytemuck::Pod>(buf_size: usize) -> Chunked<Chunked3<Vec<T>>>
 where
     Standard: Distribution<T>,
 {

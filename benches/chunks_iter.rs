@@ -65,7 +65,7 @@ fn chunked3(v: &mut Vec<f64>) {
 #[inline]
 fn chunked_n(v: &mut Vec<f64>) {
     use flatk::ChunkedN;
-    for a in ChunkedN::from_flat_with_stride(v.as_mut_slice(), 3).into_iter() {
+    for a in ChunkedN::from_flat_with_stride(3, v.as_mut_slice()).into_iter() {
         a.copy_from_slice(&compute(a[0], a[1], a[2]));
     }
 }
@@ -73,7 +73,7 @@ fn chunked_n(v: &mut Vec<f64>) {
 #[inline]
 fn chunked_n_par(v: &mut Vec<f64>) {
     use flatk::ChunkedN;
-    ChunkedN::from_flat_with_stride(v.as_mut_slice(), 3)
+    ChunkedN::from_flat_with_stride(3, v.as_mut_slice())
         .into_par_iter()
         .for_each(|a| {
             a.copy_from_slice(&compute(a[0], a[1], a[2]));
