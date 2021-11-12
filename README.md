@@ -205,20 +205,12 @@ This is an exploratory project to determine if this kind of abstraction can simp
 code and make it more reusable.
 
 
-# Caveats and Limitations
-
-Composability is not well supported in stable Rust (v1.41) due to some missing features like
-[GAT](https://github.com/rust-lang/rust/issues/44265) (for more ergonomic indexing),
-[specialization](https://github.com/rust-lang/rust/issues/31844) (for optimizations) and [const
-generics](https://github.com/rust-lang/rust/issues/44580) (for better interoperability with arrays).
-These limitations make the proposed abstractons difficult to implement, optimize and use in some
-circumstances.  As such this library will likely remain experimental until these features are
-stabilized.
+# Composability and custom structs
 
 To enable composability, many behaviours of contiguous collections (like `Vec` and `slice`) from the
 standard library have been extracted into micro-traits (e.g. `SplitAt`), which need to be
-implemented for each new composable type. This means that users who want to wrap custom `struct`s
-inside types provided in this library will need to implement these traits manually.  For instance,
+implemented for each new composable type. This means that in order to wrap custom `struct`s
+inside types provided in this library, the structs must impleent our traits.  For instance,
 if a set of particles has position and velocity attributes, it may makes sense to store the
 attributes in a struct as
 ```rust
@@ -228,8 +220,50 @@ struct Particles {
 }
 ```
 However, in order to compose `Particles` with say `Chunked`, one will need to implement `SplitAt`,
-`Set` and `Dummy` traits to enable iteration.  It is possible however to automate this process
-for certain structs using procedural macros.
+`Set` and `Dummy` traits to enable iteration. We provide a component macro that implements our
+traits for each new struct automatically. So in order for `Particles` to be usable with `Chunked`,
+we should derive `Component` for a `ParticleComponent` struct make each field that may be chunked generic, and
+separately define `Particles` as a type alias to `ParticleComponent` with the specified storage
+types (`Vec`s):
+```rust
+#[derive(Component)]
+struct ParticleComponent<X, V> {
+    pos: X,
+    vel: V,
+}
+type Particles = Chunked3<ParticleComponent<Vec<f32>, Vec<f32>>>;
+```
+
+Then we can use `Particles` as a single collection, which will yield our particles as
+`ParticleComponent<[f32; 3], [f32; 3]>` types:
+```rust
+for ParticleComponent { pos, vel } in particles.iter() {
+    // pos and vel are [f32; 3] arrays.
+}
+```
+
+In order to compose multiple structs, a `#[component]` attribute is available. For instance if we
+can create a `RigidComponent` component that uses `ParticleComponent` for linear motion:
+```rust
+#[derive(Component)]
+struct RigidComponent<X, V, O, W> {
+    #[component]
+    linear: Particle<X, V>,
+    orientation: O,
+    angular_velocity: W
+}
+```
+
+
+# Caveats and Limitations
+
+Composability is not well supported in stable Rust (v1.41) due to some missing features like
+[GAT](https://github.com/rust-lang/rust/issues/44265) (for more ergonomic indexing),
+[specialization](https://github.com/rust-lang/rust/issues/31844) (for optimizations) and [const
+generics](https://github.com/rust-lang/rust/issues/44580) (for better interoperability with arrays).
+These limitations make the proposed abstractons difficult to implement, optimize and use in some
+circumstances.  As such this library will likely remain experimental until these features are
+stabilized.
 
 
 # State
