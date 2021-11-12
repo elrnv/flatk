@@ -2060,6 +2060,28 @@ impl<S: Reserve, O: Reserve> Reserve for Chunked<S, O> {
     }
 }
 
+impl<S, O: AsRef<[usize]> + Set> From<Chunked<S, Offsets<O>>> for Clumped<S> {
+    fn from(chunked: Chunked<S, Offsets<O>>) -> Clumped<S> {
+        let Chunked { chunks, data } = chunked;
+
+        Clumped {
+            chunks: ClumpedOffsets::from(chunks),
+            data,
+        }
+    }
+}
+
+impl<S, O: AsRef<[usize]> + Set> From<Clumped<S, O>> for Chunked<S> {
+    fn from(clumped: Clumped<S, O>) -> Chunked<S> {
+        let Clumped { chunks, data } = clumped;
+
+        Chunked {
+            chunks: Offsets::from(chunks),
+            data,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2182,5 +2204,17 @@ mod tests {
         let mut trimmed = s;
         trimmed.trim(); // Remove unindexed elements.
         assert_eq!(4, trimmed.data().len());
+    }
+
+    #[test]
+    fn convert_between_clumped_and_chunked() {
+        let chunked = Chunked::from_offsets(vec![2, 3, 4, 8], vec![1, 2, 3, 4, 5, 6]);
+        let clumped = Clumped::from(chunked.clone());
+        assert_eq!(clumped.chunks.chunk_offsets, Offsets::new(vec![0, 2, 3]));
+        assert_eq!(clumped.chunks.offsets, Offsets::new(vec![2, 4, 8]));
+        assert_eq!(clumped.data, chunked.data);
+        let chunked_again = Chunked::<Vec<usize>>::from(clumped);
+        assert_eq!(chunked_again.chunks, chunked.chunks);
+        assert_eq!(chunked_again.data, chunked.data);
     }
 }
