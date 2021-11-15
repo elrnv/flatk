@@ -939,6 +939,33 @@ impl<O: Reserve> Reserve for ClumpedOffsets<O> {
     }
 }
 
+impl std::iter::Extend<(usize, usize)> for ClumpedOffsets {
+    /// Extend this set of clumped offsets with a given iterator over chunk-offset and offset pairs.
+    ///
+    /// This operation automatically shifts the merged offsets in the iterator
+    /// to start from the last offset in `self`.
+    ///
+    /// Note that there will be 1 less offset added to `self` than produced by
+    /// `iter` since the first offset is only used to determine the relative
+    /// magnitude of the rest and corresponds to the last offset in `self`.
+    fn extend<T: IntoIterator<Item = (usize, usize)>>(&mut self, iter: T) {
+        let mut iter = iter.into_iter();
+        if let Some((first_chunk_offset, first_offset)) = iter.next() {
+            let last_offset = self.last_offset_value();
+            let Self {
+                chunk_offsets,
+                offsets,
+            } = self;
+            chunk_offsets.extend(std::iter::once(first_chunk_offset).chain(iter.map(
+                |(chunk_offset, offset)| {
+                    offsets.push(offset + last_offset - first_offset);
+                    chunk_offset
+                },
+            )));
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1112,5 +1139,18 @@ mod tests {
 
         let mut iter = clumped_offsets.sizes();
         assert_eq!(iter.nth(5).unwrap(), 4); // Start with nth skipping first clump
+    }
+    #[test]
+    fn extend_clumped_offsets() {
+        let offsets = Offsets::new(vec![3, 6, 9, 10, 11]);
+        let mut clumped_offsets = ClumpedOffsets::from(offsets.clone());
+        let orig_clumped_offsets = clumped_offsets.clone();
+        clumped_offsets.extend(vec![]); // Safe and no panics.
+        assert_eq!(clumped_offsets, orig_clumped_offsets);
+        clumped_offsets.extend(vec![(0, 0)]); // Nothing new added.
+        assert_eq!(clumped_offsets, orig_clumped_offsets);
+        clumped_offsets.extend(vec![(1, 1), (3, 5)]); // Nothing new added.
+        let exp_extended_offsets = Offsets::new(vec![3, 6, 9, 10, 11, 13, 15]);
+        assert_eq!(clumped_offsets, ClumpedOffsets::from(exp_extended_offsets));
     }
 }

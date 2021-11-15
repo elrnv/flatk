@@ -448,7 +448,7 @@ impl<S: Set, O: AsRef<[usize]>> Clumped<S, O> {
     /// `chunk_offsets`, since the implied stride must divide into the size of each clump, and
     /// checking this at run time is expensive. As such a malformed `Clumped` may cause panics
     /// somewhere down the line. For ensuring a valid construction, use the
-    /// [`from_sizes_and_counts`] constructor.
+    /// [`Self::from_sizes_and_counts`] constructor.
     ///
     /// # Example
     ///

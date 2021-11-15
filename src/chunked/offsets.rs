@@ -1107,6 +1107,24 @@ impl<O: Reserve> Reserve for Offsets<O> {
     }
 }
 
+impl std::iter::Extend<usize> for Offsets {
+    /// Extend this set of offsets with a given iterator of offsets.
+    ///
+    /// This operation automatically shifts the merged offsets in the iterator
+    /// to start from the last offset in `self`.
+    ///
+    /// Note that there will be 1 less offset added to `self` than produced by
+    /// `iter` since the first offset is only used to determine the relative
+    /// magnitude of the rest and corresponds to the last offset in `self`.
+    fn extend<T: IntoIterator<Item = usize>>(&mut self, iter: T) {
+        let mut iter = iter.into_iter();
+        if let Some(first) = iter.next() {
+            let last = self.last_offset_value();
+            self.0.extend(iter.map(|off| off + last - first));
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1223,5 +1241,17 @@ mod tests {
             count += 1;
         }
         assert_eq!(iter_len, count);
+    }
+
+    #[test]
+    fn extend_offsets() {
+        let mut offsets = Offsets::new(vec![0, 3, 7]);
+        let orig_offsets = offsets.clone();
+        offsets.extend([]); // Safe and and no panics, nothing happens.
+        assert_eq!(offsets, orig_offsets);
+        offsets.extend([0]); // Nothing new added.
+        assert_eq!(offsets, orig_offsets);
+        offsets.extend([0, 1, 10]);
+        assert_eq!(offsets, Offsets::new(vec![0, 3, 7, 8, 17]));
     }
 }
