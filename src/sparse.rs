@@ -140,7 +140,7 @@ impl<S: Set, T, I> Sparse<S, T, I> {
     /// assert_eq!(None, iter.next());
     /// // Note: 1 and 5 are not merged because they are not consecutive.
     /// ```
-    pub fn extend_pruned<'a, S2, T2, I2, B>(
+    pub fn extend_pruned<S2, T2, I2, B>(
         &mut self,
         other: Sparse<S2, T2, I2>,
         mut combine: impl FnMut(usize, &mut B::Owned, B),
@@ -161,7 +161,7 @@ impl<S: Set, T, I> Sparse<S, T, I> {
         if let Some((mut prev_src_idx, (mut prev_idx, prev))) = it.next() {
             let mut elem = prev.into_owned();
 
-            while let Some((src_idx, (idx, cur))) = it.next() {
+            for (src_idx, (idx, cur)) in it {
                 if prev_idx != idx {
                     if keep(prev_idx, &elem) {
                         map(prev_src_idx, self.len());
@@ -482,7 +482,7 @@ where
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
         SparseIter {
-            indices: self.selection.indices.into_iter().cloned(),
+            indices: self.selection.indices.iter().cloned(),
             source: self.source,
         }
     }

@@ -291,7 +291,7 @@ impl<'a> From<DEUnclumpedOffsetValuesAndSizes<'a>> for DEUnclumpedOffsetsAndSize
 
 impl DEUnclumpedOffsetsAndSizes<'_> {
     #[inline]
-    fn mapper<'b>(&'b self) -> impl Fn((usize, usize)) -> (usize, usize) + 'b {
+    fn mapper(&self) -> impl Fn((usize, usize)) -> (usize, usize) + '_ {
         move |(off, size)| (off - self.first_offset_value, size)
     }
 }
@@ -371,7 +371,7 @@ pub struct DEUnclumpedSizes<'a> {
 
 impl DEUnclumpedSizes<'_> {
     #[inline]
-    fn mapper<'b>(&'b self) -> impl Fn((usize, usize)) -> usize + 'b {
+    fn mapper(&self) -> impl Fn((usize, usize)) -> usize + '_ {
         move |(_, size)| size
     }
 }

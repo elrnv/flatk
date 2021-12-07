@@ -443,7 +443,7 @@ impl<T> RemovePrefix for &mut [T] {
     /// ```
     #[inline]
     fn remove_prefix(&mut self, n: usize) {
-        let data = std::mem::replace(self, &mut []);
+        let data = std::mem::take(self);
         *self = &mut data[n..];
     }
 }
@@ -489,7 +489,7 @@ impl<T> Truncate for &[T] {
 impl<T> Truncate for &mut [T] {
     #[inline]
     fn truncate(&mut self, new_len: usize) {
-        let data = std::mem::replace(self, &mut []);
+        let data = std::mem::take(self);
         // Simply forget about the elements past new_len.
         *self = data.split_at_mut(new_len).0;
     }
@@ -582,7 +582,7 @@ impl<T> PermuteInPlace for &mut [T] {
     /// larger than this slice.
     #[inline]
     fn permute_in_place(&mut self, permutation: &[usize], seen: &mut [bool]) {
-        let data = std::mem::replace(self, &mut []);
+        let data = std::mem::take(self);
         UniChunked {
             chunk_size: 1,
             data,

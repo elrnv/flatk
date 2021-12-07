@@ -312,7 +312,7 @@ impl<'a, S, I: AsRef<[usize]>> Subset<S, I> {
         };
 
         while let Some(curr) = iter.next() {
-            if compare(&last, &curr)
+            if compare(last, curr)
                 .map(|o| o == std::cmp::Ordering::Greater)
                 .unwrap_or(true)
             {
@@ -459,7 +459,7 @@ where
     /// ```
     #[inline]
     fn split_at(self, mid: usize) -> (Self, Self) {
-        if let Some(ref indices) = self.indices {
+        if let Some(indices) = self.indices {
             let (indices_l, indices_r) = indices.split_at(mid);
             let n = self.data.len();
             let offset = indices_r
@@ -946,7 +946,7 @@ impl<'a> Iterator for SubsetIndexIter<'a> {
                     // SAFETY: the bounds are checked above.
                     unsafe {
                         let item = *indices.get_unchecked(n);
-                        *indices = &indices.get_unchecked(n + 1..);
+                        *indices = indices.get_unchecked(n + 1..);
                         Some(item)
                     }
                 }

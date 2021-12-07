@@ -71,7 +71,7 @@ impl Offsets<&[usize]> {
     /// an empty `offsets` collection.
     #[inline]
     pub unsafe fn remove_suffix_unchecked(&mut self, n: usize) {
-        self.0 = &self.0.get_unchecked(..self.0.len() - n);
+        self.0 = self.0.get_unchecked(..self.0.len() - n);
     }
 }
 
@@ -143,7 +143,7 @@ impl<'a> Iterator for OffsetValues<'a> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        self.offset_values.get(n).map(|&x| x)
+        self.offset_values.get(n).copied()
     }
 
     #[inline]
@@ -165,7 +165,7 @@ impl DoubleEndedIterator for OffsetValues<'_> {
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
         self.offset_values
             .get(ExactSizeIterator::len(self) - 1 - n)
-            .map(|&x| x)
+            .copied()
     }
 }
 
@@ -315,7 +315,7 @@ impl<'a> Ranges<'a> {
     /// Produces a function that converts an offset *value* range into a bona-fide offset range by
     /// subtracting the first offset from both endpoints.
     #[inline]
-    fn offset_range_converter<'b>(&'b self) -> impl Fn(Range<usize>) -> Range<usize> + 'b {
+    fn offset_range_converter(&self) -> impl Fn(Range<usize>) -> Range<usize> + '_ {
         move |Range { start, end }| start - self.first_offset_value..end - self.first_offset_value
     }
 }
@@ -403,7 +403,7 @@ impl<'a> Sizes<'a> {
     /// Produces a function that converts an offset value range into a range size by
     /// subtracting the last and first end points.
     #[inline]
-    fn range_to_size_mapper<'b>(&'b self) -> impl Fn(Range<usize>) -> usize + 'b {
+    fn range_to_size_mapper(&self) -> impl Fn(Range<usize>) -> usize + '_ {
         move |Range { start, end }| end - start
     }
 }
@@ -491,7 +491,7 @@ impl<'a> OffsetValuesAndSizes<'a> {
     /// Produces a function that converts an offset value range into a starting offset value and
     /// range size by subtracting the last and first end points.
     #[inline]
-    fn range_mapper<'b>(&'b self) -> impl Fn(Range<usize>) -> (usize, usize) + 'b {
+    fn range_mapper(&self) -> impl Fn(Range<usize>) -> (usize, usize) + '_ {
         move |Range { start, end }| (start, end - start)
     }
 }
@@ -574,7 +574,7 @@ impl<'a> OffsetsAndSizes<'a> {
     /// Produces a function that converts an offset value range into a range size by
     /// subtracting the last and first end points.
     #[inline]
-    fn range_mapper<'b>(&'b self) -> impl Fn(Range<usize>) -> (usize, usize) + 'b {
+    fn range_mapper(&self) -> impl Fn(Range<usize>) -> (usize, usize) + '_ {
         move |Range { start, end }| (start - self.first_offset_value, end - start)
     }
 }
@@ -703,7 +703,7 @@ impl<O: AsRef<[usize]> + Set> Offsets<O> {
 
     /// Returns an iterator over offsets.
     #[inline]
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = usize> + 'a {
+    pub fn iter(&self) -> impl Iterator<Item = usize> + '_ {
         let first = self.first_offset_value();
         self.0.as_ref().iter().map(move |&x| x - first)
     }
@@ -1041,7 +1041,7 @@ impl<'a, O: Get<'a, Range<usize>>> GetIndex<'a, Offsets<O>> for Range<usize> {
     #[inline]
     fn get(mut self, offsets: &Offsets<O>) -> Option<Self::Output> {
         self.end += 1;
-        offsets.0.get(self).map(|offsets| Offsets(offsets))
+        offsets.0.get(self).map(Offsets)
     }
 }
 
@@ -1067,7 +1067,7 @@ impl<O: Isolate<Range<usize>>> IsolateIndex<Offsets<O>> for Range<usize> {
     #[inline]
     fn try_isolate(mut self, offsets: Offsets<O>) -> Option<Self::Output> {
         self.end += 1;
-        offsets.0.try_isolate(self).map(|offsets| Offsets(offsets))
+        offsets.0.try_isolate(self).map(Offsets)
     }
 }
 

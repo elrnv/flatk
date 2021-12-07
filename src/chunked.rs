@@ -40,6 +40,9 @@ where
 }
 
 pub trait IndexRange {
+    /// # Safety
+    ///
+    /// Range must be within bounds of the collection.
     unsafe fn index_range_unchecked(&self, range: std::ops::Range<usize>)
         -> std::ops::Range<usize>;
     fn index_range(&self, range: std::ops::Range<usize>) -> Option<std::ops::Range<usize>>;
@@ -87,6 +90,10 @@ pub trait IntoValues {
 /// functions in this trait that make this assumption.
 pub unsafe trait GetOffset {
     /// A version of `offset_value` without bounds checking.
+    ///
+    /// # Safety
+    ///
+    /// The given `index` must be less than `self.len()` to avoid undefined behaviour.
     unsafe fn offset_value_unchecked(&self, index: usize) -> usize;
 
     /// Get the total number of offsets.

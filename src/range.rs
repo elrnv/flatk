@@ -134,11 +134,11 @@ where
         let std::ops::Range { start, end } = self;
 
         let mut prefix: N::Array = Default::default();
-        for (i, item) in (start.clone()..).zip(N::iter_mut(&mut prefix)) {
+        for (i, item) in (start..).zip(N::iter_mut(&mut prefix)) {
             *item = i;
         }
 
-        let start = start.clone().into();
+        let start = start.into();
 
         let rest = Range {
             start: (start + N::to_usize()).into(),

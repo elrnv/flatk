@@ -214,7 +214,7 @@ impl<O: AsRef<[usize]>> ClumpedOffsets<O> {
     /// This is equivalent to iterating over `Offsets` after conversion, but it doesn't require any
     /// additional allocations.
     #[inline]
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = usize> + 'a {
+    pub fn iter(&self) -> impl Iterator<Item = usize> + '_ {
         debug_assert!(!self.offsets.as_ref().is_empty());
         let first = self.first_offset_value();
         UnclumpedOffsetValues {
@@ -385,7 +385,7 @@ pub struct UnclumpedOffsetsAndSizes<'a> {
 
 impl UnclumpedOffsetsAndSizes<'_> {
     #[inline]
-    fn offset_and_size_mapper<'b>(&'b self) -> impl Fn((usize, usize)) -> (usize, usize) + 'b {
+    fn offset_and_size_mapper(&self) -> impl Fn((usize, usize)) -> (usize, usize) + '_ {
         move |(off, size)| (off - self.first_offset_value, size)
     }
 }
@@ -534,8 +534,8 @@ impl<'a> Iterator for UnclumpedOffsetValues<'a> {
             // SAFETY: There is at least one element in both offsets and chunk_offsets.
             unsafe {
                 // Pop the last internal offset.
-                self.offsets = &offsets.get_unchecked(1..);
-                self.chunk_offsets = &chunk_offsets.get_unchecked(1..);
+                self.offsets = offsets.get_unchecked(1..);
+                self.chunk_offsets = chunk_offsets.get_unchecked(1..);
             }
 
             if let Some(next_offset) = self.offsets.get(0) {

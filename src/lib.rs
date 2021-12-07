@@ -726,7 +726,15 @@ where
     S: ?Sized,
 {
     type Output;
+    /// Gets the value in the set at this index.
     fn get(self, set: &S) -> Option<Self::Output>;
+    /// Gets the value in the set at this index.
+    ///
+    /// # Safety
+    ///
+    /// The index must be within the bounds of the set to avoid undefined behavior (UB).
+    ///
+    /// The default implementation panics if the index is out of bounds instead of causing UB.
     #[inline]
     unsafe fn at_unchecked(self, set: &S) -> Self::Output
     where
@@ -739,7 +747,15 @@ where
 /// A helper trait like `GetIndex` but for `Isolate` types.
 pub trait IsolateIndex<S> {
     type Output;
+    /// Attempts to isolate a value in the given set at this index.
+    ///
+    /// Unlike `get` this function takes `set` by value.
     fn try_isolate(self, set: S) -> Option<Self::Output>;
+    /// Attempts to isolate a value in the given set at this index.
+    ///
+    /// # Safety
+    ///
+    /// The index must be within the bounds of the collection to avoid undefined behaviour.
     unsafe fn isolate_unchecked(self, set: S) -> Self::Output;
 }
 
@@ -760,8 +776,12 @@ pub trait Get<'a, I> {
     fn at(&self, idx: I) -> Self::Output {
         self.get(idx).expect("Index out of bounds")
     }
-    /// Return a value at the given index. This is provided as the unchecked
-    /// version of `get` that has undefined behavior when the index is out of bounds.
+    /// Return a value at the given index.
+    ///
+    /// # Safety
+    ///
+    /// This is provided as the unchecked version of `get` that has undefined
+    /// behavior when the index is out of bounds.
     ///
     /// The default implementation simply calls `at` which will panic, but custom
     /// implementors may omit bounds checks entirely.
@@ -794,6 +814,14 @@ where
 /// why it's called `Isolate` instead of `SubView`.
 pub trait Isolate<I> {
     type Output;
+    /// Unchecked version of `isolate`.
+    ///
+    /// # Safety
+    ///
+    /// The given index must be within the bounds of this collection, otherwise
+    /// this function may cause undefined behaviour (UB).  In otherwords
+    /// `try_isolate(idx)` must not be `None` when called with the same `idx` to
+    /// avoid UB.
     unsafe fn isolate_unchecked(self, idx: I) -> Self::Output;
     fn try_isolate(self, idx: I) -> Option<Self::Output>;
     /// Return a value at the given index. This is provided as the checked
@@ -1062,6 +1090,11 @@ where
 
     /// Split off the first element without checking if one exists.
     ///
+    /// # Safety
+    ///
+    /// The collection must have at least one element otherwise this function
+    /// may cause undefined behaviour if implemented.
+    ///
     /// The default implementation simply calls unwrap on `split_first`.
     #[inline]
     unsafe fn split_first_unchecked(self) -> (Self::First, Self) {
@@ -1109,11 +1142,25 @@ impl<S: StorageMut + ?Sized> StorageMut for &mut S {
 }
 
 /// A helper trait for constructing placeholder sets for use in `std::mem::replace`.
+///
 /// These don't necessarily have to correspond to bona-fide sets and can
 /// potentially produce invalid sets. For this reason this function can be
 /// unsafe since it can generate collections that don't uphold their invariants
 /// for the sake of avoiding allocations.
 pub trait Dummy {
+    /// Constructs a potentially invalid instance of a type.
+    ///
+    /// This function is intended to be used in conjunction with
+    /// `std::mem::replace` to avoid allocations for types whose `Default`
+    /// implementations can cause allocations or other potentially expensive
+    /// computations. As such `dummy` types may be invalid and should not be
+    /// used other than as placeholders to avoid undefined behaviour.
+    ///
+    /// # Safety
+    ///
+    /// Instances created with this function can cause undefinied behaviour if
+    /// used other than as placeholders for real values for functions like
+    /// `std::mem::replace`.
     unsafe fn dummy() -> Self;
 }
 
@@ -1357,7 +1404,13 @@ where
 /// indices (if applicable), and must return a valid reference if index is in
 /// 0..self.len().
 pub unsafe trait TrustedRandomAccess: ExactSizeIterator {
-    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item;
+    /// Gets the element at the given index from this iterator.
+    ///
+    /// # Safety
+    ///
+    /// The `index` must not exceed the number of items produced by this
+    /// iterator to avoid undefined behaviour.
+    unsafe fn get_unchecked(&mut self, index: usize) -> Self::Item;
     /// Returns `true` if getting an iterator element may have
     /// side effects. Remember to take inner iterators into account.
     #[inline]

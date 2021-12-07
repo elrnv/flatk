@@ -385,7 +385,7 @@ where
             },
             Select {
                 indices: indices_r,
-                target: target,
+                target,
             },
         )
     }
@@ -434,7 +434,7 @@ where
         let other_view = other.view_mut();
         assert_eq!(other_view.len(), self.len());
         for (theirs, mine) in other_view.into_iter().zip(self.iter()) {
-            theirs.clone_from(&mine.1);
+            theirs.clone_from(mine.1);
         }
     }
 }
@@ -461,7 +461,7 @@ where
         let other_view = other.view_mut();
         assert_eq!(other_view.len(), self.len());
         for (theirs, mine) in other_view.into_iter().zip(self.iter()) {
-            theirs.clone_from(&mine.1);
+            theirs.clone_from(mine.1);
         }
     }
 }

@@ -156,30 +156,30 @@ where
 }
 
 // Note: These must be separate in order to avoid conflict with standard library.
-impl<T: Clone + bytemuck::Pod, N: Array<T> + Unsigned> Into<Vec<N::Array>>
-    for UniChunked<Vec<T>, U<N>>
+impl<T: Clone + bytemuck::Pod, N: Array<T> + Unsigned> From<UniChunked<Vec<T>, U<N>>>
+    for Vec<N::Array>
 {
     #[inline]
-    fn into(self) -> Vec<N::Array> {
-        self.into_arrays()
+    fn from(val: UniChunked<Vec<T>, U<N>>) -> Self {
+        val.into_arrays()
     }
 }
 
-impl<'a, T: Clone + bytemuck::Pod, N: Array<T> + Unsigned> Into<&'a [N::Array]>
-    for UniChunked<&'a [T], U<N>>
+impl<'a, T: Clone + bytemuck::Pod, N: Array<T> + Unsigned> From<UniChunked<&'a [T], U<N>>>
+    for &'a [N::Array]
 {
     #[inline]
-    fn into(self) -> &'a [N::Array] {
-        self.into_arrays()
+    fn from(val: UniChunked<&'a [T], U<N>>) -> Self {
+        val.into_arrays()
     }
 }
 
-impl<'a, T: Clone + bytemuck::Pod, N: Array<T> + Unsigned> Into<&'a mut [N::Array]>
-    for UniChunked<&'a mut [T], U<N>>
+impl<'a, T: Clone + bytemuck::Pod, N: Array<T> + Unsigned> From<UniChunked<&'a mut [T], U<N>>>
+    for &'a mut [N::Array]
 {
     #[inline]
-    fn into(self) -> &'a mut [N::Array] {
-        self.into_arrays()
+    fn from(val: UniChunked<&'a mut [T], U<N>>) -> Self {
+        val.into_arrays()
     }
 }
 
@@ -446,7 +446,7 @@ where
     {
         self.reserve(new_length);
         for _ in 0..new_length {
-            PushArrayToVec::<N>::push_to_vec(default.clone(), &mut self.data);
+            PushArrayToVec::<N>::push_to_vec(default, &mut self.data);
         }
     }
 }
@@ -840,7 +840,7 @@ where
 {
     #[inline]
     fn as_ref(&self) -> &[N::Array] {
-        ReinterpretAsGrouped::<N>::reinterpret_as_grouped(self.data.as_ref()).as_ref()
+        ReinterpretAsGrouped::<N>::reinterpret_as_grouped(self.data.as_ref())
     }
 }
 
