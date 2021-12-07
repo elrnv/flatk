@@ -10,8 +10,23 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  check-fmt:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Check formatting
+      run: cargo fmt -- --check
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install clippy
+      run: rustup component add clippy
+    - name: Run clippy
+      run: cargo clippy
+
   test:
-    name: Build and Test
+    name: Build and Test stable features
     runs-on: ubuntu-latest
     
     strategy:
