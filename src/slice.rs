@@ -107,7 +107,7 @@ where
     }
     #[inline]
     fn try_isolate(self, set: &'a mut [T]) -> Option<&'a mut <[T] as std::ops::Index<I>>::Output> {
-        Some(unsafe { IsolateIndex::isolate_unchecked(self, set) })
+        Some(std::ops::IndexMut::<I>::index_mut(set, self))
     }
 }
 
@@ -619,5 +619,21 @@ mod tests {
         let mut b = vec![5, 6, 7, 8];
         a.as_slice().clone_into_other(b.as_mut_slice());
         assert_eq!(b, a);
+    }
+
+    /// Test below verify that isolating a slice will correctly panic when the underlying collection has the wrong size.
+    /// This used to cause an invalid memory reference, and these tests ensure it doesn't happen again.
+
+    #[test]
+    #[should_panic]
+    fn slice_mut_isolate_panic() {
+        let mut b: Vec<i32> = vec![];
+        dbg!(b.view_mut().isolate(0));
+    }
+    #[test]
+    #[should_panic]
+    fn slice_isolate_panic() {
+        let b: Vec<i32> = vec![];
+        dbg!(b.view().isolate(0));
     }
 }

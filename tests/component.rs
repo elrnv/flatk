@@ -30,3 +30,26 @@ fn different_topo() {
     );
     assert_eq!(iter.next(), None);
 }
+
+#[derive(Copy, Clone, Debug, PartialEq, Default, Component)]
+struct Struct<A, B> {
+    pub a: A,
+    pub b: B,
+}
+
+#[test]
+fn mixed_borrow() {
+    let a = Chunked3::from_flat(vec![1, 2, 3, 4, 5, 6]);
+    let mut b = Chunked3::from_flat(vec![3, 4, 5, 6, 7, 8]);
+
+    // Prepare view to write a -> b
+    let mixed_view = Struct {
+        a: a.view(),
+        b: b.view_mut(),
+    };
+
+    for Struct { a, b } in mixed_view.into_iter() {
+        *b = *a;
+    }
+    assert_eq!(b, a);
+}
