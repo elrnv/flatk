@@ -54,3 +54,7 @@ harness = false
 [[bench]]
 name = "write"
 harness = false
+
+[[bench]]
+name = "clumped_vs_nested"
+harness = false
