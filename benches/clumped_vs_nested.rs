@@ -1,11 +1,11 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use flatk::{Clumped, ClumpedView, ViewMut};
 /**
  * This module benchmarks the performance of iterating over clumped data vs. a nested vec.
  */
 use rand::distributions::{Distribution, Standard};
 use rand::prelude::*;
 use rayon::prelude::*;
-use flatk::{ViewMut, Clumped, ClumpedView};
 
 static SEED: [u8; 32] = [3; 32];
 
@@ -15,8 +15,8 @@ where
     Standard: Distribution<f64>,
 {
     let mut rng: StdRng = SeedableRng::from_seed(SEED);
-    let sizes = vec![2,3,4,5,6,10,15,30,60,300];
-    let counts = sizes.iter().map(|&i| n/sizes.len()/i).collect();
+    let sizes = vec![2, 3, 4, 5, 6, 10, 15, 30, 60, 300];
+    let counts = sizes.iter().map(|&i| n / sizes.len() / i).collect();
     ((0..n).map(move |_| rng.gen()).collect(), sizes, counts)
 }
 
@@ -26,8 +26,11 @@ where
     Standard: Distribution<f64>,
 {
     let mut rng: StdRng = SeedableRng::from_seed(SEED);
-    let sizes = vec![2,3,4,5,6,10,15,30,60,300];
-    sizes.iter().map(|_| (0..n/sizes.len()).map(|_| rng.gen()).collect()).collect()
+    let sizes = vec![2, 3, 4, 5, 6, 10, 15, 30, 60, 300];
+    sizes
+        .iter()
+        .map(|_| (0..n / sizes.len()).map(|_| rng.gen()).collect())
+        .collect()
 }
 
 #[inline]
@@ -39,8 +42,7 @@ fn compute(a: &mut [f64]) {
 
 #[inline]
 fn clumped(v: ClumpedView<&mut [f64]>) {
-    for a in v.into_iter()
-    {
+    for a in v.into_iter() {
         compute(a);
     }
 }
@@ -54,9 +56,11 @@ fn clumped_par(v: ClumpedView<&mut [f64]>) {
 
 #[inline]
 fn nested(v: &mut Vec<Vec<f64>>) {
-    for (v, &n) in v.iter_mut().zip([2,3,4,5,6,10,15,30,60,300].iter()) {
-        for a in v.chunks_exact_mut(n)
-        {
+    for (v, &n) in v
+        .iter_mut()
+        .zip([2, 3, 4, 5, 6, 10, 15, 30, 60, 300].iter())
+    {
+        for a in v.chunks_exact_mut(n) {
             compute(a);
         }
     }
@@ -64,13 +68,14 @@ fn nested(v: &mut Vec<Vec<f64>>) {
 
 #[inline]
 fn nested_par(v: &mut Vec<Vec<f64>>) {
-    v.par_iter_mut().zip([2,3,4,5,6,10,15,30,60,300].par_iter()).for_each(|(v, &n)| {
-        v.par_chunks_exact_mut(n).for_each(|a| {
-            compute(a);
+    v.par_iter_mut()
+        .zip([2, 3, 4, 5, 6, 10, 15, 30, 60, 300].par_iter())
+        .for_each(|(v, &n)| {
+            v.par_chunks_exact_mut(n).for_each(|a| {
+                compute(a);
+            });
         });
-    });
 }
-
 
 fn clumped_vs_nested(c: &mut Criterion) {
     let mut group = c.benchmark_group("Clumped vs. Nested");
