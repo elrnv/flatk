@@ -33,7 +33,7 @@ pub struct Sparse<S, T = std::ops::RangeTo<usize>, I = Vec<usize>> {
 }
 
 /// A borrowed view of a sparse collection.
-pub type SparseView<'a, S, T> = Sparse<S, T, &'a [usize]>;
+pub type SparseView<'a, S, T = std::ops::RangeTo<usize>> = Sparse<S, T, &'a [usize]>;
 
 impl<S, I> Sparse<S, std::ops::RangeTo<usize>, I>
 where
