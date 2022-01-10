@@ -488,6 +488,7 @@ where
     }
 }
 
+#[derive(Copy, Clone, Debug)]
 pub struct SparseIter<I, S> {
     indices: I,
     source: S,

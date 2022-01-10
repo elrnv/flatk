@@ -871,6 +871,7 @@ where
 }
 
 // Iterator for `Subset`s
+#[derive(Copy, Clone, Debug)]
 pub struct SubsetIter<S, I> {
     indices: Option<I>,
     data: S,

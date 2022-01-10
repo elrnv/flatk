@@ -1566,6 +1566,7 @@ where
 }
 
 /// A special iterator capable of iterating over a `Chunked` type.
+#[derive(Copy, Clone, Debug)]
 pub struct ChunkedIter<I, S> {
     first_offset_value: usize,
     offset_values_and_sizes: I,
