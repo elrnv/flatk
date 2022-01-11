@@ -94,7 +94,7 @@ impl<S, N: Copy> UniChunked<S, N> {
         }
     }
     #[inline]
-    fn view_mut<'a>(&'a mut self) -> UniChunked<S::Type, N>
+    pub fn view_mut<'a>(&'a mut self) -> UniChunked<S::Type, N>
     where
         S: ViewMut<'a>,
     {
