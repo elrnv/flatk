@@ -176,7 +176,7 @@ impl<O: AsRef<[usize]>> ClumpedOffsets<O> {
     /// An iterator over effective (unclumped) sizes producing an increment for advancing the
     /// data pointer.
     ///
-    /// This helps for implementing iterators over `Chunked` types.
+    /// This helps for implementing iterators over `Clumped` types.
     ///
     /// # Example
     ///
@@ -185,17 +185,17 @@ impl<O: AsRef<[usize]>> ClumpedOffsets<O> {
     ///
     ///     let off = Offsets::new(vec![0, 3, 6, 9, 12, 16, 20, 24, 27, 30, 33, 36, 39]);
     ///     let clumped = ClumpedOffsets::from(off);
-    ///     let mut clumped_iter = clumped.sizes();
+    ///     let mut iter = clumped.sizes();
     ///     for _ in 0..4 {
-    ///         assert_eq!(clumped_iter.next(), Some(3));
+    ///         assert_eq!(iter.next(), Some(3));
     ///     }
     ///     for _ in 0..3 {
-    ///         assert_eq!(clumped_iter.next(), Some(4));
+    ///         assert_eq!(iter.next(), Some(4));
     ///     }
     ///     for _ in 0..5 {
-    ///         assert_eq!(clumped_iter.next(), Some(3));
+    ///         assert_eq!(iter.next(), Some(3));
     ///     }
-    ///     assert_eq!(clumped_iter.next(), None);
+    ///     assert_eq!(iter.next(), None);
     /// ```
     #[inline]
     pub fn sizes(&self) -> UnclumpedSizes {
@@ -226,7 +226,7 @@ impl<O: AsRef<[usize]>> ClumpedOffsets<O> {
         .map(move |x| x - first)
     }
 
-    /// An iterator over unclumped offsets.
+    /// An iterator over unclumped offset values.
     ///
     /// This is equivalent to iterating over `Offsets` after conversion, but it doesn't require any
     /// additional allocations.
