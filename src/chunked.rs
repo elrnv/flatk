@@ -1410,6 +1410,26 @@ where
 
 impl_atom_iterators_recursive!(impl<S, O> for Chunked<S, O> { data });
 
+impl<'a, S, O> Clumped<S, O>
+    where
+        S: View<'a>,
+        O: AsRef<[usize]>,
+{
+    /// Produce an iterator over clumps of elements (borrowed slices) of a `Clumped`.
+    #[inline]
+    pub fn clump_iter(
+        &'a self,
+    ) -> ClumpIter<OffsetValuesAndSizes<'a>, <S as View<'a>>::Type>
+    {
+        ClumpIter {
+            first_offset_value: self.chunks.offsets.view().first_offset_value(),
+            offset_values_and_sizes: self.chunks.offsets.view().into_offset_values_and_sizes(),
+            chunk_offset_values_and_sizes: self.chunks.chunk_offsets.view().into_offset_values_and_sizes(),
+            data: self.data.view(),
+        }
+    }
+}
+
 impl<'a, S, O> Chunked<S, O>
 where
     S: View<'a>,
@@ -1658,6 +1678,108 @@ where
 
 impl<I, V> ExactSizeIterator for ChunkedIter<I, V> where Self: Iterator {}
 impl<I, V> std::iter::FusedIterator for ChunkedIter<I, V> where Self: Iterator {}
+
+/// A special iterator capable of iterating over a `Clumped` type.
+#[derive(Copy, Clone, Debug)]
+pub struct ClumpIter<I, S> {
+    first_offset_value: usize,
+    offset_values_and_sizes: I,
+    chunk_offset_values_and_sizes: I,
+    data: S,
+}
+
+impl<I, V> Iterator for ClumpIter<I, V>
+    where
+        V: SplitAt + Set + Dummy,
+        I: ExactSizeIterator<Item = (usize, usize)>,
+{
+    type Item = ChunkedN<V>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        // SAFETY: After calling std::mem::replace with dummy, self.data is in a
+        // temporarily invalid state.
+        unsafe {
+            let data_slice = std::mem::replace(&mut self.data, Dummy::dummy());
+            self.offset_values_and_sizes.next().map(move |(_, n)| {
+                // Assuming that chunk_offset_values_and_sizes have the same number of elements.
+                let (_, cn) = self.chunk_offset_values_and_sizes.next().unwrap();
+                let (l, r) = data_slice.split_at(n);
+                // self.data is restored to the valid state here.
+                self.data = r;
+                self.first_offset_value += n;
+                ChunkedN::from_flat_with_stride(n / cn, l)
+            })
+        }
+    }
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        // SAFETY: After calling std::mem::replace with dummy, self.data is in a
+        // temporarily invalid state.
+        unsafe {
+            let data_slice = std::mem::replace(&mut self.data, Dummy::dummy());
+            self.offset_values_and_sizes.nth(n).map(move |(off, size)| {
+                // Assuming that chunk_offset_values_and_sizes have the same number of elements.
+                let (_, chunked_size) = self.chunk_offset_values_and_sizes.nth(n).unwrap();
+                let (_, r) = data_slice.split_at(off - self.first_offset_value);
+                let (l, r) = r.split_at(size);
+                // self.data is restored to the valid state here.
+                self.data = r;
+                self.first_offset_value = off;
+                ChunkedN::from_flat_with_stride(size / chunked_size, l)
+            })
+        }
+    }
+}
+
+impl<I, V> DoubleEndedIterator for ClumpIter<I, V>
+    where
+        V: SplitAt + Set + Dummy,
+        I: ExactSizeIterator + DoubleEndedIterator<Item = (usize, usize)>,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        // SAFETY: After calling std::mem::replace with dummy, self.data is in a
+        // temporarily invalid state.
+        unsafe {
+            let data_slice = std::mem::replace(&mut self.data, Dummy::dummy());
+            self.offset_values_and_sizes
+                .next_back()
+                .map(move |(off, size)| {
+                    // Assuming that chunk_offset_values_and_sizes have the same number of elements.
+                    let (_, chunked_size) = self.chunk_offset_values_and_sizes.next_back().unwrap();
+                    let (l, r) = data_slice.split_at(off - self.first_offset_value);
+                    // self.data is restored to the valid state here.
+                    self.data = l;
+                    self.first_offset_value = off;
+                    ChunkedN::from_flat_with_stride(size / chunked_size, r)
+                })
+        }
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        // SAFETY: After calling std::mem::replace with dummy, self.data is in a
+        // temporarily invalid state.
+        unsafe {
+            let data_slice = std::mem::replace(&mut self.data, Dummy::dummy());
+            self.offset_values_and_sizes
+                .nth_back(n)
+                .map(move |(off, size)| {
+                    let (_, chunked_size) = self.chunk_offset_values_and_sizes.nth_back(n).unwrap();
+                    let (l, r) = data_slice.split_at(off - self.first_offset_value);
+                    let (v, _) = r.split_at(size);
+                    // self.data is restored to the valid state here.
+                    self.data = l;
+                    self.first_offset_value = off;
+                    ChunkedN::from_flat_with_stride(size / chunked_size, v)
+                })
+        }
+    }
+}
+
+impl<I, V> ExactSizeIterator for ClumpIter<I, V> where Self: Iterator {}
+impl<I, V> std::iter::FusedIterator for ClumpIter<I, V> where Self: Iterator {}
 
 /*
  * `IntoIterator` implementation for `Chunked`. Note that this type of
